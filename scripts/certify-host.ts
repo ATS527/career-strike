@@ -126,7 +126,20 @@ async function main(): Promise<number> {
     const reply = await ask(host, prompt, work, env);
     transcript.toolCalls = reply.slice(-6000);
 
-    check('search returned the synthetic jobs', reply.includes(`${marker} Role 1`) && reply.includes(`${marker} Role 2`), 'both synthetic titles appear in the assistant’s reply');
+    // Independent of how the model words its answer: the service's own request log must show the
+    // calls, and the reply must contain a synthetic title the assistant could only get from them.
+    const served = fs.existsSync(path.join(home, 'logs', 'service.log'))
+      ? fs
+          .readFileSync(path.join(home, 'logs', 'service.log'), 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((l) => JSON.parse(l) as { event: string; path?: string; status?: number })
+          .filter((e) => e.event === 'http.request' && e.path?.startsWith('/api/mcp/'))
+      : [];
+    const searched = served.some((e) => e.path === '/api/mcp/jobs' && e.status === 200);
+    const read = served.some((e) => e.path === `/api/mcp/jobs/${jobIds[0]}` || e.path === `/api/mcp/jobs/${jobIds[1]}`);
+    check('search and read reached Career Strike (service log)', searched && read, `${served.length} MCP requests served`);
+    check('assistant used the structured results', reply.includes(`${marker} Role`), 'a synthetic title from the search result appears in the reply');
     check('private fit refused without a grant', /not allowed|Settings → AI assistants|grant/i.test(reply), 'refusal message relayed by the assistant');
     check('tool error handled', /No job with id job_does_not_exist/.test(reply), 'error text relayed by the assistant');
 
