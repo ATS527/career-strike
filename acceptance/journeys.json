@@ -1,0 +1,246 @@
+{
+  "source": "Spec section 13, required browser journeys",
+  "journeys": [
+    {
+      "journey": "First launch",
+      "tests": [
+        {
+          "file": "test/e2e/dashboard.spec.ts",
+          "title": "without a session the dashboard explains how to open it and shows no data"
+        },
+        {
+          "file": "test/e2e/dashboard.spec.ts",
+          "title": "career-strike dashboard starts a stopped service and its link signs the browser in"
+        }
+      ]
+    },
+    {
+      "journey": "Onboarding",
+      "tests": [
+        {
+          "file": "test/e2e/journeys.spec.ts",
+          "title": "a new user is guided from an empty install to reviewing real postings"
+        }
+      ]
+    },
+    {
+      "journey": "Settings persistence",
+      "tests": [
+        {
+          "file": "test/e2e/dashboard.spec.ts",
+          "title": "all settings persist across a service restart and a fresh browser session"
+        }
+      ]
+    },
+    {
+      "journey": "Job intake",
+      "tests": [
+        {
+          "file": "test/e2e/opportunities.spec.ts",
+          "title": "a job added by hand is saved as unverified with its details"
+        }
+      ]
+    },
+    {
+      "journey": "Live job-source retrieval",
+      "tests": [
+        {
+          "file": "test/e2e/live.spec.ts",
+          "title": "adding a real public board fetches genuine postings (live)"
+        }
+      ]
+    },
+    {
+      "journey": "Job verification",
+      "tests": [
+        {
+          "file": "test/e2e/opportunities.spec.ts",
+          "title": "stale and closed postings are labelled honestly"
+        }
+      ]
+    },
+    {
+      "journey": "Search and filtering",
+      "tests": [
+        {
+          "file": "test/e2e/opportunities.spec.ts",
+          "title": "lists verified jobs, searches and filters with the state kept in the URL"
+        }
+      ]
+    },
+    {
+      "journey": "Shortlisting",
+      "tests": [
+        {
+          "file": "test/e2e/opportunities.spec.ts",
+          "title": "shortlisting and excluding persist across reloads and a service restart, and feed Home"
+        }
+      ]
+    },
+    {
+      "journey": "Job comparison",
+      "tests": [
+        {
+          "file": "test/e2e/opportunities.spec.ts",
+          "title": "two jobs can be compared side by side"
+        }
+      ]
+    },
+    {
+      "journey": "Draft creation",
+      "tests": [
+        {
+          "file": "test/e2e/applications.spec.ts",
+          "title": "upload a résumé, prepare, review the exact package, approve, and see edits cancel the approval"
+        }
+      ]
+    },
+    {
+      "journey": "Draft editing",
+      "tests": [
+        {
+          "file": "test/e2e/applications.spec.ts",
+          "title": "statements the profile does not support must be confirmed before approval"
+        }
+      ]
+    },
+    {
+      "journey": "Exact approval",
+      "tests": [
+        {
+          "file": "test/e2e/applications.spec.ts",
+          "title": "upload a résumé, prepare, review the exact package, approve, and see edits cancel the approval"
+        }
+      ]
+    },
+    {
+      "journey": "Approval invalidation after edits",
+      "tests": [
+        {
+          "file": "test/e2e/applications.spec.ts",
+          "title": "upload a résumé, prepare, review the exact package, approve, and see edits cancel the approval"
+        }
+      ]
+    },
+    {
+      "journey": "Rejection",
+      "tests": [
+        {
+          "file": "test/e2e/applications.spec.ts",
+          "title": "rejecting at review cancels it and nothing can be sent"
+        }
+      ]
+    },
+    {
+      "journey": "Controlled submission",
+      "tests": [
+        {
+          "file": "test/e2e/submission.spec.ts",
+          "title": "approve and submit to the owned endpoint; a verified receipt marks it submitted"
+        }
+      ]
+    },
+    {
+      "journey": "Confirmation receipt",
+      "tests": [
+        {
+          "file": "test/e2e/submission.spec.ts",
+          "title": "a lost response is shown as unknown, not resent, and resolved by checking with the endpoint"
+        }
+      ]
+    },
+    {
+      "journey": "Application tracking",
+      "tests": [
+        {
+          "file": "test/e2e/tracking.spec.ts",
+          "title": "submit on the employer’s site with copied answers, confirm it, record an interview and follow up"
+        },
+        {
+          "file": "test/e2e/tracking.spec.ts",
+          "title": "a submission the candidate is unsure about is never counted as submitted"
+        }
+      ]
+    },
+    {
+      "journey": "Follow-up creation",
+      "tests": [
+        {
+          "file": "test/e2e/tracking.spec.ts",
+          "title": "submit on the employer’s site with copied answers, confirm it, record an interview and follow up"
+        }
+      ]
+    },
+    {
+      "journey": "Interview preparation",
+      "tests": [
+        {
+          "file": "test/e2e/interviews.spec.ts",
+          "title": "schedule an interview for a submitted application and practise what the posting asks for"
+        }
+      ]
+    },
+    {
+      "journey": "Agent activity display",
+      "tests": [
+        {
+          "file": "test/e2e/activity.spec.ts",
+          "title": "real work is shown while it runs, can be cancelled, and schedules and backoff are visible"
+        },
+        {
+          "file": "test/e2e/assistants.spec.ts",
+          "title": "assistants appear when they connect, and private access follows the candidate’s grants"
+        }
+      ]
+    },
+    {
+      "journey": "Task cancellation",
+      "tests": [
+        {
+          "file": "test/e2e/activity.spec.ts",
+          "title": "real work is shown while it runs, can be cancelled, and schedules and backoff are visible"
+        }
+      ]
+    },
+    {
+      "journey": "Error recovery",
+      "tests": [
+        {
+          "file": "test/e2e/dashboard.spec.ts",
+          "title": "a stopped service is reported truthfully and the page recovers on its own"
+        },
+        {
+          "file": "test/e2e/dashboard.spec.ts",
+          "title": "a page opened during an outage shows the failure and loads once the service returns"
+        }
+      ]
+    },
+    {
+      "journey": "Responsive layout",
+      "tests": [
+        {
+          "file": "test/e2e/accessibility.spec.ts",
+          "title": "layout fits a ${width}px viewport with actions reachable"
+        }
+      ]
+    },
+    {
+      "journey": "Keyboard navigation",
+      "tests": [
+        {
+          "file": "test/e2e/accessibility.spec.ts",
+          "title": "the main journey works with the keyboard alone"
+        }
+      ]
+    },
+    {
+      "journey": "Accessibility checks",
+      "tests": [
+        {
+          "file": "test/e2e/accessibility.spec.ts",
+          "title": "no serious or critical axe violations (${scheme})"
+        }
+      ]
+    }
+  ]
+}

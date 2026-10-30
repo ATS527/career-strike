@@ -100,7 +100,13 @@ function main(): number {
       return 1;
     }
     commands.push(`playwright test ${e2eFiles.join(' ')}`);
-    const run = spawnSync('npx', ['playwright', 'test', '--reporter=json', ...e2eFiles], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    // Live journeys reach real public job boards (read-only), so they run only when listed.
+    const liveE2e = e2eFiles.some((f) => path.basename(f) === 'live.spec.ts');
+    const run = spawnSync('npx', ['playwright', 'test', '--reporter=json', ...e2eFiles], {
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+      env: { ...process.env, ...(liveE2e ? { CS_LIVE: '1' } : {}) },
+    });
     const report = JSON.parse(run.stdout) as { suites: PlaywrightSuite[] };
     for (const r of playwrightResults(report.suites)) results.set(path.relative(process.cwd(), r.name), r);
   }
