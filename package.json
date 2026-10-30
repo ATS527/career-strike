@@ -8,11 +8,18 @@
   "bin": {
     "career-strike": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
   "engines": {
     "node": ">=22.12.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.build.json && vite build",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p tsconfig.e2e.json",
     "dev:serve": "tsx src/cli/index.ts serve",
     "test": "vitest run",
@@ -21,7 +28,8 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "privacy-scan": "tsx scripts/privacy-scan.ts",
     "test:e2e": "npm run build && playwright test",
-    "test:live": "CS_LIVE=1 vitest run test/live"
+    "test:live": "CS_LIVE=1 vitest run test/live",
+    "prepack": "npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

@@ -8,12 +8,12 @@ import { MIN_NODE_MAJOR, VERSION } from '../core/version.js';
 import { inspectDb, latestKnownVersion, openDb, schemaVersion } from '../store/db.js';
 import { backup, deleteAllData, exportData, restore } from '../store/lifecycle.js';
 import { defaultSecretStore } from '../vault/secrets.js';
-import { HOSTS, type Host, hostVersion, register, settlesTo, unregister } from '../mcp/hosts.js';
+import { HOSTS, type Host, hostVersion, isRegistered, register, settlesTo, unregister } from '../mcp/hosts.js';
 import { runMcpStdio, tokenFile } from '../mcp/server.js';
 import { dashboardUrl, openInBrowser, processAlive, startDetached, stopService } from '../service/control.js';
 import { localRequest } from '../service/http-client.js';
 import { probeHealth, readRuntime } from '../service/runtime.js';
-import { AlreadyRunningError, DEFAULT_PORT, startService } from '../service/service.js';
+import { AlreadyRunningError, DEFAULT_PORT, startService, WEB_DIR } from '../service/service.js';
 
 const CLI_ENTRY = fileURLToPath(import.meta.url);
 
@@ -207,6 +207,8 @@ program
     } catch (err) {
       checks.push({ name: 'database', ok: false, detail: err instanceof Error ? err.message : String(err) });
     }
+    const dashboard = fs.existsSync(path.join(WEB_DIR, 'index.html'));
+    checks.push({ name: 'dashboard-files', ok: dashboard, detail: dashboard ? 'present' : `missing from ${WEB_DIR}; reinstall Career Strike` });
     const info = readRuntime(paths.runtimeFile);
     const running = info !== null && (await probeHealth(info));
     checks.push({ name: 'service', ok: true, detail: running && info ? `running on port ${info.port}` : 'not running' });
@@ -252,6 +254,41 @@ program
     await requireStopped('restore');
     const r = restore(appPaths(), folder);
     console.log(`Restored (schema v${r.schemaVersion}).${r.previous ? ` Your previous data was moved to ${r.previous}` : ''}`);
+  });
+
+/** The npm prefix Career Strike was installed into globally, if it was. */
+function globalPrefix(): string | null {
+  const pkgRoot = path.resolve(path.dirname(fs.realpathSync(CLI_ENTRY)), '..', '..');
+  const nodeModules = path.dirname(pkgRoot);
+  if (path.basename(nodeModules) !== 'node_modules' || path.basename(pkgRoot) !== 'career-strike') return null;
+  const parent = path.dirname(nodeModules);
+  return path.basename(parent) === 'lib' ? path.dirname(parent) : parent;
+}
+
+program
+  .command('uninstall')
+  .description('Remove Career Strike from AI assistants and remove the program; your data is kept unless you delete it separately')
+  .action(async () => {
+    const paths = appPaths();
+    console.log(`Service: ${await stopService(paths)}`);
+    for (const host of HOSTS) {
+      if (!(await hostVersion(host))) continue;
+      if (!(await isRegistered(host))) continue;
+      await unregister(host);
+      const gone = await settlesTo(host, false);
+      console.log(gone ? `Removed Career Strike from ${host}.` : `${host} still lists Career Strike; remove "career-strike" from its MCP settings by hand.`);
+      if (!gone) process.exitCode = 1;
+    }
+    fs.rmSync(path.join(paths.home, 'mcp'), { recursive: true, force: true });
+    const prefix = globalPrefix();
+    if (prefix) {
+      const { execFileSync } = await import('node:child_process');
+      execFileSync('npm', ['uninstall', '--global', '--prefix', prefix, 'career-strike'], { stdio: 'ignore', shell: process.platform === 'win32' });
+      console.log(`Removed the career-strike program from ${prefix}.`);
+    } else {
+      console.log('Career Strike was not installed with `npm install --global`; remove it the way you installed it.');
+    }
+    console.log(`Your data is still in ${paths.home}. To delete it permanently: career-strike delete-data --confirm "${DELETE_PHRASE}" (before uninstalling), or delete that folder.`);
   });
 
 const DELETE_PHRASE = 'delete my career data';
