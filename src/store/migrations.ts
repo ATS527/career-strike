@@ -224,4 +224,21 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX application_events_app ON application_events (application_id, id);
     `,
   },
+  {
+    version: 6,
+    name: 'follow_ups',
+    sql: `
+      -- PERSONAL: reminders the candidate set for an application.
+      CREATE TABLE follow_ups (
+        id             TEXT PRIMARY KEY,
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        due_at         TEXT NOT NULL,
+        note           TEXT NOT NULL,
+        status         TEXT NOT NULL CHECK (status IN ('OPEN', 'DONE', 'DISMISSED')),
+        created_at     TEXT NOT NULL,
+        closed_at      TEXT
+      );
+      CREATE INDEX follow_ups_due ON follow_ups (status, due_at);
+    `,
+  },
 ];

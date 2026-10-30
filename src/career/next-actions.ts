@@ -14,6 +14,8 @@ export interface CareerState {
   boards?: { source: string; board: string; health: string; lastError: string | null }[];
   matches?: { strongUnreviewed: number; immediateStartUnreviewed: number; profileFacts: number };
   availability?: string;
+  applications?: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; interviewing: number; offers: number };
+  followUpsDue?: { id: string; note: string; title: string; employer: string; applicationId: string }[];
 }
 
 type Rule = (state: CareerState) => NextAction | NextAction[] | null;
@@ -22,6 +24,40 @@ const isEmptyList = (v: unknown): boolean => !Array.isArray(v) || v.length === 0
 const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
 
 const RULES: readonly Rule[] = [
+  ({ followUpsDue }) =>
+    (followUpsDue ?? []).map((f) => ({
+      rule: 'follow-ups.due',
+      title: `Follow up: ${f.note}`,
+      reason: `You set this reminder for your ${f.title} application at ${f.employer}, and it is due.`,
+      href: `/applications/${f.applicationId}`,
+    })),
+  ({ applications }) =>
+    applications && applications.awaitingConfirmation > 0
+      ? {
+          rule: 'applications.confirm-submission',
+          title: `Confirm whether ${plural(applications.awaitingConfirmation, 'application was', 'applications were')} sent`,
+          reason: 'You started submitting these on the employer’s site. Career Strike only counts them as submitted once you confirm.',
+          href: '/applications',
+        }
+      : null,
+  ({ applications }) =>
+    applications && applications.readyForReview > 0
+      ? {
+          rule: 'applications.ready-for-review',
+          title: `Review ${plural(applications.readyForReview, 'prepared application')}`,
+          reason: 'They are ready for your review. Nothing is sent until you approve the exact version.',
+          href: '/applications',
+        }
+      : null,
+  ({ applications }) =>
+    applications && applications.approved > 0
+      ? {
+          rule: 'applications.approved-unsent',
+          title: `Submit ${plural(applications.approved, 'approved application')}`,
+          reason: 'You approved these, but they have not been submitted on the employer’s site yet. Approvals expire after 7 days.',
+          href: '/applications',
+        }
+      : null,
   ({ boards }) =>
     (boards ?? [])
       .filter((b) => b.health === 'DEGRADED' || b.health === 'NOT_FOUND')

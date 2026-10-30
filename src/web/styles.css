@@ -1599,3 +1599,49 @@ input[type='file'] {
 .record__part input[type='file'] {
   width: 100%;
 }
+
+.copy {
+  min-height: 28px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+  margin-left: 0.4rem;
+}
+
+.outcome-form {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  background: var(--paper);
+  border-color: var(--accent);
+}
+
+.outcome-form input,
+.outcome-form select {
+  max-width: none;
+}
+
+.follow-ups {
+  border-top: 1px solid var(--rule-strong);
+  padding-top: 0.75rem;
+}
+
+.fu-form {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.pipeline__sub {
+  margin-top: 1.5rem;
+  font-size: 1.05rem;
+}
+
+input[type='date'] {
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.6rem;
+  min-height: 44px;
+}

@@ -56,6 +56,26 @@ export function Home() {
               <Count label="May have closed" value={overview.data.jobs.stale} href="/opportunities?status=STALE" note="not verified recently" />
               <Count label="Added by you" value={overview.data.jobs.unverified} href="/opportunities?status=UNVERIFIED" note="unverified" />
             </dl>
+            <h3 className="pipeline__sub">Applications</h3>
+            <dl className="counts" data-testid="application-counts">
+              <Count label="To review" value={overview.data.applications.readyForReview} href="/applications" />
+              <Count label="Approved, not sent" value={overview.data.applications.approved} href="/applications" />
+              <Count label="Submitted" value={overview.data.applications.submitted} href="/applications" note="you confirmed" />
+              <Count label="Interviewing" value={overview.data.applications.interviewing} href="/applications" />
+              <Count label="Offers" value={overview.data.applications.offers} href="/applications" />
+            </dl>
+            {overview.data.followUps.length > 0 && (
+              <>
+                <h3 className="pipeline__sub">Upcoming follow-ups</h3>
+                <ul className="disclosures">
+                  {overview.data.followUps.map((f) => (
+                    <li key={f.id}>
+                      <Link href={`/applications/${f.applicationId}`}>{f.note}</Link> · {f.title} at {f.employer} · due {ago(f.dueAt)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
 
           <aside className="status" aria-labelledby="status-title">

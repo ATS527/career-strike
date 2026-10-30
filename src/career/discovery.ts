@@ -36,6 +36,8 @@ export class Discovery {
     private readonly db: Db,
     private readonly adapters: Readonly<Record<SourceId, SourceAdapter>>,
     private readonly tasks: TaskSupervisor,
+    /** Called after each successful sync, e.g. to expire applications for postings that closed. */
+    private readonly afterSync: () => void = () => {},
   ) {}
 
   addBoard(source: SourceId, board: string): SourceBoard {
@@ -95,6 +97,7 @@ export class Discovery {
           if (ctx.signal.aborted) throw ctx.signal.reason;
           ctx.progress({ step: 'saving', fetched: postings.length });
           result = syncBoard(this.db, board.source, board.board, postings);
+          this.afterSync();
         } catch (err) {
           if (ctx.signal.aborted) throw err;
           // A failed fetch never touches job status or verification times.

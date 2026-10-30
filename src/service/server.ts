@@ -62,7 +62,25 @@ export function buildServer({
   const tasks = new TaskSupervisor(db, logger);
   const interrupted = tasks.recoverInterrupted();
   if (interrupted > 0) logger.warn('tasks.interrupted', { count: interrupted });
-  const discovery = new Discovery(db, adapters, tasks);
+  const vault = new DocumentVault(db, vaultDir);
+  const applications = new ApplicationService(
+    db,
+    secrets,
+    vault,
+    async (jobId) => {
+      // Only Greenhouse publishes application forms publicly; elsewhere the standard fields are used.
+      const src = db.prepare("SELECT board, source_job_id FROM job_sources WHERE job_id = ? AND source = 'greenhouse' LIMIT 1").get(jobId) as
+        | { board: string; source_job_id: string }
+        | undefined;
+      if (!src || !adapters.greenhouse.applicationQuestions) return null;
+      return adapters.greenhouse.applicationQuestions(src.board, src.source_job_id);
+    },
+    logger,
+  );
+  const discovery = new Discovery(db, adapters, tasks, () => {
+    const expired = applications.expireForClosedJobs();
+    if (expired > 0) logger.info('applications.expired', { count: expired });
+  });
   const backfilled = backfillRequirements(db);
   if (backfilled > 0) logger.info('jobs.requirements-backfilled', { count: backfilled });
   app.decorateRequest('principal', null);
@@ -177,6 +195,19 @@ export function buildServer({
     const boards = discovery.listBoards();
     const ctx = candidateContext(db);
     const fresh = listJobs(db, JobQuery.parse({ status: 'OPEN', disposition: 'none', limit: 200 }), ctx).jobs;
+    const byState = applications.counts();
+    const sum = (...states: string[]): number => states.reduce((n, st) => n + ((byState as Record<string, number>)[st] ?? 0), 0);
+    const appCounts = {
+      drafts: sum('DRAFTED', 'NEEDS_INFORMATION', 'BLOCKED'),
+      readyForReview: sum('READY_FOR_REVIEW'),
+      approved: sum('APPROVED'),
+      awaitingConfirmation: sum('NEEDS_MANUAL_ACTION', 'SUBMISSION_UNCONFIRMED'),
+      submitted: sum('SUBMITTED_CONFIRMED', 'RESPONSE_RECEIVED'),
+      interviewing: sum('INTERVIEW'),
+      offers: sum('OFFER'),
+      expiredUnsent: sum('EXPIRED'),
+    };
+    const followUps = applications.openFollowUps();
     const matches = {
       strongUnreviewed: fresh.filter((j) => j.fit?.tier === 'strong').length,
       immediateStartUnreviewed: fresh.filter((j) => j.fit?.immediateStartAsked && j.fit.tier !== 'ineligible').length,
@@ -194,27 +225,22 @@ export function buildServer({
       },
       activeTasks: tasks.list(20).filter((t) => t.state === 'RUNNING' || t.state === 'QUEUED'),
       matches,
-      nextActions: nextActions({ settings, jobs: counts, boards, matches, availability: ctx.settings?.joiningAvailability }),
+      applications: appCounts,
+      followUps: followUps.slice(0, 5),
+      nextActions: nextActions({
+        settings,
+        jobs: counts,
+        boards,
+        matches,
+        availability: ctx.settings?.joiningAvailability,
+        applications: appCounts,
+        followUpsDue: followUps.filter((f) => Date.parse(f.dueAt) <= Date.now()).map((f) => ({ id: f.id, note: f.note, title: f.title, employer: f.employer, applicationId: f.applicationId })),
+      }),
     };
   });
 
   registerOpportunityRoutes(app, { db, discovery, tasks });
 
-  const vault = new DocumentVault(db, vaultDir);
-  const applications = new ApplicationService(
-    db,
-    secrets,
-    vault,
-    async (jobId) => {
-      // Only Greenhouse publishes application forms publicly; elsewhere the standard fields are used.
-      const src = db.prepare("SELECT board, source_job_id FROM job_sources WHERE job_id = ? AND source = 'greenhouse' LIMIT 1").get(jobId) as
-        | { board: string; source_job_id: string }
-        | undefined;
-      if (!src || !adapters.greenhouse.applicationQuestions) return null;
-      return adapters.greenhouse.applicationQuestions(src.board, src.source_job_id);
-    },
-    logger,
-  );
   registerApplicationRoutes(app, { applications, vault });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));

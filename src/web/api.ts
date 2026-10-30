@@ -69,8 +69,22 @@ export interface NextAction {
   href: string;
 }
 
+export interface FollowUp {
+  id: string;
+  applicationId: string;
+  dueAt: string;
+  note: string;
+  status: 'OPEN' | 'DONE' | 'DISMISSED';
+  createdAt: string;
+  closedAt: string | null;
+  title?: string;
+  employer?: string;
+}
+
 export interface Overview {
   service: { version: string; schemaVersion: number; startedAt: string | null };
+  applications: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; submitted: number; interviewing: number; offers: number; expiredUnsent: number };
+  followUps: FollowUp[];
   aiHosts: { connected: string[] };
   jobs: JobCounts;
   sources: { boards: number; healthy: number; failing: number; lastSuccessfulDiscovery: string | null };
@@ -298,7 +312,8 @@ export interface ApplicationView {
   updatedAt: string;
   job: { title: string; employer: string; status: string };
   versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
-  events: { from: string | null; to: string; actor: string; note: string | null; at: string }[];
+  events: { from: string | null; to: string; actor: string; note: string | null; evidence: Record<string, unknown> | null; at: string }[];
+  followUps: FollowUp[];
   approval: { valid: boolean; reason: string; approval: { id: string; state: string; version: number; issuedAt: string; expiresAt: string; stateReason: string | null } | null };
   warnings: { kind: string; message: string }[];
   missingRequired: string[];

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type ApplicationView, currentCsrfToken, type PayloadField, type StoredDocument } from '../api';
-import { APP_STATE_LABEL, formatDateTime, shortHash } from '../format';
+import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type PayloadField, type StoredDocument } from '../api';
+import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
 import { ExternalLink, Link, navigate } from '../router';
 import { ErrorPanel, Loading } from './states';
 
@@ -89,6 +89,7 @@ export function ApplicationPage({ id }: { id: string }) {
           <h2 id="package-title">Exactly what would be sent</h2>
           <Package view={view} />
           <Actions view={view} busy={busy} post={post} run={run} />
+          <FollowUps view={view} onChange={() => void load()} />
           <History view={view} />
         </aside>
       </div>
@@ -269,8 +270,28 @@ export async function uploadDocument(file: File, kind: 'resume' | 'cover_letter'
   }
 }
 
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="quiet copy"
+      onClick={async () => {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      }}
+    >
+      {copied ? 'Copied' : 'Copy'}
+      <span className="visually-hidden"> {label}</span>
+    </button>
+  );
+}
+
 function Package({ view }: { view: ApplicationView }) {
   const p = view.payload;
+  // While the candidate fills in the employer's form, every approved answer can be copied exactly.
+  const copyable = view.state === 'APPROVED' || view.state === 'NEEDS_MANUAL_ACTION';
   return (
     <div className="package__body" data-testid="package">
       <dl className="facts">
@@ -302,7 +323,10 @@ function Package({ view }: { view: ApplicationView }) {
           .map((f) => (
             <div key={f.key}>
               <dt>{f.label}</dt>
-              <dd>{f.value ?? <span className="muted">Not answered</span>}</dd>
+              <dd>
+                {f.value ?? <span className="muted">Not answered</span>}
+                {copyable && f.value && f.kind !== 'file' && <CopyButton text={f.value} label={f.label} />}
+              </dd>
             </div>
           ))}
       </dl>
@@ -320,7 +344,9 @@ function Package({ view }: { view: ApplicationView }) {
       )}
       {p.coverLetter && (
         <>
-          <h3>Cover letter</h3>
+          <h3>
+            Cover letter {copyable && <CopyButton text={p.coverLetter} label="cover letter" />}
+          </h3>
           <pre className="letter">{p.coverLetter}</pre>
         </>
       )}
@@ -395,12 +421,27 @@ function Actions({
             <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> — {view.approval.reason}
           </p>
           {view.approval.approval && <p className="muted">Approved {formatDateTime(view.approval.approval.issuedAt)}; expires {formatDateTime(view.approval.approval.expiresAt)}.</p>}
+          <p className="help">When you start, the approval is used up. Then submit on the employer’s site, using the copy buttons for each answer.</p>
+          <button
+            type="button"
+            disabled={busy || !view.approval.valid}
+            onClick={() => {
+              if (view.payload.destination.url) window.open(view.payload.destination.url, '_blank', 'noopener,noreferrer');
+              void run('Started. Submit on the employer’s site, then tell Career Strike what happened.', () => post('start-submission'));
+            }}
+          >
+            Start submitting on the employer’s site
+          </button>
           {view.payload.destination.url && (
-            <ExternalLink href={view.payload.destination.url} className="button">
+            <ExternalLink href={view.payload.destination.url} className="button button--quiet">
               Open the official application
             </ExternalLink>
           )}
         </div>
+      )}
+      {(view.state === 'NEEDS_MANUAL_ACTION' || view.state === 'SUBMISSION_UNCONFIRMED') && <ConfirmSubmission view={view} busy={busy} post={post} run={run} />}
+      {OUTCOMES.some((o) => can(o)) && view.state !== 'NEEDS_MANUAL_ACTION' && (
+        <RecordOutcome key={`${view.state}:${view.events.length}`} view={view} busy={busy} post={post} run={run} can={can} />
       )}
       {can('CANCELLED') && (
         <button type="button" className="quiet" disabled={busy} onClick={reject}>
@@ -416,6 +457,152 @@ function Actions({
   );
 }
 
+const OUTCOMES = ['RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED', 'WITHDRAWN', 'CLOSED'] as const;
+const OUTCOME_LABEL: Record<(typeof OUTCOMES)[number], string> = {
+  RESPONSE_RECEIVED: 'The employer responded',
+  INTERVIEW: 'An interview was arranged',
+  OFFER: 'I received an offer',
+  REJECTED: 'The employer said no',
+  WITHDRAWN: 'I withdrew',
+  CLOSED: 'Close this application',
+};
+
+type Post = (path: string, body?: unknown) => Promise<{ application: ApplicationView }>;
+type Run = (label: string, request: () => Promise<{ application: ApplicationView }>) => Promise<void>;
+const today = (): string => new Date().toISOString().slice(0, 10);
+
+function ConfirmSubmission({ view, busy, post, run }: { view: ApplicationView; busy: boolean; post: Post; run: Run }) {
+  const [date, setDate] = useState(today());
+  const [reference, setReference] = useState('');
+  const [note, setNote] = useState('');
+  return (
+    <form
+      className="banner outcome-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run('Recorded as submitted.', () => post('confirm-submitted', { submittedAt: date, reference: reference.trim() || null, note: note.trim() || null }));
+      }}
+    >
+      <p>
+        <strong>Did you submit it?</strong> Career Strike only counts it as submitted when you confirm.
+      </p>
+      <label htmlFor="submitted-at">Date submitted</label>
+      <input id="submitted-at" type="date" required value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
+      <label htmlFor="reference">Confirmation number or reference (optional)</label>
+      <input id="reference" type="text" value={reference} onChange={(e) => setReference(e.target.value)} />
+      <label htmlFor="confirm-note">What did you see? (optional)</label>
+      <input id="confirm-note" type="text" placeholder="e.g. confirmation email received" value={note} onChange={(e) => setNote(e.target.value)} />
+      <button type="submit" disabled={busy}>
+        Yes, I submitted it
+      </button>
+      {view.state === 'NEEDS_MANUAL_ACTION' && (
+        <button type="button" className="quiet" disabled={busy} onClick={() => void run('Marked as not confirmed.', () => post('mark-unconfirmed', { note: null }))}>
+          I’m not sure it went through
+        </button>
+      )}
+    </form>
+  );
+}
+
+function RecordOutcome({ view, busy, post, run, can }: { view: ApplicationView; busy: boolean; post: Post; run: Run; can: (s: string) => boolean }) {
+  const options = OUTCOMES.filter((o) => can(o));
+  const [chosen, setOutcome] = useState<string>(options[0] ?? '');
+  const [date, setDate] = useState(today());
+  const [note, setNote] = useState('');
+  // After a transition the available outcomes change; fall back to the first valid one.
+  const outcome = options.includes(chosen as (typeof OUTCOMES)[number]) ? chosen : (options[0] ?? '');
+  return (
+    <form
+      className="banner outcome-form"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run('Recorded.', () => post('outcome', { outcome, occurredAt: date, note: note.trim() || null }));
+      }}
+    >
+      <p>
+        <strong>Record what happened</strong>
+      </p>
+      <label htmlFor="outcome">What happened?</label>
+      <select id="outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {OUTCOME_LABEL[o]}
+          </option>
+        ))}
+      </select>
+      <label htmlFor="outcome-date">When?</label>
+      <input id="outcome-date" type="date" required value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
+      <label htmlFor="outcome-note">Details (optional)</label>
+      <input id="outcome-note" type="text" value={note} onChange={(e) => setNote(e.target.value)} />
+      <button type="submit" disabled={busy || !outcome}>
+        Record
+      </button>
+      <span className="muted">{view.state === 'OFFER' ? 'Congratulations.' : ''}</span>
+    </form>
+  );
+}
+
+function FollowUps({ view, onChange }: { view: ApplicationView; onChange: () => void }) {
+  const inAWeek = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const [due, setDue] = useState(inAWeek);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const open = view.followUps.filter((f) => f.status === 'OPEN');
+  const close = async (f: FollowUp, how: 'done' | 'dismiss'): Promise<void> => {
+    await api(`/api/follow-ups/${f.id}/${how}`, { method: 'POST' }).catch(() => setError('Could not update.'));
+    onChange();
+  };
+  return (
+    <section className="follow-ups" aria-labelledby="fu-title">
+      <h3 id="fu-title">Follow-ups</h3>
+      {open.length === 0 ? (
+        <p className="muted">No reminders set.</p>
+      ) : (
+        <ul className="disclosures" data-testid="follow-ups">
+          {open.map((f) => (
+            <li key={f.id}>
+              {formatDate(f.dueAt)} · {f.note}{' '}
+              <button type="button" className="quiet copy" onClick={() => void close(f, 'done')}>
+                Done<span className="visually-hidden"> {f.note}</span>
+              </button>{' '}
+              <button type="button" className="quiet copy" onClick={() => void close(f, 'dismiss')}>
+                Dismiss<span className="visually-hidden"> {f.note}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        className="fu-form"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setError(null);
+          try {
+            await api(`/api/applications/${view.id}/follow-ups`, { method: 'POST', body: { dueAt: due, note: note.trim() } });
+            setNote('');
+            onChange();
+          } catch (err) {
+            setError(err instanceof ApiError ? 'Add a date and a short note.' : 'Could not save.');
+          }
+        }}
+      >
+        <label htmlFor="fu-note">Remind me to</label>
+        <input id="fu-note" type="text" value={note} placeholder="e.g. email the recruiter" onChange={(e) => setNote(e.target.value)} />
+        <label htmlFor="fu-due">Due date</label>
+        <input id="fu-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+        <button type="submit" className="quiet">
+          Add reminder
+        </button>
+        {error && (
+          <span role="alert" className="save-status--error">
+            {error}
+          </span>
+        )}
+      </form>
+    </section>
+  );
+}
+
 function History({ view }: { view: ApplicationView }) {
   return (
     <details className="history">
@@ -425,7 +612,8 @@ function History({ view }: { view: ApplicationView }) {
           <li key={i}>
             {formatDateTime(e.at)} · {e.from ? `${APP_STATE_LABEL[e.from] ?? e.from} → ` : ''}
             {APP_STATE_LABEL[e.to] ?? e.to}
-            {e.note ? ` · ${e.note}` : ''} <span className="muted">({e.actor})</span>
+            {e.note ? ` · ${e.note}` : ''}
+            {e.evidence && typeof e.evidence.reference === 'string' ? ` · ref ${e.evidence.reference}` : ''} <span className="muted">({e.actor})</span>
           </li>
         ))}
       </ol>

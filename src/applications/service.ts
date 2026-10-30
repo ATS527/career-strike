@@ -24,7 +24,8 @@ export class ApplicationError extends Error {
       | 'STALE_REVIEW'
       | 'WARNINGS_NOT_ACKNOWLEDGED'
       | 'NOT_EDITABLE'
-      | 'INVALID_CHANGE',
+      | 'INVALID_CHANGE'
+      | 'APPROVAL_INVALID',
     message: string,
     readonly details: unknown = null,
   ) {
@@ -60,7 +61,8 @@ export interface ApplicationView {
   updatedAt: string;
   job: { title: string; employer: string; status: string };
   versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
-  events: { from: string | null; to: string; actor: string; note: string | null; at: string }[];
+  events: { from: string | null; to: string; actor: string; note: string | null; evidence: unknown; at: string }[];
+  followUps: FollowUp[];
   approval: ApprovalCheck;
   warnings: GuardWarning[];
   missingRequired: string[];
@@ -77,6 +79,19 @@ export interface ApplicationSummary {
   version: number;
   updatedAt: string;
 }
+
+export interface FollowUp {
+  id: string;
+  applicationId: string;
+  dueAt: string;
+  note: string;
+  status: 'OPEN' | 'DONE' | 'DISMISSED';
+  createdAt: string;
+  closedAt: string | null;
+}
+
+/** Outcomes recorded after submission, each with what the candidate observed. */
+export type Outcome = 'RESPONSE_RECEIVED' | 'INTERVIEW' | 'OFFER' | 'REJECTED' | 'WITHDRAWN' | 'CLOSED';
 
 export interface ChangeSet {
   fields?: { key: string; value: string | null }[];
@@ -162,14 +177,16 @@ export class ApplicationService {
           .all(id) as { version: number; created_by: string; reason: string; created_at: string; payload_hash: string }[]
       ).map((v) => ({ version: v.version, createdBy: v.created_by, reason: v.reason, createdAt: v.created_at, payloadHash: v.payload_hash })),
       events: (
-        this.db.prepare('SELECT from_state, to_state, actor, note, at FROM application_events WHERE application_id = ? ORDER BY id').all(id) as {
+        this.db.prepare('SELECT from_state, to_state, actor, note, evidence_json, at FROM application_events WHERE application_id = ? ORDER BY id').all(id) as {
           from_state: string | null;
           to_state: string;
           actor: string;
           note: string | null;
+          evidence_json: string | null;
           at: string;
         }[]
-      ).map((e) => ({ from: e.from_state, to: e.to_state, actor: e.actor, note: e.note, at: e.at })),
+      ).map((e) => ({ from: e.from_state, to: e.to_state, actor: e.actor, note: e.note, evidence: e.evidence_json ? JSON.parse(e.evidence_json) : null, at: e.at })),
+      followUps: this.followUps(id),
       approval: await this.verifyApproval(id),
       warnings,
       missingRequired: missingRequired(payload),
@@ -381,6 +398,112 @@ export class ApplicationService {
     return { valid: true, reason: 'Approval matches exactly what would be submitted.', approval: status };
   }
 
+  // ---- submission and tracking ----
+
+  /**
+   * The candidate is about to submit on the employer's site. The approval is verified and consumed
+   * in the same transaction (single use), so a second attempt cannot reuse it.
+   */
+  async startManualSubmission(id: string, actor: string): Promise<void> {
+    const app = this.requireRow(id);
+    const check = await this.verifyApproval(id);
+    if (!check.valid || !check.approval) throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      const consumed = this.db
+        .prepare("UPDATE approvals SET state = 'CONSUMED', consumed_at = ?, state_reason = 'Used for a manual submission' WHERE id = ? AND state = 'ACTIVE'")
+        .run(at, check.approval!.id).changes;
+      if (consumed !== 1) throw new ApplicationError('APPROVAL_INVALID', 'Cannot submit: this approval has already been used.');
+      this.transition(id, app.state, 'NEEDS_MANUAL_ACTION', actor, `Submitting version ${app.current_version} on the employer’s site`, at, {
+        approvalId: check.approval!.id,
+        payloadHash: check.approval!.payloadHash,
+      });
+    })();
+  }
+
+  /** Only the candidate's explicit confirmation (with what they saw) marks a manual submission as sent. */
+  confirmSubmitted(id: string, evidence: { reference: string | null; submittedAt: string; note: string | null }, actor: string): void {
+    const app = this.requireRow(id);
+    if (app.state !== 'NEEDS_MANUAL_ACTION' && app.state !== 'SUBMISSION_UNCONFIRMED') throw new TransitionError(app.state, 'SUBMITTED_CONFIRMED');
+    const at = new Date().toISOString();
+    this.db.transaction(() =>
+      this.transition(id, app.state, 'SUBMITTED_CONFIRMED', actor, 'You confirmed you submitted it', at, { type: 'candidate-confirmation', ...evidence }),
+    )();
+  }
+
+  markUnconfirmed(id: string, note: string | null, actor: string): void {
+    const app = this.requireRow(id);
+    this.db.transaction(() =>
+      this.transition(id, app.state, 'SUBMISSION_UNCONFIRMED', actor, note ? `Not sure it was sent: ${note}` : 'Not sure it was sent', new Date().toISOString()),
+    )();
+  }
+
+  /** Record what happened after submission, with the candidate's description of the evidence. */
+  recordOutcome(id: string, outcome: Outcome, evidence: { occurredAt: string; note: string | null }, actor: string): void {
+    const app = this.requireRow(id);
+    this.db.transaction(() => this.transition(id, app.state, outcome, actor, evidence.note ?? OUTCOME_NOTE[outcome], new Date().toISOString(), { type: 'candidate-report', ...evidence }))();
+  }
+
+  /** Unsent applications for postings that have closed can no longer be submitted. */
+  expireForClosedJobs(actor = 'career-strike'): number {
+    const rows = this.db
+      .prepare(
+        `SELECT a.id, a.state FROM applications a JOIN jobs j ON j.id = a.job_id
+         WHERE j.status = 'CLOSED' AND a.state IN ('DRAFTED', 'NEEDS_INFORMATION', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED')`,
+      )
+      .all() as { id: string; state: ApplicationState }[];
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      for (const r of rows) {
+        this.invalidateApprovals(r.id, 'The posting closed before it was submitted', 'REVOKED');
+        this.transition(r.id, r.state, 'EXPIRED', actor, 'The employer took the posting down before it was submitted', at);
+      }
+    })();
+    return rows.length;
+  }
+
+  // ---- follow-ups ----
+
+  addFollowUp(applicationId: string, dueAt: string, note: string, actor: string): FollowUp {
+    this.requireRow(applicationId);
+    const id = `fu_${randomBytes(9).toString('base64url')}`;
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      this.db.prepare("INSERT INTO follow_ups (id, application_id, due_at, note, status, created_at) VALUES (?, ?, ?, ?, 'OPEN', ?)").run(id, applicationId, dueAt, note, at);
+      this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'follow-up.added', id);
+    })();
+    return this.followUps(applicationId).find((f) => f.id === id)!;
+  }
+
+  closeFollowUp(id: string, status: 'DONE' | 'DISMISSED', actor: string): boolean {
+    const at = new Date().toISOString();
+    const changed = this.db.prepare("UPDATE follow_ups SET status = ?, closed_at = ? WHERE id = ? AND status = 'OPEN'").run(status, at, id).changes;
+    if (changed) this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, `follow-up.${status.toLowerCase()}`, id);
+    return changed === 1;
+  }
+
+  /** Open follow-ups across applications, soonest first, with the job they concern. */
+  openFollowUps(): (FollowUp & { title: string; employer: string })[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT f.*, j.title, j.employer FROM follow_ups f JOIN applications a ON a.id = f.application_id JOIN jobs j ON j.id = a.job_id
+           WHERE f.status = 'OPEN' ORDER BY f.due_at`,
+        )
+        .all() as (FollowUpRow & { title: string; employer: string })[]
+    ).map((r) => ({ ...toFollowUp(r), title: r.title, employer: r.employer }));
+  }
+
+  private followUps(applicationId: string): FollowUp[] {
+    return (this.db.prepare('SELECT * FROM follow_ups WHERE application_id = ? ORDER BY due_at').all(applicationId) as FollowUpRow[]).map(toFollowUp);
+  }
+
+  /** Counts by state for the dashboard. */
+  counts(): Record<ApplicationState, number> {
+    const rows = this.db.prepare('SELECT state, COUNT(*) AS n FROM applications GROUP BY state').all() as { state: ApplicationState; n: number }[];
+    return Object.fromEntries(rows.map((r) => [r.state, r.n])) as Record<ApplicationState, number>;
+  }
+
   // ---- internals ----
 
   private row(id: string): AppRow | undefined {
@@ -415,16 +538,41 @@ export class ApplicationService {
     this.db.prepare("UPDATE approvals SET state = ?, state_reason = ? WHERE application_id = ? AND state = 'ACTIVE'").run(state, reason, id);
   }
 
-  private transition(id: string, from: ApplicationState, to: ApplicationState, actor: string, note: string, at: string): void {
+  private transition(id: string, from: ApplicationState, to: ApplicationState, actor: string, note: string, at: string, evidence: unknown = null): void {
     if (!canTransition(from, to)) throw new TransitionError(from, to);
     const changed = this.db.prepare('UPDATE applications SET state = ?, updated_at = ? WHERE id = ? AND state = ?').run(to, at, id, from).changes;
     if (changed !== 1) throw new TransitionError(from, to);
-    this.event(id, from, to, actor, note, at);
+    this.event(id, from, to, actor, note, at, evidence);
   }
 
-  private event(id: string, from: ApplicationState | null, to: ApplicationState, actor: string, note: string, at: string): void {
-    this.db.prepare('INSERT INTO application_events (application_id, from_state, to_state, actor, note, at) VALUES (?, ?, ?, ?, ?, ?)').run(id, from, to, actor, note, at);
+  private event(id: string, from: ApplicationState | null, to: ApplicationState, actor: string, note: string, at: string, evidence: unknown = null): void {
+    this.db
+      .prepare('INSERT INTO application_events (application_id, from_state, to_state, actor, note, evidence_json, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id, from, to, actor, note, evidence === null ? null : JSON.stringify(evidence), at);
   }
+}
+
+const OUTCOME_NOTE: Record<Outcome, string> = {
+  RESPONSE_RECEIVED: 'The employer responded',
+  INTERVIEW: 'Interview arranged',
+  OFFER: 'Offer received',
+  REJECTED: 'The employer said no',
+  WITHDRAWN: 'You withdrew',
+  CLOSED: 'Closed',
+};
+
+interface FollowUpRow {
+  id: string;
+  application_id: string;
+  due_at: string;
+  note: string;
+  status: FollowUp['status'];
+  created_at: string;
+  closed_at: string | null;
+}
+
+function toFollowUp(r: FollowUpRow): FollowUp {
+  return { id: r.id, applicationId: r.application_id, dueAt: r.due_at, note: r.note, status: r.status, createdAt: r.created_at, closedAt: r.closed_at };
 }
 
 export function identityFrom(settings: Record<string, unknown>): Identity {

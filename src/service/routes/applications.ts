@@ -14,6 +14,7 @@ const ERROR_STATUS: Record<ApplicationError['code'], number> = {
   INCOMPLETE: 422,
   WARNINGS_NOT_ACKNOWLEDGED: 422,
   INVALID_CHANGE: 400,
+  APPROVAL_INVALID: 409,
 };
 
 const Create = z.object({ jobId: z.string().min(1).max(100) }).strict();
@@ -34,6 +35,18 @@ const Approve = z
   .object({ version: z.number().int().positive(), payloadHash: z.string().regex(/^[0-9a-f]{64}$/), acknowledgeWarnings: z.boolean().default(false) })
   .strict();
 const Reject = z.object({ note: z.string().trim().max(500).nullable().default(null) }).strict();
+const isoDate = z.iso.datetime({ offset: true }).or(z.iso.date());
+const Confirm = z
+  .object({ reference: z.string().trim().max(200).nullable().default(null), submittedAt: isoDate, note: z.string().trim().max(2000).nullable().default(null) })
+  .strict();
+const OutcomeBody = z
+  .object({
+    outcome: z.enum(['RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED', 'WITHDRAWN', 'CLOSED']),
+    occurredAt: isoDate,
+    note: z.string().trim().max(2000).nullable().default(null),
+  })
+  .strict();
+const FollowUpBody = z.object({ dueAt: isoDate, note: z.string().trim().min(1, 'Say what to follow up on').max(500) }).strict();
 
 function actorOf(req: FastifyRequest): string {
   return req.principal?.kind === 'dashboard' ? 'dashboard' : 'local-client';
@@ -132,6 +145,53 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: { applicat
     const parsed = Reject.safeParse(req.body ?? {});
     return applications.reject(id, actorOf(req), parsed.success ? parsed.data.note : null);
   });
+
+  // Submitting, confirming and reporting outcomes are the candidate's own statements: dashboard only.
+  const dashboardAction = (path: string, run: (id: string, body: unknown) => void | Promise<unknown>) =>
+    app.post<{ Params: { id: string } }>(`/api/applications/:id/${path}`, async (req, reply) => {
+      if (req.principal?.kind !== 'dashboard') {
+        return reply.code(403).send({ error: 'REQUIRES_DASHBOARD', message: 'Only you can do this, in the Career Strike dashboard.' });
+      }
+      try {
+        await run(req.params.id, req.body);
+        return { application: await applications.get(req.params.id) };
+      } catch (err) {
+        if (err instanceof z.ZodError) return reply.code(400).send({ error: 'INVALID_INPUT', issues: err.issues });
+        return fail(reply, err);
+      }
+    });
+
+  dashboardAction('start-submission', (id) => applications.startManualSubmission(id, 'dashboard'));
+  dashboardAction('confirm-submitted', (id, body) => applications.confirmSubmitted(id, Confirm.parse(body), 'dashboard'));
+  dashboardAction('mark-unconfirmed', (id, body) => applications.markUnconfirmed(id, Reject.parse(body ?? {}).note, 'dashboard'));
+  dashboardAction('outcome', (id, body) => {
+    const o = OutcomeBody.parse(body);
+    applications.recordOutcome(id, o.outcome, { occurredAt: o.occurredAt, note: o.note }, 'dashboard');
+  });
+
+  // ---- follow-ups ----
+
+  app.get('/api/follow-ups', async () => ({ followUps: applications.openFollowUps() }));
+
+  app.post<{ Params: { id: string } }>('/api/applications/:id/follow-ups', async (req, reply) => {
+    const parsed = FollowUpBody.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
+    try {
+      return reply.code(201).send({ followUp: applications.addFollowUp(req.params.id, parsed.data.dueAt, parsed.data.note, actorOf(req)) });
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+
+  for (const [path, status] of [
+    ['done', 'DONE'],
+    ['dismiss', 'DISMISSED'],
+  ] as const) {
+    app.post<{ Params: { id: string } }>(`/api/follow-ups/:id/${path}`, async (req, reply) => {
+      if (!applications.closeFollowUp(req.params.id, status, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
+      return { ok: true };
+    });
+  }
 
   app.post<{ Params: { id: string } }>('/api/applications/:id/approve', async (req, reply) => {
     // A person must approve, in the dashboard. Local clients and AI hosts cannot.
