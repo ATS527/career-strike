@@ -153,6 +153,8 @@ async function main(): Promise<number> {
     check('disconnect removes it from the host', !(await isRegistered(host)), disc.stdout.trim());
     const remaining = (await admin().call('/api/mcp-clients')).body as { clients: unknown[] };
     check('access revoked in Career Strike', remaining.clients.length === 0, `${remaining.clients.length} active clients`);
+  } catch (err) {
+    check('certification ran to completion', false, err instanceof Error ? err.message.split('\n').slice(0, 3).join(' ') : String(err));
   } finally {
     await cs('stop').catch(() => undefined);
     // Safety net: never leave the host configured.

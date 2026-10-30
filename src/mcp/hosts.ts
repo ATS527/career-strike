@@ -40,7 +40,8 @@ export async function register(hostName: Host, launch: LaunchSpec): Promise<stri
     case 'codex':
       return (await host('codex', ['mcp', 'add', SERVER_NAME, ...envFlags('--env'), '--', ...cmd])).stdout;
     case 'claude-code':
-      return (await host('claude-code', ['mcp', 'add', '--scope', 'user', ...envFlags('-e'), SERVER_NAME, '--', ...cmd])).stdout;
+      // Claude's -e is variadic: it must come after the server name or it swallows it.
+      return (await host('claude-code', ['mcp', 'add', '--scope', 'user', SERVER_NAME, ...envFlags('-e'), '--', ...cmd])).stdout;
     case 'opencode':
       return (await host('opencode', ['mcp', 'add', '--global', ...envFlags('--env'), SERVER_NAME, '--', ...cmd])).stdout;
   }
