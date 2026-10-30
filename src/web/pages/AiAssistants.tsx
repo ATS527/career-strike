@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../api';
-import { ago } from '../format';
+import { api, ApiError } from '../api';
+import { ago, formatDate } from '../format';
 
 interface Client {
   id: string;
@@ -77,6 +77,170 @@ export function AiAssistants() {
           </div>
         </div>
       ))}
+      <p role="status" aria-live="polite" className="save-status">
+        {status}
+      </p>
+    </section>
+  );
+}
+
+interface DisclosureItem {
+  id: string;
+  provider: string;
+  purpose: string;
+  requested: string[];
+  approved: string[] | null;
+  state: 'PENDING' | 'APPROVED' | 'DECLINED' | 'DELIVERED' | 'EXPIRED';
+  createdAt: string;
+  decidedAt: string | null;
+  deliveredAt: string | null;
+}
+interface Preview {
+  disclosure: DisclosureItem;
+  values: Record<string, unknown>;
+  previewHash: string;
+  fields: Record<string, string>;
+}
+
+const STATE_TEXT: Record<DisclosureItem['state'], string> = {
+  PENDING: 'Waiting for you',
+  APPROVED: 'Approved — not collected yet',
+  DECLINED: 'Declined',
+  DELIVERED: 'Shared once',
+  EXPIRED: 'Expired — nothing shared',
+};
+
+/** Plain-language rendering of exactly what would be shared. */
+function showValue(v: unknown): string[] {
+  if (v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)) return ['Not set — nothing would be shared'];
+  if (Array.isArray(v)) return v.map((x) => (typeof x === 'object' && x ? Object.values(x).filter((y) => y !== null && y !== '').join(' · ') : String(x)));
+  if (typeof v === 'object') {
+    return Object.entries(v)
+      .filter(([, y]) => y !== null && !(Array.isArray(y) && y.length === 0))
+      .map(([k, y]) => `${k}: ${Array.isArray(y) ? y.join(', ') : typeof y === 'object' ? JSON.stringify(y) : String(y)}`);
+  }
+  return [String(v)];
+}
+
+/** Requests from assistants to see private information: previewed, narrowed and approved once. */
+export function AiRequests() {
+  const [items, setItems] = useState<DisclosureItem[] | null>(null);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [chosen, setChosen] = useState<string[]>([]);
+  const [status, setStatus] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    const res = await api<{ disclosures: DisclosureItem[]; fields: Record<string, string> }>('/api/disclosures').catch(() => null);
+    setItems(res?.disclosures ?? null);
+    setLabels(res?.fields ?? {});
+  }, []);
+  useEffect(() => void load(), [load]);
+
+  const review = async (d: DisclosureItem): Promise<void> => {
+    try {
+      const p = await api<Preview>(`/api/disclosures/${d.id}/preview`);
+      setPreview(p);
+      setChosen(p.disclosure.requested);
+    } catch {
+      setStatus('Could not load the preview.');
+    }
+  };
+  const name = (provider: string) => NAMES[provider] ?? provider;
+
+  const approve = async (): Promise<void> => {
+    if (!preview) return;
+    try {
+      await api(`/api/disclosures/${preview.disclosure.id}/approve`, { method: 'POST', body: { fields: chosen, previewHash: preview.previewHash } });
+      setStatus(`Approved. ${name(preview.disclosure.provider)} can collect this once, within an hour.`);
+      setPreview(null);
+    } catch (err) {
+      setStatus((err instanceof ApiError && (err.body as { message?: string } | null)?.message) || 'Could not approve. Nothing was shared.');
+    }
+    void load();
+  };
+  const decline = async (d: DisclosureItem): Promise<void> => {
+    await api(`/api/disclosures/${d.id}/decline`, { method: 'POST' }).catch(() => undefined);
+    setStatus(`Declined. Nothing was shared with ${name(d.provider)}.`);
+    setPreview(null);
+    void load();
+  };
+
+  if (!items) return null;
+  const pending = items.filter((d) => d.state === 'PENDING');
+  const past = items.filter((d) => d.state !== 'PENDING');
+  return (
+    <section className="settings-group" aria-labelledby="ai-requests-title" id="ai-requests">
+      <h2 id="ai-requests-title">Requests to see your information</h2>
+      <p className="help">
+        An assistant can ask for parts of your profile for a stated purpose. You see the exact values first, can share less, and each approval can be
+        collected once. Contact details and documents are never shared with assistants.
+      </p>
+      {pending.length === 0 && <p className="empty">No requests waiting.</p>}
+      <ul className="topic-list" data-testid="pending-requests">
+        {pending.map((d) => (
+          <li key={d.id} className="topic">
+            <h3>
+              {name(d.provider)} asks to see: {d.requested.map((f) => labels[f] ?? f).join('; ')}
+            </h3>
+            <p>
+              <span className="muted">Purpose, in the assistant’s words: </span>
+              <q>{d.purpose}</q>
+            </p>
+            {preview?.disclosure.id === d.id ? (
+              <fieldset className="disclosure-preview">
+                <legend>Exactly what {name(d.provider)} would receive</legend>
+                {preview.disclosure.requested.map((f) => (
+                  <div key={f} className="disclosure-item">
+                    <label className="choice">
+                      <input
+                        type="checkbox"
+                        checked={chosen.includes(f)}
+                        onChange={(e) => setChosen(e.target.checked ? [...chosen, f] : chosen.filter((x) => x !== f))}
+                      />
+                      <span>Share {(preview.fields[f] ?? f).toLowerCase()}</span>
+                    </label>
+                    <ul className="disclosures" data-field={f}>
+                      {showValue(preview.values[f]).map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+                <div className="field__actions">
+                  <button type="button" onClick={() => void approve()} disabled={chosen.length === 0}>
+                    Share once with {name(d.provider)}
+                  </button>
+                  <button type="button" className="quiet" onClick={() => void decline(d)}>
+                    Decline
+                  </button>
+                </div>
+              </fieldset>
+            ) : (
+              <div className="field__actions">
+                <button type="button" onClick={() => void review(d)}>
+                  Review what would be shared<span className="visually-hidden"> with {name(d.provider)}</span>
+                </button>
+                <button type="button" className="quiet" onClick={() => void decline(d)}>
+                  Decline<span className="visually-hidden"> {name(d.provider)}’s request</span>
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {past.length > 0 && (
+        <>
+          <h3>Record of what was shared</h3>
+          <ul className="disclosures" data-testid="disclosure-history">
+            {past.map((d) => (
+              <li key={d.id}>
+                {name(d.provider)} · {STATE_TEXT[d.state]}
+                {d.approved ? ` · ${d.approved.map((f) => labels[f] ?? f).join('; ')}` : ''} · {formatDate(d.decidedAt ?? d.createdAt)} · for “{d.purpose}”
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <p role="status" aria-live="polite" className="save-status">
         {status}
       </p>

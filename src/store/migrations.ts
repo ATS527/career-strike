@@ -398,4 +398,28 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 13,
+    name: 'ai_disclosures',
+    sql: `
+      -- SENSITIVE while approved: a single-use, previewed release of profile facts to one AI assistant.
+      -- The released content is kept only until it is delivered or expires; the consent record stays.
+      CREATE TABLE disclosures (
+        id                  TEXT PRIMARY KEY,
+        client_id           TEXT NOT NULL REFERENCES mcp_clients (id),
+        provider            TEXT NOT NULL,
+        purpose             TEXT NOT NULL,
+        requested_json      TEXT NOT NULL,
+        approved_json       TEXT,
+        content_json        TEXT,
+        content_hash        TEXT,
+        state               TEXT NOT NULL CHECK (state IN ('PENDING', 'APPROVED', 'DECLINED', 'DELIVERED', 'EXPIRED')),
+        created_at          TEXT NOT NULL,
+        expires_at          TEXT NOT NULL,
+        decided_at          TEXT,
+        delivered_at        TEXT
+      );
+      CREATE INDEX disclosures_state ON disclosures (state);
+    `,
+  },
 ];

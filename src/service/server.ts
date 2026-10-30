@@ -12,6 +12,7 @@ import { Scheduler } from '../supervisor/scheduler.js';
 import { TaskSupervisor } from '../supervisor/tasks.js';
 import { ApplicationService } from '../applications/service.js';
 import { SubmissionEngine } from '../applications/submission.js';
+import { Disclosures } from '../vault/disclosures.js';
 import { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
 import { McpClientStore, type Scope } from '../mcp/clients.js';
@@ -77,6 +78,7 @@ export function buildServer({
   const interrupted = tasks.recoverInterrupted();
   if (interrupted.length > 0) logger.warn('tasks.interrupted', { count: interrupted.length });
   const vault = new DocumentVault(db, vaultDir);
+  const disclosures = new Disclosures(db);
   const applications = new ApplicationService(
     db,
     secrets,
@@ -268,6 +270,7 @@ export function buildServer({
       interviews: upcomingInterviews.slice(0, 5),
       nextActions: nextActions({
         settings,
+        disclosureRequests: disclosures.list().filter((d) => d.state === 'PENDING').map((d) => ({ id: d.id, provider: d.provider })),
         jobs: counts,
         boards,
         matches,
@@ -318,7 +321,7 @@ export function buildServer({
       boards: discovery.listBoards().map((b) => ({ id: b.id, source: b.source, board: b.board, health: b.health, consecutiveFailures: b.consecutiveFailures, nextAttemptAt: b.nextAttemptAt, lastError: b.lastError })),
     };
   });
-  registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications });
+  registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications, disclosures });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));
 

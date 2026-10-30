@@ -105,6 +105,13 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
     ...all('PERSONAL', ['notes', 'confidence', 'minutes']),
   },
 
+  disclosures: {
+    ...all('INTERNAL', ['id', 'client_id', 'provider', 'requested_json', 'approved_json', 'state', 'created_at', 'expires_at', 'decided_at', 'delivered_at']),
+    // Written by the assistant; it may describe the candidate's plans.
+    purpose: c('PERSONAL'),
+    content_json: c('SENSITIVE', [...PROFILE, ...IDENTITY]),
+    content_hash: c('SENSITIVE', ['disclosures.content_json']),
+  },
   strategy_proposals: {
     ...all('INTERNAL', ['id', 'rule', 'fingerprint', 'status', 'created_at', 'decided_at']),
     // Gap and role proposals name skills missing from the profile and roles that reached interview.

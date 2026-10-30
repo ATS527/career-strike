@@ -8,6 +8,7 @@ import { type McpClientStore, type Scope, SCOPES } from '../../mcp/clients.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { Db } from '../../store/db.js';
+import { DISCLOSABLE, DISCLOSABLE_FIELDS, DisclosureError, type Disclosures } from '../../vault/disclosures.js';
 
 // Everything an AI assistant can receive is built here by explicit projection. A field that is
 // not listed below cannot leak through MCP, whatever is added to the internal models later.
@@ -42,9 +43,9 @@ const SearchQuery = z
 
 export function registerMcpRoutes(
   app: FastifyInstance,
-  deps: { db: Db; clients: McpClientStore; discovery: Discovery; applications: ApplicationService },
+  deps: { db: Db; clients: McpClientStore; discovery: Discovery; applications: ApplicationService; disclosures: Disclosures },
 ): void {
-  const { db, clients, discovery, applications } = deps;
+  const { db, clients, discovery, applications, disclosures } = deps;
 
   const require = (req: FastifyRequest, reply: FastifyReply, scope: Scope): boolean => {
     const p = req.principal;
@@ -179,6 +180,84 @@ export function registerMcpRoutes(
         missingRequiredSkills: f.missingRequiredSkills,
       },
     };
+  });
+
+  // ---- single-use disclosure: asked for by an assistant, previewed and approved by the candidate ----
+
+  const DISCLOSURE_STATUS: Record<DisclosureError['code'], number> = {
+    NOT_FOUND: 404, NOT_PENDING: 409, PREVIEW_CHANGED: 409, NOTHING_SELECTED: 400, NOT_REQUESTED: 400,
+    TOO_MANY_PENDING: 429, WAITING: 409, DECLINED: 403, ALREADY_DELIVERED: 410, EXPIRED: 410,
+  };
+  const disclosureFail = (reply: FastifyReply, err: unknown): FastifyReply => {
+    if (err instanceof DisclosureError) return reply.code(DISCLOSURE_STATUS[err.code]).send({ error: err.code, message: err.message });
+    throw err;
+  };
+  const mcpClient = (req: FastifyRequest) => req.principal as Extract<FastifyRequest['principal'], { kind: 'mcp-client' }>;
+
+  app.post('/api/mcp/disclosures', async (req, reply) => {
+    if (!require(req, reply, 'public:read')) return reply;
+    const body = z
+      .object({ purpose: z.string().trim().min(10, 'Say what the information is for').max(300), fields: z.array(z.enum(DISCLOSABLE_FIELDS)).min(1).max(DISCLOSABLE_FIELDS.length) })
+      .strict()
+      .safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
+    const p = mcpClient(req);
+    try {
+      const d = disclosures.request({ id: p.clientId, name: p.name }, body.data.purpose, body.data.fields);
+      return reply.code(201).send({
+        requestId: d.id,
+        state: d.state,
+        message: 'Requested. Nothing is shared until the candidate reviews the exact values in the Career Strike dashboard and approves. Then call cs_get_personal_info once with this requestId.',
+      });
+    } catch (err) {
+      return disclosureFail(reply, err);
+    }
+  });
+
+  app.get<{ Params: { id: string } }>('/api/mcp/disclosures/:id', async (req, reply) => {
+    if (!require(req, reply, 'public:read')) return reply;
+    const p = mcpClient(req);
+    try {
+      const { content, disclosure } = disclosures.collect(req.params.id, { id: p.clientId, name: p.name });
+      return { purpose: disclosure.purpose, sharedOnce: true, information: content };
+    } catch (err) {
+      return disclosureFail(reply, err);
+    }
+  });
+
+  app.get('/api/disclosures', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    return { disclosures: disclosures.list(), fields: DISCLOSABLE };
+  });
+
+  // Previewing shows the candidate's values, so it is for the dashboard only, like the decision.
+  app.get<{ Params: { id: string } }>('/api/disclosures/:id/preview', async (req, reply) => {
+    if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD' });
+    try {
+      return { ...disclosures.preview(req.params.id), fields: DISCLOSABLE };
+    } catch (err) {
+      return disclosureFail(reply, err);
+    }
+  });
+
+  app.post<{ Params: { id: string } }>('/api/disclosures/:id/approve', async (req, reply) => {
+    if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD', message: 'Only the candidate can approve sharing, in the dashboard.' });
+    const body = z.object({ fields: z.array(z.enum(DISCLOSABLE_FIELDS)).max(DISCLOSABLE_FIELDS.length), previewHash: z.string().regex(/^[0-9a-f]{64}$/) }).strict().safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
+    try {
+      return { disclosure: disclosures.approve(req.params.id, body.data.fields, body.data.previewHash, 'dashboard') };
+    } catch (err) {
+      return disclosureFail(reply, err);
+    }
+  });
+
+  app.post<{ Params: { id: string } }>('/api/disclosures/:id/decline', async (req, reply) => {
+    if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD' });
+    try {
+      return { disclosure: disclosures.decline(req.params.id, 'dashboard') };
+    } catch (err) {
+      return disclosureFail(reply, err);
+    }
   });
 
   // ---- management (dashboard and local CLI only) ----

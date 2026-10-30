@@ -101,7 +101,8 @@ describe('MCP server', () => {
     const client = await connect(paths);
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
-      'cs_add_job', 'cs_get_fit', 'cs_get_job', 'cs_list_applications', 'cs_list_shortlist', 'cs_monitor_job_board', 'cs_search_jobs', 'cs_set_job_decision', 'cs_status',
+      'cs_add_job', 'cs_get_fit', 'cs_get_job', 'cs_get_personal_info', 'cs_list_applications', 'cs_list_shortlist', 'cs_monitor_job_board', 'cs_request_personal_info',
+      'cs_search_jobs', 'cs_set_job_decision', 'cs_status',
     ]);
     for (const t of tools) {
       expect(t.inputSchema.type).toBe('object');
@@ -222,5 +223,108 @@ describe('MCP server', () => {
     const res = await client.callTool({ name: 'cs_status', arguments: {} });
     expect(res.isError).toBe(true);
     expect(text(res)).toContain('career-strike connect test');
+  });
+});
+
+describe('single-use disclosure to an assistant', () => {
+  type Preview = { disclosure: { id: string; provider: string; purpose: string; requested: string[] }; values: Record<string, unknown>; previewHash: string };
+
+  it('shares only what the candidate approved, after an exact preview, exactly once', async () => {
+    const { s, paths, call, token } = await setup();
+    const client = await connect(paths);
+    const dash = await dashboardSession(s.info.port, s.info.token);
+    const purpose = 'Draft a summary of your strengths for a cover letter';
+
+    const asked = await client.callTool({ name: 'cs_request_personal_info', arguments: { purpose, fields: ['profile.skills', 'preferences.salary'] } });
+    expect(asked.isError).toBeFalsy();
+    const requestId = (asked.structuredContent as { requestId: string }).requestId;
+    for (const v of Object.values(CANARY)) expect(text(asked)).not.toContain(String(v));
+
+    // Not answered yet: nothing to collect.
+    const early = await client.callTool({ name: 'cs_get_personal_info', arguments: { requestId } });
+    expect(early.isError).toBe(true);
+    expect(text(early)).toContain('has not answered yet');
+
+    // Only the candidate, in the dashboard, previews and decides; the admin token and assistants cannot.
+    expect((await call('GET', `/api/disclosures/${requestId}/preview`)).status).toBe(403);
+    expect((await call('POST', `/api/disclosures/${requestId}/approve`, { fields: ['profile.skills'], previewHash: '0'.repeat(64) })).status).toBe(403);
+    expect((await call('GET', '/api/disclosures', undefined, { authorization: `Bearer ${token}` })).status).toBe(403);
+
+    const listed = (await call('GET', '/api/disclosures', undefined, dash.headers)).body as { disclosures: { id: string; provider: string; purpose: string; state: string }[] };
+    expect(listed.disclosures[0]).toMatchObject({ id: requestId, provider: 'test', purpose, state: 'PENDING' });
+    const overview = (await call('GET', '/api/overview')).body as { nextActions: { rule: string; href: string }[] };
+    expect(overview.nextActions[0]).toMatchObject({ rule: 'assistants.disclosure-request', href: '/settings#ai-requests' });
+
+    let preview = (await call('GET', `/api/disclosures/${requestId}/preview`, undefined, dash.headers)).body as Preview;
+    expect(preview.values['profile.skills']).toEqual([{ name: CANARY.skill, years: 4, level: null }]);
+    expect(preview.values['preferences.salary']).toMatchObject({ minimum: CANARY.salary });
+
+    // If the data changes after the preview, the stale preview cannot be approved.
+    await call('PUT', '/api/settings/candidate.salaryExpectation', { value: { currency: 'USD', minimum: CANARY.salary + 1, interval: 'year' } });
+    const stale = await call('POST', `/api/disclosures/${requestId}/approve`, { fields: ['profile.skills'], previewHash: preview.previewHash }, dash.headers);
+    expect(stale).toMatchObject({ status: 409, body: { error: 'PREVIEW_CHANGED' } });
+    preview = (await call('GET', `/api/disclosures/${requestId}/preview`, undefined, dash.headers)).body as Preview;
+
+    // Fields the assistant did not ask for cannot be added; an empty selection is not consent.
+    expect((await call('POST', `/api/disclosures/${requestId}/approve`, { fields: ['profile.experience'], previewHash: preview.previewHash }, dash.headers)).status).toBe(400);
+    expect((await call('POST', `/api/disclosures/${requestId}/approve`, { fields: [], previewHash: preview.previewHash }, dash.headers)).status).toBe(400);
+    // The candidate narrows the request to skills only.
+    const ok = await call('POST', `/api/disclosures/${requestId}/approve`, { fields: ['profile.skills'], previewHash: preview.previewHash }, dash.headers);
+    expect(ok).toMatchObject({ status: 200, body: { disclosure: { state: 'APPROVED', approved: ['profile.skills'] } } });
+    expect((await call('POST', `/api/disclosures/${requestId}/approve`, { fields: ['profile.skills'], previewHash: preview.previewHash }, dash.headers)).status).toBe(409);
+
+    const got = await client.callTool({ name: 'cs_get_personal_info', arguments: { requestId } });
+    expect(got.isError).toBeFalsy();
+    expect(got.structuredContent).toEqual({ purpose, sharedOnce: true, information: { 'profile.skills': [{ name: CANARY.skill, years: 4, level: null }] } });
+    for (const v of [CANARY.salary, CANARY.salary + 1, CANARY.name, CANARY.email, CANARY.phone, CANARY.employer, CANARY.role, CANARY.resume, CANARY.coverLetter]) {
+      expect(text(got)).not.toContain(String(v));
+    }
+    const again = await client.callTool({ name: 'cs_get_personal_info', arguments: { requestId } });
+    expect(again.isError).toBe(true);
+    expect(text(again)).toContain('already delivered once');
+
+    // Consent is recorded (who, why, which fields, a hash of what was sent); the content itself is gone.
+    const db = openDb(paths.db);
+    const row = db.prepare('SELECT state, content_json, content_hash, approved_json FROM disclosures WHERE id = ?').get(requestId) as Record<string, string | null>;
+    const audit = db.prepare("SELECT actor, action, detail_json FROM audit_events WHERE subject = ? ORDER BY id").all(requestId) as { actor: string; action: string; detail_json: string | null }[];
+    db.close();
+    expect(row).toMatchObject({ state: 'DELIVERED', content_json: null, approved_json: '["profile.skills"]' });
+    expect(row.content_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(audit.map((a) => `${a.actor} ${a.action}`)).toEqual(['ai:test disclosure.requested', 'dashboard disclosure.approved', 'ai:test disclosure.delivered']);
+    expect(JSON.parse(audit[1]!.detail_json!)).toEqual({ provider: 'test', purpose, fields: ['profile.skills'], contentHash: row.content_hash });
+    expect(JSON.stringify(audit)).not.toContain(CANARY.skill);
+  });
+
+  it('declined, expired and other assistants’ requests release nothing', async () => {
+    const { s, paths, call } = await setup();
+    const client = await connect(paths);
+    const dash = await dashboardSession(s.info.port, s.info.token);
+    const ask = async () =>
+      ((await client.callTool({ name: 'cs_request_personal_info', arguments: { purpose: 'Suggest roles that suit you', fields: ['profile.experience'] } })).structuredContent as { requestId: string }).requestId;
+
+    const declined = await ask();
+    expect((await call('POST', `/api/disclosures/${declined}/decline`, {}, dash.headers)).status).toBe(200);
+    const d = await client.callTool({ name: 'cs_get_personal_info', arguments: { requestId: declined } });
+    expect(text(d)).toContain('declined');
+
+    const expiring = await ask();
+    const preview = (await call('GET', `/api/disclosures/${expiring}/preview`, undefined, dash.headers)).body as Preview;
+    await call('POST', `/api/disclosures/${expiring}/approve`, { fields: ['profile.experience'], previewHash: preview.previewHash }, dash.headers);
+    // Another assistant cannot collect it, or even learn that it exists.
+    const other = (await call('POST', '/api/mcp-clients', { name: 'codex' })).body as { token: string };
+    const stolen = await fetch(`http://127.0.0.1:${s.info.port}/api/mcp/disclosures/${expiring}`, { headers: { authorization: `Bearer ${other.token}` } });
+    expect(stolen.status).toBe(404);
+    const db = openDb(paths.db);
+    db.prepare("UPDATE disclosures SET expires_at = '2000-01-01T00:00:00.000Z' WHERE id = ?").run(expiring);
+    db.close();
+    const e = await client.callTool({ name: 'cs_get_personal_info', arguments: { requestId: expiring } });
+    expect(text(e)).toContain('expired');
+    const db2 = openDb(paths.db);
+    expect(db2.prepare('SELECT content_json FROM disclosures WHERE id = ?').pluck().get(expiring)).toBeNull();
+    db2.close();
+
+    // An assistant cannot ask for contact details or documents at all.
+    const bad = await client.callTool({ name: 'cs_request_personal_info', arguments: { purpose: 'Fill in the application form', fields: ['identity.email'] } });
+    expect(bad.isError).toBe(true);
   });
 });

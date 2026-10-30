@@ -17,6 +17,7 @@ export interface CareerState {
   applications?: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; interviewing: number; offers: number };
   followUpsDue?: { id: string; note: string; title: string; employer: string; applicationId: string }[];
   interviewsSoon?: { applicationId: string; stage: string; scheduledAt: string; employer: string; title: string }[];
+  disclosureRequests?: { id: string; provider: string }[];
 }
 
 type Rule = (state: CareerState) => NextAction | NextAction[] | null;
@@ -24,7 +25,16 @@ type Rule = (state: CareerState) => NextAction | NextAction[] | null;
 const isEmptyList = (v: unknown): boolean => !Array.isArray(v) || v.length === 0;
 const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
 
+const ASSISTANT_NAMES: Record<string, string> = { codex: 'Codex', 'claude-code': 'Claude Code', opencode: 'OpenCode', test: 'Test client' };
+
 const RULES: readonly Rule[] = [
+  ({ disclosureRequests }) =>
+    (disclosureRequests ?? []).map((d) => ({
+      rule: 'assistants.disclosure-request',
+      title: `${ASSISTANT_NAMES[d.provider] ?? d.provider} asks to see some of your information`,
+      reason: 'Nothing is shared unless you review the exact values and approve. You can also decline.',
+      href: '/settings#ai-requests',
+    })),
   ({ interviewsSoon }) =>
     (interviewsSoon ?? []).map((i) => ({
       rule: 'interviews.prepare',
