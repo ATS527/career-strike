@@ -15,12 +15,20 @@ Career data is stored outside this repository in the per-user application data d
 Windows: `%APPDATA%\career-strike`), or `CAREER_STRIKE_HOME` if set. Career Strike refuses to
 store data inside a git working tree.
 
-## Commands
+## Documentation
 
-    career-strike init      # create the data directory and database
-    career-strike serve     # run the local service on 127.0.0.1
-    career-strike status    # report whether the service is running
-    career-strike doctor    # diagnose the installation
+- [Installing and running](docs/install.md): requirements, install, first run, every command,
+  backup, export, deletion, uninstalling and troubleshooting.
+- [Privacy and security model](docs/privacy.md): what stays local, the only requests that leave
+  your computer, how AI assistants are limited, and how approvals work.
+- [Known limitations](docs/limitations.md).
+
+## Quick start
+
+    npm install && npm pack
+    npm install --global ./career-strike-0.1.0.tgz
+    career-strike init
+    career-strike dashboard
 
 ## License
 
