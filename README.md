@@ -25,3 +25,12 @@ store data inside a git working tree.
 ## License
 
 Apache-2.0. See `LICENSE`.
+
+## Development
+
+    npm install            # also enables the pre-commit hook (core.hooksPath=.githooks)
+    npm run check          # typecheck + all tests
+    npm run acceptance     # run criterion tests on a clean tree and record evidence
+
+The pre-commit hook runs a privacy scan over staged content (secrets, non-example email
+addresses, and personal terms listed in `<data dir>/privacy-denylist.txt`) and then `npm run check`.

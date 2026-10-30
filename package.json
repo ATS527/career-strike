@@ -17,7 +17,9 @@
     "dev:serve": "tsx src/cli/index.ts serve",
     "test": "vitest run",
     "check": "npm run typecheck && npm test",
-    "acceptance": "tsx scripts/acceptance.ts"
+    "acceptance": "tsx scripts/acceptance.ts",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "privacy-scan": "tsx scripts/privacy-scan.ts"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",

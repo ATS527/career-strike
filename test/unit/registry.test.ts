@@ -4,8 +4,10 @@ import { kindOfTestFile, validateRegistry } from '../../scripts/registry.js';
 
 const real = JSON.parse(fs.readFileSync('acceptance/registry.json', 'utf8')) as { version: 1; criteria: Record<string, unknown>[] };
 
+// Patches start from a neutral state so the fixtures do not depend on live registry evidence.
 function withCriterion(patch: Record<string, unknown>) {
-  const criteria = real.criteria.map((c) => (c.id === 'A-02' ? { ...c, ...patch } : c));
+  const neutral = { status: 'NOT_STARTED', evidence: null, failureCause: null };
+  const criteria = real.criteria.map((c) => (c.id === 'A-02' ? { ...c, ...neutral, ...patch } : c));
   return { ...real, criteria };
 }
 
@@ -42,7 +44,7 @@ describe('acceptance registry', () => {
 
   it('rejects mocked evidence standing in for a real host', () => {
     const criteria = real.criteria.map((c) =>
-      c.id === 'G-03' ? { ...c, status: 'PASS', evidence: { ...goodEvidence, kinds: ['unit', 'integration'] } } : c,
+      c.id === 'G-03' ? { ...c, status: 'PASS', failureCause: null, evidence: { ...goodEvidence, kinds: ['unit', 'integration'] } } : c,
     );
     expect(validateRegistry({ ...real, criteria }, () => true)).toContain('G-03: PASS lacks real-host evidence');
   });
