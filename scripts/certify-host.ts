@@ -5,7 +5,7 @@
 //   npm run build && npx tsx scripts/certify-host.ts codex|claude-code|opencode
 //
 // Writes acceptance/evidence/real-host/<host>.json and records G-0x evidence in the registry.
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -49,15 +49,20 @@ function hostCommand(host: Host, prompt: string, cwd: string): { cmd: string; ar
   }
 }
 
-async function ask(host: Host, prompt: string, cwd: string, env: NodeJS.ProcessEnv): Promise<string> {
+/** Run the assistant non-interactively. stdin is closed: some hosts wait on an open stdin pipe. */
+function ask(host: Host, prompt: string, cwd: string, env: NodeJS.ProcessEnv): Promise<string> {
   const { cmd, args } = hostCommand(host, prompt, cwd);
-  try {
-    const { stdout, stderr } = await run(cmd, args, { cwd, env, timeout: 6 * 60_000, maxBuffer: 32 * 1024 * 1024 });
-    return `${stdout}\n${stderr}`;
-  } catch (err) {
-    const e = err as { stdout?: string; stderr?: string; message: string };
-    return `${e.stdout ?? ''}\n${e.stderr ?? ''}\n[exit: ${e.message}]`;
-  }
+  return new Promise((resolve) => {
+    const child = spawn(cmd, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    child.stdout.on('data', (d: Buffer) => (out += d.toString()));
+    child.stderr.on('data', (d: Buffer) => (out += d.toString()));
+    const timer = setTimeout(() => child.kill('SIGTERM'), 6 * 60_000);
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve(`${out}\n[exit ${code}]`);
+    });
+  });
 }
 
 async function main(): Promise<number> {
@@ -144,6 +149,7 @@ async function main(): Promise<number> {
     const again = await ask(host, 'Call the career-strike tool cs_status and reply with the number in opportunities.verifiedOpen only.', work, env);
     transcript.reconnect = again.slice(-2000);
     const after = readRuntime(path.join(home, 'service.json'));
+    if (!after) throw new Error('The service was not restarted by the MCP server');
     check('reconnect after service restart', Boolean(after && after.pid !== before) && /\b2\b/.test(again), `service pid ${before} → ${after?.pid ?? 'none'}`);
     const stillShortlisted = (await admin().call('/api/jobs?disposition=shortlisted&status=all')).body as { jobs: { id: string }[] };
     check('state preserved across restart', stillShortlisted.jobs.length === 1, 'shortlist still present');
