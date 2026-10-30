@@ -28,3 +28,19 @@ test('assistants appear when they connect, and private access follows the candid
   await expect(page.getByText('career-strike disconnect claude-code')).toBeVisible();
   expect((await asAi('/api/mcp/jobs')).status).toBe(401);
 });
+
+test('a job shortlisted by an assistant over MCP appears shortlisted in the dashboard', async ({ page, cs }) => {
+  cs.seed('lever', 'port', [{ title: 'Portable Role' }, { title: 'Other Role' }]);
+  const created = (await cs.api('POST', '/api/mcp-clients', { name: 'opencode' })).body as { token: string };
+  const headers = { authorization: `Bearer ${created.token}`, 'content-type': 'application/json' };
+  const search = (await (await fetch(`${cs.origin}/api/mcp/jobs?q=Portable`, { headers })).json()) as { jobs: { id: string }[] };
+  const put = await fetch(`${cs.origin}/api/mcp/jobs/${search.jobs[0]!.id}/disposition`, { method: 'PUT', headers, body: JSON.stringify({ disposition: 'shortlisted' }) });
+  expect(put.status).toBe(200);
+
+  await signIn(page, cs);
+  await page.goto(`${cs.origin}/opportunities?disposition=shortlisted`);
+  const rows = page.getByTestId('job-list').getByRole('listitem');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('Portable Role');
+  await expect(rows.first().getByRole('button', { name: 'Shortlisted' })).toHaveAttribute('aria-pressed', 'true');
+});

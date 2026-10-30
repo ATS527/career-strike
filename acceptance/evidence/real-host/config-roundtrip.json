@@ -1,0 +1,85 @@
+{
+  "revision": "69c00c55645b7a2c937492d0884815f0bcfcddb7",
+  "at": "2026-10-30T18:32:31.629Z",
+  "passed": true,
+  "results": [
+    {
+      "host": "codex",
+      "version": "codex-cli 0.157.1",
+      "checks": [
+        {
+          "name": "listed after connect",
+          "passed": true,
+          "detail": "codex mcp list"
+        },
+        {
+          "name": "config holds a command, no token",
+          "passed": true,
+          "detail": "no MCP token in host config"
+        },
+        {
+          "name": "not listed after disconnect",
+          "passed": true,
+          "detail": "codex mcp list"
+        },
+        {
+          "name": "configuration identical to before",
+          "passed": true,
+          "detail": "MCP section compared before connect and after disconnect"
+        }
+      ]
+    },
+    {
+      "host": "claude-code",
+      "version": "2.1.280 (Claude Code)",
+      "checks": [
+        {
+          "name": "listed after connect",
+          "passed": true,
+          "detail": "claude-code mcp list"
+        },
+        {
+          "name": "config holds a command, no token",
+          "passed": true,
+          "detail": "no MCP token in host config"
+        },
+        {
+          "name": "not listed after disconnect",
+          "passed": true,
+          "detail": "claude-code mcp list"
+        },
+        {
+          "name": "configuration identical to before",
+          "passed": true,
+          "detail": "MCP section compared before connect and after disconnect"
+        }
+      ]
+    },
+    {
+      "host": "opencode",
+      "version": "opencode v2.2.0",
+      "checks": [
+        {
+          "name": "listed after connect",
+          "passed": true,
+          "detail": "opencode mcp list"
+        },
+        {
+          "name": "config holds a command, no token",
+          "passed": true,
+          "detail": "no MCP token in host config"
+        },
+        {
+          "name": "not listed after disconnect",
+          "passed": true,
+          "detail": "opencode mcp list"
+        },
+        {
+          "name": "configuration identical to before",
+          "passed": true,
+          "detail": "MCP section compared before connect and after disconnect"
+        }
+      ]
+    }
+  ]
+}
