@@ -12,14 +12,15 @@
     "node": ">=22.12.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p tsconfig.e2e.json",
     "dev:serve": "tsx src/cli/index.ts serve",
     "test": "vitest run",
     "check": "npm run typecheck && npm test",
     "acceptance": "tsx scripts/acceptance.ts",
     "prepare": "git config core.hooksPath .githooks || true",
-    "privacy-scan": "tsx scripts/privacy-scan.ts"
+    "privacy-scan": "tsx scripts/privacy-scan.ts",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",
@@ -28,10 +29,21 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@fontsource-variable/fraunces": "5.3.0",
+    "@fontsource/atkinson-hyperlegible": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@playwright/test": "1.64.1",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
+    "vite": "8.3.5",
     "vitest": "5.0.5"
   }
 }

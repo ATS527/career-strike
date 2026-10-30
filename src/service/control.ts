@@ -51,10 +51,20 @@ export async function stopService(paths: AppPaths, timeoutMs = 10_000): Promise<
   process.kill(info.pid, 'SIGTERM');
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (!(await probeHealth(info))) return 'stopped';
+    // Done only when the process has actually exited, not merely stopped answering.
+    if (!processAlive(info.pid)) return 'stopped';
     await sleep(100);
   }
   throw new Error(`Service pid ${info.pid} did not stop within ${timeoutMs / 1000}s.`);
+}
+
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return (err as NodeJS.ErrnoException).code === 'EPERM';
+  }
 }
 
 export async function dashboardUrl(info: RuntimeInfo): Promise<string> {

@@ -11,10 +11,35 @@ import { type Criterion, type Kind, kindOfTestFile, type Registry, RegistrySchem
 
 const REGISTRY = 'acceptance/registry.json';
 
-interface VitestFileResult {
+interface FileResult {
   name: string;
   status: string;
   assertionResults: { fullName: string; status: string }[];
+}
+
+interface PlaywrightSuite {
+  file?: string;
+  title: string;
+  specs?: { title: string; ok: boolean }[];
+  suites?: PlaywrightSuite[];
+}
+
+/** Flatten Playwright's JSON report into per-file results shaped like Vitest's. */
+function playwrightResults(suites: PlaywrightSuite[]): FileResult[] {
+  const byFile = new Map<string, FileResult>();
+  const visit = (suite: PlaywrightSuite, file: string | undefined): void => {
+    const f = suite.file ?? file;
+    for (const spec of suite.specs ?? []) {
+      if (!f) continue;
+      const entry = byFile.get(f) ?? { name: path.resolve('test/e2e', f), status: 'passed', assertionResults: [] };
+      entry.assertionResults.push({ fullName: spec.title, status: spec.ok ? 'passed' : 'failed' });
+      if (!spec.ok) entry.status = 'failed';
+      byFile.set(f, entry);
+    }
+    for (const child of suite.suites ?? []) visit(child, f);
+  };
+  for (const s of suites) visit(s, undefined);
+  return [...byFile.values()];
 }
 
 function git(...args: string[]): string {
@@ -45,14 +70,30 @@ function main(): number {
 
   const files = [...new Set(selected.flatMap((c) => c.tests))];
   const vitestFiles = files.filter((f) => kindOfTestFile(f) !== 'e2e');
-  const results = new Map<string, VitestFileResult>();
-  const command = `vitest run ${vitestFiles.join(' ')}`;
+  const e2eFiles = files.filter((f) => kindOfTestFile(f) === 'e2e');
+  const results = new Map<string, FileResult>();
+  const commands: string[] = [];
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cs-acceptance-'));
   if (vitestFiles.length > 0) {
-    const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cs-acceptance-')), 'vitest.json');
+    const out = path.join(tmp, 'vitest.json');
+    commands.push(`vitest run ${vitestFiles.join(' ')}`);
     spawnSync('npx', ['vitest', 'run', '--reporter=json', `--outputFile=${out}`, ...vitestFiles], { stdio: 'inherit' });
-    const report = JSON.parse(fs.readFileSync(out, 'utf8')) as { testResults: VitestFileResult[] };
+    const report = JSON.parse(fs.readFileSync(out, 'utf8')) as { testResults: FileResult[] };
     for (const r of report.testResults) results.set(path.relative(process.cwd(), r.name), r);
   }
+  if (e2eFiles.length > 0) {
+    // E2E evidence must come from the build of this exact revision.
+    const build = spawnSync('npm', ['run', 'build'], { stdio: 'inherit' });
+    if (build.status !== 0) {
+      console.error('Build failed; no e2e evidence recorded.');
+      return 1;
+    }
+    commands.push(`playwright test ${e2eFiles.join(' ')}`);
+    const run = spawnSync('npx', ['playwright', 'test', '--reporter=json', ...e2eFiles], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    const report = JSON.parse(run.stdout) as { suites: PlaywrightSuite[] };
+    for (const r of playwrightResults(report.suites)) results.set(path.relative(process.cwd(), r.name), r);
+  }
+  const command = commands.join(' && ');
 
   const at = new Date().toISOString();
   let failures = 0;
@@ -72,6 +113,7 @@ function main(): number {
     if (lacking.length > 0) {
       return { ...c, status: 'IN_PROGRESS', failureCause: null, evidence, nextAction: `Needs ${lacking.join(', ')} evidence` };
     }
+    if (c.heldBecause) return { ...c, status: 'IN_PROGRESS', failureCause: null, evidence };
     return { ...c, status: 'PASS', failureCause: null, evidence, nextAction: 'Re-verify on change' };
   });
 

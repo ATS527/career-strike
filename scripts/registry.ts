@@ -26,6 +26,8 @@ const Criterion = z
     evidence: Evidence.nullable(),
     failureCause: z.string().nullable(),
     nextAction: z.string(),
+    // Set when mapped tests pass but do not yet cover the criterion's full behaviour.
+    heldBecause: z.string().min(10).optional(),
   })
   .strict();
 
@@ -53,6 +55,7 @@ export function validateRegistry(raw: unknown, fileExists: (p: string) => boolea
       else if (!ids.has(dep)) problems.push(`${c.id}: depends on unknown ${dep}`);
     }
     if (c.status === 'PASS') {
+      if (c.heldBecause) problems.push(`${c.id}: PASS while held (${c.heldBecause})`);
       if (!c.evidence) problems.push(`${c.id}: PASS without evidence`);
       else {
         if (c.evidence.exitCode !== 0) problems.push(`${c.id}: PASS with non-zero evidence exit code`);

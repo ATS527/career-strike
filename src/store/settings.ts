@@ -6,6 +6,8 @@ export type Classification = 'PUBLIC' | 'PERSONAL' | 'SENSITIVE';
 interface SettingDef {
   label: string;
   help: string;
+  /** Human labels for enum values, shown by every client. */
+  options?: Readonly<Record<string, string>>;
   schema: z.ZodType;
   classification: Classification;
   defaultValue: unknown;
@@ -26,6 +28,7 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
   'search.remotePreference': {
     label: 'Work arrangement',
     help: 'Which arrangements to consider.',
+    options: { remote_only: 'Remote only', hybrid_ok: 'Remote or hybrid', onsite_ok: 'Remote, hybrid or on-site' },
     schema: z.enum(['remote_only', 'hybrid_ok', 'onsite_ok']),
     classification: 'PERSONAL',
     defaultValue: 'remote_only',
@@ -33,6 +36,7 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
   'search.employmentTypes': {
     label: 'Employment types',
     help: 'Employment types to consider.',
+    options: { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', temporary: 'Temporary', internship: 'Internship' },
     schema: z.array(z.enum(['full_time', 'part_time', 'contract', 'temporary', 'internship'])).min(1).max(5),
     classification: 'PERSONAL',
     defaultValue: ['full_time'],
@@ -54,6 +58,7 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
   'candidate.joiningAvailability': {
     label: 'Joining availability',
     help: 'How soon you can start a new role.',
+    options: { immediate: 'Immediately', two_weeks: 'Within 2 weeks', one_month: 'Within 1 month', two_months_plus: 'In 2 months or more', unspecified: 'Not specified' },
     schema: z.enum(['immediate', 'two_weeks', 'one_month', 'two_months_plus', 'unspecified']),
     classification: 'PERSONAL',
     defaultValue: 'unspecified',
@@ -61,6 +66,7 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
   'candidate.salaryExpectation': {
     label: 'Minimum salary expectation',
     help: 'Only compared against salaries that employers publish. Never shared without your approval.',
+    options: { year: 'per year', month: 'per month', hour: 'per hour' },
     schema: z
       .object({
         currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code'),
@@ -85,6 +91,7 @@ export interface SettingDescription {
   key: string;
   label: string;
   help: string;
+  options: Readonly<Record<string, string>>;
   classification: Classification;
   schema: unknown;
 }
@@ -95,6 +102,7 @@ export function describeSettings(): SettingDescription[] {
     key,
     label: def.label,
     help: def.help,
+    options: def.options ?? {},
     classification: def.classification,
     schema: z.toJSONSchema(def.schema, { io: 'input' }),
   }));

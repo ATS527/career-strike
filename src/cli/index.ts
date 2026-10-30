@@ -39,6 +39,8 @@ program
     const service = await startService(appPaths(), { port: opts.port });
     console.log(`Career Strike ${VERSION} listening on http://127.0.0.1:${service.info.port} (pid ${service.info.pid})`);
     const shutdown = (): void => {
+      // Exit promptly even if a connection refuses to close.
+      setTimeout(() => process.exit(1), 5000).unref();
       void service.stop().then(() => process.exit(0));
     };
     process.once('SIGINT', shutdown);

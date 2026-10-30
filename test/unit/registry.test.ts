@@ -38,6 +38,11 @@ describe('acceptance registry', () => {
     expect(problems).toContain('A-02: PASS with non-zero evidence exit code');
   });
 
+  it('rejects PASS for a criterion held back for incomplete scope', () => {
+    const problems = validateRegistry(withCriterion({ status: 'PASS', evidence: goodEvidence, heldBecause: 'Counts arrive in Phase 3' }), () => true);
+    expect(problems).toContain('A-02: PASS while held (Counts arrive in Phase 3)');
+  });
+
   it('accepts PASS with complete successful evidence', () => {
     expect(validateRegistry(withCriterion({ status: 'PASS', evidence: goodEvidence }), () => true)).toEqual([]);
   });

@@ -30,7 +30,8 @@ const CLIENT_ROUTE = /^\/(?:[a-z0-9-]+(?:\/[A-Za-z0-9_-]+)*)?$/;
 const UNAUTHENTICATED_API = new Set(['/api/health']);
 
 export function buildServer({ db, token, version, startedAt, assets = null, logger = nullLogger }: ServerOptions): FastifyInstance {
-  const app = Fastify({ logger: false, bodyLimit: 64 * 1024 });
+  // forceCloseConnections: open dashboard tabs hold keep-alive sockets that would otherwise block shutdown.
+  const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
   const sessions = new SessionStore(db);
   app.decorateRequest('principal', null);
 

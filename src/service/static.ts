@@ -9,6 +9,7 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
   '.json': 'application/json',
   '.txt': 'text/plain; charset=utf-8',
 };
