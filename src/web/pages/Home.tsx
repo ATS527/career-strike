@@ -126,8 +126,10 @@ export function Home() {
                 <dt>AI assistants</dt>
                 <dd>
                   {overview.data.aiHosts.connected.length > 0
-                    ? overview.data.aiHosts.connected.join(', ')
-                    : 'None connected. Career Strike works fully without them.'}
+                    ? `Active in the last 15 minutes: ${overview.data.aiHosts.connected.map(hostName).join(', ')}`
+                    : overview.data.aiHosts.configured.length > 0
+                      ? `Connected, not active recently: ${overview.data.aiHosts.configured.map(hostName).join(', ')}`
+                      : 'None connected. Career Strike works fully without them.'}
                 </dd>
               </div>
               <div>
@@ -156,4 +158,8 @@ function Count({ label, value, href, note }: { label: string; value: number; hre
       </dd>
     </div>
   );
+}
+
+function hostName(name: string): string {
+  return ({ codex: 'Codex', 'claude-code': 'Claude Code', opencode: 'OpenCode' } as Record<string, string>)[name] ?? name;
 }

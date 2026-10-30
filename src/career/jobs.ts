@@ -277,7 +277,8 @@ export const JobQuery = z
     q: z.string().trim().max(200).optional(),
     status: z.enum(['active', 'OPEN', 'STALE', 'CLOSED', 'UNVERIFIED', 'all']).default('active'),
     remote: z.enum(['remote', 'hybrid', 'onsite', 'unknown']).optional(),
-    disposition: z.enum(['none', 'shortlisted', 'excluded', 'not_excluded']).default('not_excluded'),
+    // 'any' ignores the candidate's decisions entirely (used where those decisions must not be inferable).
+    disposition: z.enum(['none', 'shortlisted', 'excluded', 'not_excluded', 'any']).default('not_excluded'),
     source: z.enum(['greenhouse', 'lever', 'ashby', 'manual']).optional(),
     includeExcludedEmployers: flag,
     includeDuplicates: flag,
@@ -416,7 +417,7 @@ export function listJobs(
     params.source = query.source;
   }
   if (query.disposition === 'not_excluded') where.push("COALESCE(u.disposition, 'none') != 'excluded'");
-  else {
+  else if (query.disposition !== 'any') {
     where.push("COALESCE(u.disposition, 'none') = @disposition");
     params.disposition = query.disposition;
   }

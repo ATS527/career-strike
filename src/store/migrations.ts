@@ -241,4 +241,22 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX follow_ups_due ON follow_ups (status, due_at);
     `,
   },
+  {
+    version: 7,
+    name: 'mcp_clients',
+    sql: `
+      -- PERSONAL: AI assistants connected over MCP and what the candidate allows each to see.
+      -- Tokens are stored hashed; the token itself lives in an owner-only file for the MCP process.
+      CREATE TABLE mcp_clients (
+        id           TEXT PRIMARY KEY,
+        name         TEXT NOT NULL,
+        token_hash   TEXT NOT NULL UNIQUE,
+        scopes_json  TEXT NOT NULL,
+        created_at   TEXT NOT NULL,
+        last_seen_at TEXT,
+        revoked_at   TEXT
+      );
+      CREATE INDEX mcp_clients_name ON mcp_clients (name);
+    `,
+  },
 ];

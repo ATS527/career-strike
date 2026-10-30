@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command, InvalidArgumentError } from 'commander';
 import { appPaths, ensureHome, findGitRoot } from '../core/paths.js';
 import { MIN_NODE_MAJOR, VERSION } from '../core/version.js';
 import { inspectDb, latestKnownVersion, openDb, schemaVersion } from '../store/db.js';
+import { HOSTS, type Host, hostVersion, isRegistered, register, unregister } from '../mcp/hosts.js';
+import { runMcpStdio, tokenFile } from '../mcp/server.js';
 import { dashboardUrl, openInBrowser, startDetached, stopService } from '../service/control.js';
+import { localRequest } from '../service/http-client.js';
 import { probeHealth, readRuntime } from '../service/runtime.js';
 import { AlreadyRunningError, DEFAULT_PORT, startService } from '../service/service.js';
 
@@ -76,6 +80,64 @@ program
       console.log(`Opened the dashboard (service on http://127.0.0.1:${info.port}).`);
     } else {
       console.log(url);
+    }
+  });
+
+program
+  .command('mcp')
+  .description('Run the MCP server over stdio for an AI assistant (launched by the assistant, not by you)')
+  .requiredOption('--client <name>', 'which assistant is connecting: codex, claude-code or opencode')
+  .action(async (opts: { client: string }) => {
+    await runMcpStdio(appPaths(), opts.client, CLI_ENTRY);
+  });
+
+function parseHost(value: string): Host {
+  if (!(HOSTS as readonly string[]).includes(value)) throw new InvalidArgumentError(`Choose one of: ${HOSTS.join(', ')}.`);
+  return value as Host;
+}
+
+program
+  .command('connect')
+  .description('Connect an AI assistant to Career Strike over MCP (changes that assistant’s MCP configuration)')
+  .argument('<assistant>', `one of: ${HOSTS.join(', ')}`, parseHost)
+  .action(async (assistant: Host) => {
+    const version = await hostVersion(assistant);
+    if (!version) throw new Error(`${assistant} does not appear to be installed (its command was not found).`);
+    const paths = appPaths();
+    const info = await startDetached(paths, CLI_ENTRY, DEFAULT_PORT);
+    const res = await localRequest(info.port, '/api/mcp-clients', { method: 'POST', body: { name: assistant }, headers: { authorization: `Bearer ${info.token}` } });
+    if (res.status !== 201) throw new Error(`Could not create credentials (HTTP ${res.status}).`);
+    const { token, client } = res.body as { token: string; client: { id: string } };
+    // The assistant's config only holds the command; the scoped token lives in an owner-only file.
+    const file = tokenFile(paths, assistant);
+    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(file, token, { mode: 0o600 });
+    const env: Record<string, string> = process.env.CAREER_STRIKE_HOME ? { CAREER_STRIKE_HOME: paths.home } : {};
+    await register(assistant, { command: process.execPath, args: [...process.execArgv, CLI_ENTRY, 'mcp', '--client', assistant], env });
+    console.log(`Connected ${assistant} (${version}). It can search and read public postings, add jobs and boards, and shortlist.`);
+    console.log(`Grant more access in the dashboard under Settings → AI assistants. Client id: ${client.id}`);
+  });
+
+program
+  .command('disconnect')
+  .description('Remove Career Strike from an AI assistant and revoke its access')
+  .argument('<assistant>', `one of: ${HOSTS.join(', ')}`, parseHost)
+  .action(async (assistant: Host) => {
+    const paths = appPaths();
+    const removed = await unregister(assistant);
+    fs.rmSync(tokenFile(paths, assistant), { force: true });
+    const info = readRuntime(paths.runtimeFile);
+    if (info && (await probeHealth(info))) {
+      const list = await localRequest(info.port, '/api/mcp-clients', { headers: { authorization: `Bearer ${info.token}` } });
+      for (const c of (list.body as { clients: { id: string; name: string }[] }).clients.filter((x) => x.name === assistant)) {
+        await localRequest(info.port, `/api/mcp-clients/${c.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } });
+      }
+    }
+    const still = await isRegistered(assistant);
+    console.log(removed === 'removed' ? `Removed Career Strike from ${assistant}.` : `${assistant} did not have Career Strike configured.`);
+    if (still) {
+      process.exitCode = 1;
+      console.error(`${assistant} still lists ${'career-strike'}; check its MCP configuration.`);
     }
   });
 

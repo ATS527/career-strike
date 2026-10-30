@@ -85,7 +85,7 @@ export interface Overview {
   service: { version: string; schemaVersion: number; startedAt: string | null };
   applications: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; submitted: number; interviewing: number; offers: number; expiredUnsent: number };
   followUps: FollowUp[];
-  aiHosts: { connected: string[] };
+  aiHosts: { connected: string[]; configured: string[] };
   jobs: JobCounts;
   sources: { boards: number; healthy: number; failing: number; lastSuccessfulDiscovery: string | null };
   activeTasks: Task[];

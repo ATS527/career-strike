@@ -3,6 +3,7 @@ import { api, ApiError, type SettingDefinition, type SettingsResponse, type Vali
 import { useHashFocus } from '../router';
 import { useResource } from '../useResource';
 import { type Draft, type FieldKind, fieldKind, fromDraft, groupOf, sameValue, toDraft } from './settingFields';
+import { AiAssistants } from './AiAssistants';
 import { ErrorPanel, Loading } from './states';
 
 const GROUPS = [
@@ -35,6 +36,7 @@ export function Settings() {
               ))}
           </section>
         ))}
+      {settings.state === 'ready' && <AiAssistants />}
     </>
   );
 }

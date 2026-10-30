@@ -12,7 +12,9 @@ import { TaskSupervisor } from '../supervisor/tasks.js';
 import { ApplicationService } from '../applications/service.js';
 import { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
+import { McpClientStore, type Scope } from '../mcp/clients.js';
 import { registerApplicationRoutes } from './routes/applications.js';
+import { registerMcpRoutes } from './routes/mcp.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
 import { clearedSessionCookie, readCookie, SESSION_COOKIE, sessionCookie, SessionStore } from './sessions.js';
@@ -32,8 +34,11 @@ export interface ServerOptions {
   secrets: SecretStore;
 }
 
-/** Who is calling: the local CLI/MCP client (bearer token) or a browser dashboard session. */
-export type Principal = { kind: 'local-client' } | { kind: 'dashboard'; sessionId: string; csrf: string };
+/** Who is calling: the local CLI (admin bearer), a connected AI assistant (scoped bearer) or the dashboard. */
+export type Principal =
+  | { kind: 'local-client' }
+  | { kind: 'mcp-client'; clientId: string; name: string; scopes: Scope[] }
+  | { kind: 'dashboard'; sessionId: string; csrf: string };
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -59,6 +64,7 @@ export function buildServer({
   // forceCloseConnections: open dashboard tabs hold keep-alive sockets that would otherwise block shutdown.
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
   const sessions = new SessionStore(db);
+  const mcpClients = new McpClientStore(db);
   const tasks = new TaskSupervisor(db, logger);
   const interrupted = tasks.recoverInterrupted();
   if (interrupted > 0) logger.warn('tasks.interrupted', { count: interrupted });
@@ -111,8 +117,17 @@ export function buildServer({
 
     const auth = req.headers.authorization;
     if (auth !== undefined) {
-      if (!auth.startsWith('Bearer ') || !tokensEqual(auth.slice('Bearer '.length), token)) return reject(reply, 401, 'UNAUTHORIZED');
-      req.principal = { kind: 'local-client' };
+      if (!auth.startsWith('Bearer ')) return reject(reply, 401, 'UNAUTHORIZED');
+      const presented = auth.slice('Bearer '.length);
+      if (tokensEqual(presented, token)) {
+        req.principal = { kind: 'local-client' };
+        return;
+      }
+      const client = mcpClients.authenticate(presented);
+      if (!client) return reject(reply, 401, 'UNAUTHORIZED');
+      // AI assistants reach only the MCP projection endpoints; everything else is closed to them.
+      if (!routePath.startsWith('/api/mcp/')) return reject(reply, 403, 'NOT_AVAILABLE_TO_AI_ASSISTANTS');
+      req.principal = { kind: 'mcp-client', clientId: client.id, name: client.name, scopes: client.scopes };
       return;
     }
     const sessionId = readCookie(req.headers.cookie, SESSION_COOKIE);
@@ -215,7 +230,7 @@ export function buildServer({
     };
     return {
       service: { version, schemaVersion: schemaVersion(db), startedAt: startedAt ?? null },
-      aiHosts: { connected: [] as string[] },
+      aiHosts: { connected: mcpClients.connected().map((c) => c.name), configured: mcpClients.list().map((c) => c.name) },
       jobs: counts,
       sources: {
         boards: boards.length,
@@ -242,6 +257,7 @@ export function buildServer({
   registerOpportunityRoutes(app, { db, discovery, tasks });
 
   registerApplicationRoutes(app, { applications, vault });
+  registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));
 
