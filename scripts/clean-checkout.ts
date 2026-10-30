@@ -37,8 +37,8 @@ function main(): number {
   for (const [name, args] of [
     ['install', ['ci', '--offline', '--no-audit', '--no-fund']],
     ['typecheck', ['run', 'typecheck']],
-    ['unit and integration tests', ['test']],
     ['build', ['run', 'build']],
+    ['unit and integration tests', ['test']],
   ] as const) {
     const s = step(name, 'npm', [...args], clone, env);
     steps.push(s);

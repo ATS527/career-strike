@@ -1,0 +1,28 @@
+{
+  "revision": "e2757a79681aa415d5eff7f2294fc2967d92d7a3",
+  "at": "2026-10-30T21:20:17.639Z",
+  "node": "v24.14.1",
+  "platform": "darwin-x64",
+  "where": "local fresh git clone (no hosted CI)",
+  "passed": false,
+  "steps": [
+    {
+      "name": "install",
+      "command": "npm ci --offline --no-audit --no-fund",
+      "exitCode": 0,
+      "tail": "added 208 packages in 7s"
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "tail": ""
+    },
+    {
+      "name": "unit and integration tests",
+      "command": "npm test",
+      "exitCode": 1,
+      "tail": " ❯ test/integration/cli.test.ts (4 tests | 1 failed) 12694ms\n Test Files  1 failed | 33 passed (34)\n      Tests  1 failed | 218 passed (219)\n   Duration  21.33s (tests 81%, import 13%, transform 5%)\n⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯\nAssertionError: PASS  node               24.14.1"
+    }
+  ]
+}

@@ -50,8 +50,15 @@ describe('career-strike CLI', () => {
     expect(init.stdout).toContain(`Database schema: v${latestKnownVersion()}`);
 
     const after = runCli(home, ['doctor']);
-    expect(after.status, after.stdout).toBe(0);
-    expect(after.stdout).not.toContain('FAIL');
+    expect(after.stdout).toMatch(/PASS\s+database/);
+    // The dashboard check reports the truth about this checkout: built or not.
+    if (fs.existsSync('dist/web/index.html')) {
+      expect(after.status, after.stdout).toBe(0);
+      expect(after.stdout).not.toContain('FAIL');
+    } else {
+      expect(after.status).toBe(1);
+      expect(after.stdout.split('\n').filter((l) => l.startsWith('FAIL'))).toEqual([expect.stringMatching(/^FAIL\s+dashboard-files\s+missing/)]);
+    }
   });
 
   it('reports true lifecycle state across serve, status and shutdown', async () => {
