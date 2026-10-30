@@ -41,6 +41,8 @@ export class SourceError extends Error {
   constructor(
     readonly kind: 'not_found' | 'rate_limited' | 'outage' | 'schema' | 'blocked',
     message: string,
+    /** How long the source asked us to wait (Retry-After), if it said. */
+    readonly retryAfterMs: number | null = null,
   ) {
     super(message);
   }

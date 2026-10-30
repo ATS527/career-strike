@@ -76,7 +76,13 @@ export async function guardedGetJson(raw: string, opts: GuardOptions = {}): Prom
   }
   if (res.status >= 300 && res.status < 400) throw new BlockedUrlError(`Refusing to follow a redirect from ${url.hostname}`);
   if (res.status === 404) throw new SourceError('not_found', `${url.hostname} reports that this board does not exist`);
-  if (res.status === 429) throw new SourceError('rate_limited', `${url.hostname} asked Career Strike to slow down`);
+  if (res.status === 429 || res.status === 503) {
+    const retryAfter = retryAfterMs(res.headers.get('retry-after'));
+    if (res.status === 429 || retryAfter !== null) {
+      const until = retryAfter === null ? '' : ` for ${Math.ceil(retryAfter / 60_000)} min`;
+      throw new SourceError('rate_limited', `${url.hostname} asked Career Strike to slow down${until} (HTTP ${res.status})`, retryAfter);
+    }
+  }
   if (!res.ok) throw new SourceError('outage', `${url.hostname} returned HTTP ${res.status}`);
 
   const declared = Number(res.headers.get('content-length') ?? '0');
@@ -105,4 +111,12 @@ async function readLimited(res: Response, limit: number): Promise<string> {
     chunks.push(value);
   }
   return Buffer.concat(chunks).toString('utf8');
+}
+
+/** Retry-After as delay-seconds or an HTTP date, capped at a day; null if absent or unreadable. */
+export function retryAfterMs(header: string | null, now = Date.now()): number | null {
+  if (!header) return null;
+  const seconds = /^\d+$/.test(header.trim()) ? Number(header.trim()) * 1000 : Date.parse(header) - now;
+  if (!Number.isFinite(seconds) || seconds < 0) return null;
+  return Math.min(seconds, 24 * 3600_000);
 }

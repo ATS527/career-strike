@@ -31,7 +31,8 @@ export function openDb(file: string, migrations: readonly Migration[] = MIGRATIO
     if (file !== ':memory:' && process.platform !== 'win32') fs.chmodSync(file, 0o600);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
-    db.pragma('busy_timeout = 5000');
+    // better-sqlite3 waits synchronously, so keep the wait short: a busy database becomes a clear 503.
+    db.pragma('busy_timeout = 2000');
     migrate(db, migrations, file === ':memory:' ? null : path.join(path.dirname(file), 'backups'));
     return db;
   } catch (err) {

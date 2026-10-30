@@ -181,6 +181,14 @@ export function buildServer({
 
   // Never echo internal error messages; they can contain paths or data.
   app.setErrorHandler((err, req, reply) => {
+    // Another process holds the database write lock (for example a restore or a second service).
+    if (/^SQLITE_(BUSY|LOCKED)/.test(String((err as { code?: unknown }).code ?? ''))) {
+      logger.warn('db.busy', { path: pathOf(req) });
+      return reply
+        .code(503)
+        .header('retry-after', '2')
+        .send({ error: 'DATABASE_BUSY', message: 'Your Career Strike data is in use by another program. Nothing was changed; try again in a moment.' });
+    }
     const statusCode = (err as { statusCode?: number }).statusCode;
     const status = statusCode !== undefined && statusCode >= 400 && statusCode < 500 ? statusCode : 500;
     if (status === 500) logger.error('http.error', { path: pathOf(req), message: err instanceof Error ? err.message : String(err) });

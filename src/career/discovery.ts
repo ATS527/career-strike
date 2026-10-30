@@ -109,10 +109,11 @@ export class Discovery {
           const health = err instanceof SourceError && err.kind === 'not_found' ? 'NOT_FOUND' : 'DEGRADED';
           const message = err instanceof Error ? err.message : String(err);
           const failures = board.consecutiveFailures + 1;
-          // Scheduled fetches of this board back off; a fetch the candidate starts by hand never waits.
+          // Scheduled fetches of this board back off (at least as long as the source asked); a fetch
+          // the candidate starts by hand never waits.
           this.db
             .prepare('UPDATE source_boards SET health = ?, last_error = ?, consecutive_failures = ?, next_attempt_at = ? WHERE id = ?')
-            .run(health, message, failures, new Date(Date.now() + backoffMs(failures)).toISOString(), board.id);
+            .run(health, message, failures, new Date(Date.now() + Math.max(backoffMs(failures), (err instanceof SourceError && err.retryAfterMs) || 0)).toISOString(), board.id);
           throw err;
         }
         this.db
