@@ -17,6 +17,8 @@ import type { SecretStore } from '../vault/secrets.js';
 import { McpClientStore, type Scope } from '../mcp/clients.js';
 import { registerApplicationRoutes } from './routes/applications.js';
 import { InterviewService } from '../interview/service.js';
+import { computeMetrics, MIN_SAMPLE, observations } from '../learning/metrics.js';
+import { ProposalError, StrategyProposals } from '../learning/proposals.js';
 import { registerInterviewRoutes } from './routes/interviews.js';
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
@@ -283,6 +285,28 @@ export function buildServer({
 
   registerApplicationRoutes(app, { applications, vault, submissions });
   registerInterviewRoutes(app, { interviews });
+
+  const proposals = new StrategyProposals(db);
+  app.get('/api/strategy', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    const metrics = computeMetrics(db);
+    proposals.refresh(metrics);
+    proposals.snapshot(metrics);
+    return { metrics, minSample: MIN_SAMPLE, observations: observations(metrics), proposals: proposals.list(), history: proposals.history() };
+  });
+
+  app.post<{ Params: { id: string; decision: string } }>('/api/strategy/proposals/:id/:decision', async (req, reply) => {
+    // Accepting a proposal changes settings: only the candidate, in the dashboard.
+    if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD' });
+    const decision = req.params.decision;
+    if (decision !== 'accept' && decision !== 'dismiss') return reply.code(404).send({ error: 'NOT_FOUND' });
+    try {
+      return { proposal: proposals.decide(req.params.id, decision === 'accept' ? 'ACCEPTED' : 'DISMISSED') };
+    } catch (err) {
+      if (err instanceof ProposalError) return reply.code(409).send({ error: 'PROPOSAL', message: err.message });
+      throw err;
+    }
+  });
 
   app.get('/api/activity', async (req, reply) => {
     if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });

@@ -375,4 +375,27 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX job_sources_job ON job_sources (job_id);
     `,
   },
+  {
+    version: 12,
+    name: 'strategy_learning',
+    sql: `
+      -- PERSONAL: suggestions derived from the candidate's own outcomes, and their decisions.
+      CREATE TABLE strategy_proposals (
+        id          TEXT PRIMARY KEY,
+        rule        TEXT NOT NULL,
+        fingerprint TEXT NOT NULL UNIQUE,
+        title       TEXT NOT NULL,
+        rationale   TEXT NOT NULL,
+        action_json TEXT NOT NULL,
+        status      TEXT NOT NULL CHECK (status IN ('OPEN', 'ACCEPTED', 'DISMISSED')),
+        created_at  TEXT NOT NULL,
+        decided_at  TEXT
+      );
+      -- PERSONAL: one snapshot of the metrics per day, for the learning history.
+      CREATE TABLE strategy_snapshots (
+        day          TEXT PRIMARY KEY,
+        metrics_json TEXT NOT NULL
+      );
+    `,
+  },
 ];

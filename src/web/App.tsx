@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, onConnectionProblem, setCsrfToken } from './api';
 import { Activity } from './pages/Activity';
 import { AddJob } from './pages/AddJob';
+import { Insights } from './pages/Insights';
 import { ApplicationPage } from './pages/ApplicationPage';
 import { Applications } from './pages/Applications';
 import { Compare } from './pages/Compare';
@@ -22,6 +23,7 @@ const NAV = [
   { href: '/opportunities', label: 'Opportunities' },
   { href: '/applications', label: 'Applications' },
   { href: '/profile', label: 'Profile' },
+  { href: '/insights', label: 'Insights' },
   { href: '/activity', label: 'Activity' },
   { href: '/settings', label: 'Settings' },
 ] as const;
@@ -114,6 +116,7 @@ function renderPage(path: string) {
   if (path === '/settings') return <Settings />;
   if (path === '/profile') return <Profile />;
   if (path === '/activity') return <Activity />;
+  if (path === '/insights') return <Insights />;
   if (path === '/opportunities') return <Opportunities />;
   if (path === '/opportunities/sources') return <Sources />;
   if (path === '/opportunities/new') return <AddJob />;
