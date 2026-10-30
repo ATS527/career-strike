@@ -46,12 +46,12 @@ test.describe('home', () => {
   test('next best actions come from stored state and explain their rule', async ({ page, cs }) => {
     await signIn(page, cs);
     const actions = page.getByTestId('next-actions').getByRole('listitem');
-    // A fresh install: three profile gaps and no source of opportunities yet.
-    await expect(actions).toHaveCount(4);
-    await expect(actions.first()).toContainText('profile.preferred-roles-missing');
+    // A fresh install: four profile gaps and no source of opportunities yet.
+    await expect(actions).toHaveCount(5);
+    await expect(page.getByTestId('next-actions')).toContainText('profile.preferred-roles-missing');
     await expect(actions.last()).toContainText('jobs.no-sources');
 
-    await actions.first().getByRole('link', { name: 'Add the roles you are targeting' }).click();
+    await actions.getByRole('link', { name: 'Add the roles you are targeting' }).click();
     await expect(page).toHaveURL(`${cs.origin}/settings#search.preferredRoles`);
     const roles = page.getByLabel('Preferred roles');
     await expect(roles).toBeFocused();
@@ -61,7 +61,7 @@ test.describe('home', () => {
     await expect(field.getByRole('status')).toHaveText('Saved');
 
     await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Home' }).click();
-    await expect(actions).toHaveCount(3);
+    await expect(actions).toHaveCount(4);
     await expect(page.getByText('profile.preferred-roles-missing')).toHaveCount(0);
   });
 
@@ -69,6 +69,7 @@ test.describe('home', () => {
     cs.seed('greenhouse', 'done', [{ title: 'Already Reviewed' }]);
     const { jobs } = (await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] };
     expect((await cs.api('PUT', `/api/jobs/${jobs[0]!.id}/disposition`, { disposition: 'shortlisted' })).status).toBe(200);
+    expect((await cs.api('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'SQL' } })).status).toBe(201);
     for (const [key, value] of [
       ['search.preferredRoles', ['Synthetic Analyst']],
       ['candidate.joiningAvailability', 'immediate'],

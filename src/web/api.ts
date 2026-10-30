@@ -134,6 +134,7 @@ export interface JobSummary {
   duplicateOf: string | null;
   disposition: Disposition;
   employerExcluded: boolean;
+  fit?: FitSummary;
 }
 
 export interface TextBlock {
@@ -150,11 +151,14 @@ export interface JobDetail extends JobSummary {
   unresolved: string[];
   sourceRecords: { source: string; board: string; sourceJobId: string; url: string | null; fetchedAt: string }[];
   duplicates: { id: string; title: string; employer: string; sources: string[] }[];
+  requirements: PostingRequirements;
+  fitDetail?: FitDetail;
 }
 
 export interface JobList {
   total: number;
   jobs: JobSummary[];
+  fitAvailable: boolean;
 }
 
 export interface Task {
@@ -192,4 +196,53 @@ export interface JobCounts {
   shortlisted: number;
   unreviewed: number;
   newSince24h: number;
+}
+
+export type Tier = 'strong' | 'possible' | 'stretch' | 'ineligible' | 'unknown';
+export type Verdict = 'meets' | 'partial' | 'gap' | 'unknown';
+
+export interface FitSummary {
+  tier: Tier;
+  tierRule: string;
+  matchedSkills: string[];
+  missingRequiredSkills: string[];
+  immediateStartAsked: boolean;
+}
+
+export interface FitFactor {
+  id: string;
+  label: string;
+  verdict: Verdict;
+  detail: string;
+  evidence: { source: 'posting' | 'profile' | 'settings' | 'inferred'; text: string }[];
+  hard: boolean;
+}
+
+export interface FitDetail {
+  tier: Tier;
+  tierRule: string;
+  factors: FitFactor[];
+  matchedSkills: string[];
+  missingRequiredSkills: string[];
+  transferableSkills: string[];
+  immediateStart: { asked: boolean; candidateAvailable: boolean | null };
+}
+
+export interface PostingRequirements {
+  skills: { skill: string; importance: 'required' | 'preferred' | 'mentioned'; evidence: string }[];
+  yearsRequired: { min: number; evidence: string } | null;
+  seniority: { level: string; evidence: string } | null;
+  urgency: string[];
+  locationConstraints: string[];
+}
+
+export type FactKind = 'skill' | 'role' | 'education' | 'certification' | 'language';
+
+export interface ProfileFact {
+  id: string;
+  kind: FactKind;
+  value: Record<string, unknown>;
+  source: 'user' | 'document';
+  approved: boolean;
+  createdAt: string;
 }

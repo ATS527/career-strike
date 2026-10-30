@@ -46,7 +46,7 @@ describe('board sync', () => {
       updated: 1,
       closed: 1,
     });
-    const all = listJobs(d, query({ status: 'all' }), [], t1.getTime()).jobs;
+    const all = listJobs(d, query({ status: 'all' }), { excludedEmployers: [] }, t1.getTime()).jobs;
     const one = all.find((j) => j.title === 'Synthetic Role 1')!;
     const two = all.find((j) => j.title.startsWith('Synthetic Role 2'))!;
     expect(one.status).toBe('CLOSED');
@@ -54,7 +54,7 @@ describe('board sync', () => {
 
     // A posting that reappears is open again.
     syncBoard(d, 'greenhouse', 'synthetic', [posting('1'), posting('2')], new Date('2026-10-30T07:00:00Z'));
-    expect(getJob(d, one.id, [], Date.parse('2026-10-30T07:00:00Z'))!.status).toBe('OPEN');
+    expect(getJob(d, one.id, { excludedEmployers: [] }, Date.parse('2026-10-30T07:00:00Z'))!.status).toBe('OPEN');
   });
 
   it('never claims a posting is open once its verification is older than 72 hours', () => {
@@ -75,15 +75,15 @@ describe('board sync', () => {
       new Date('2026-10-02T00:00:00Z'),
     );
     const now = Date.parse('2026-10-02T01:00:00Z');
-    const visible = listJobs(d, query(), [], now).jobs;
+    const visible = listJobs(d, query(), { excludedEmployers: [] }, now).jobs;
     expect(visible).toHaveLength(1);
-    const detail = getJob(d, visible[0]!.id, [], now)!;
+    const detail = getJob(d, visible[0]!.id, { excludedEmployers: [] }, now)!;
     expect(detail.duplicates).toHaveLength(1);
     expect(detail.duplicates[0]!.sources).toEqual(['lever']);
 
     // The original listing closes; the Lever copy must become visible rather than disappear.
     syncBoard(d, 'greenhouse', 'synthetic', [], new Date('2026-10-02T02:00:00Z'));
-    const after = listJobs(d, query(), [], Date.parse('2026-10-02T02:00:00Z')).jobs;
+    const after = listJobs(d, query(), { excludedEmployers: [] }, Date.parse('2026-10-02T02:00:00Z')).jobs;
     expect(after).toHaveLength(1);
     expect(after[0]!.sources).toEqual(['lever']);
   });
@@ -91,21 +91,21 @@ describe('board sync', () => {
   it('search escapes wildcards and matches across title, employer and description', () => {
     const d = db();
     syncBoard(d, 'greenhouse', 'synthetic', [posting('1', { title: '100% Remote SRE' }), posting('2', { title: 'Platform Lead' })]);
-    expect(listJobs(d, query({ q: '100%' }), []).jobs.map((j) => j.title)).toEqual(['100% Remote SRE']);
-    expect(listJobs(d, query({ q: '%' }), []).jobs).toHaveLength(1);
-    expect(listJobs(d, query({ q: 'posting 2 body' }), []).jobs.map((j) => j.title)).toEqual(['Platform Lead']);
-    expect(listJobs(d, query({ q: 'synthetic labs' }), []).jobs).toHaveLength(2);
+    expect(listJobs(d, query({ q: '100%' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['100% Remote SRE']);
+    expect(listJobs(d, query({ q: '%' }), { excludedEmployers: [] }).jobs).toHaveLength(1);
+    expect(listJobs(d, query({ q: 'posting 2 body' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['Platform Lead']);
+    expect(listJobs(d, query({ q: 'synthetic labs' }), { excludedEmployers: [] }).jobs).toHaveLength(2);
   });
 
   it('dispositions persist, excluded jobs and employers are hidden unless asked for', () => {
     const d = db();
     syncBoard(d, 'greenhouse', 'synthetic', [posting('1'), posting('2', { employer: 'Avoided Corp' })]);
-    const [a] = listJobs(d, query({ q: 'Role 1' }), []).jobs;
+    const [a] = listJobs(d, query({ q: 'Role 1' }), { excludedEmployers: [] }).jobs;
     expect(setDisposition(d, a!.id, 'excluded', 'test')).toBe(true);
     expect(setDisposition(d, 'job_missing', 'excluded', 'test')).toBe(false);
-    expect(listJobs(d, query(), ['avoided corp']).jobs).toHaveLength(0);
-    expect(listJobs(d, query({ includeExcludedEmployers: true }), ['avoided corp']).jobs.map((j) => j.employer)).toEqual(['Avoided Corp']);
-    expect(listJobs(d, query({ disposition: 'excluded' }), []).jobs.map((j) => j.id)).toEqual([a!.id]);
+    expect(listJobs(d, query(), { excludedEmployers: ['avoided corp'] }).jobs).toHaveLength(0);
+    expect(listJobs(d, query({ includeExcludedEmployers: true }), { excludedEmployers: ['avoided corp'] }).jobs.map((j) => j.employer)).toEqual(['Avoided Corp']);
+    expect(listJobs(d, query({ disposition: 'excluded' }), { excludedEmployers: [] }).jobs.map((j) => j.id)).toEqual([a!.id]);
     const audit = d.prepare("SELECT actor, subject FROM audit_events WHERE action = 'job.disposition'").all();
     expect(audit).toEqual([{ actor: 'test', subject: a!.id }]);
   });
@@ -120,7 +120,7 @@ describe('board sync', () => {
       remotePolicy: 'hybrid',
       description: 'Build the first product.\n\n- Own the backend',
     });
-    const job = getJob(d, id, [])!;
+    const job = getJob(d, id, { excludedEmployers: [] })!;
     expect(job).toMatchObject({ status: 'UNVERIFIED', sources: ['manual'], remotePolicy: 'hybrid', applyUrl: 'https://careers.example.com/founding' });
     expect(job.description).toEqual([
       { type: 'paragraph', text: 'Build the first product.' },

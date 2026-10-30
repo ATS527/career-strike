@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { api, type Disposition, type JobList, type JobSummary } from '../api';
+import { TierChip } from '../components/FitPanel';
 import { DispositionControls, StatusChip } from '../components/jobBits';
 import { EMPLOYMENT_LABEL, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../format';
 import { Link, navigate, useSearch } from '../router';
@@ -37,8 +38,17 @@ const FILTERS = {
     ['ashby', 'Ashby'],
     ['manual', 'Added by you'],
   ],
+  tier: [
+    ['', 'Any fit'],
+    ['strong', 'Strong fit'],
+    ['possible', 'Possible fit'],
+    ['stretch', 'Stretch'],
+    ['eligible', 'Hide “not eligible”'],
+    ['ineligible', 'Not eligible'],
+  ],
   sort: [
     ['newest', 'Newest first'],
+    ['best_fit', 'Best fit'],
     ['recently_verified', 'Recently verified'],
     ['employer', 'Employer A–Z'],
     ['title', 'Title A–Z'],
@@ -57,7 +67,10 @@ export function Opportunities() {
   const [reload, setReload] = useState(0);
   // Filters start folded away on small screens so results are visible first.
   const [filtersOpen, setFiltersOpen] = useState(() => window.matchMedia('(min-width: 761px)').matches);
-  const activeFilters = (Object.keys(FILTERS) as FilterKey[]).filter((k) => params.get(k)).length + (params.get('includeExcludedEmployers') ? 1 : 0);
+  const activeFilters =
+    (Object.keys(FILTERS) as FilterKey[]).filter((k) => params.get(k)).length +
+    (params.get('includeExcludedEmployers') ? 1 : 0) +
+    (params.get('immediateStart') ? 1 : 0);
 
   useEffect(() => setQuery(new URLSearchParams(search).get('q') ?? ''), [search]);
 
@@ -127,17 +140,28 @@ export function Opportunities() {
           </summary>
         <div className="filters__row">
           {(Object.keys(FILTERS) as FilterKey[]).map((key) => (
-            <label key={key} className="filter">
-              <span className="filter__label">{filterLabel(key)}</span>
-              <select value={params.get(key) ?? FILTERS[key][0][0]} onChange={(e) => update(key, e.target.value === FILTERS[key][0][0] ? '' : e.target.value)}>
+            <div key={key} className="filter">
+              {/* Explicit association: a wrapping label would make the option texts part of the name. */}
+              <label htmlFor={`filter-${key}`} className="filter__label">
+                {filterLabel(key)}
+              </label>
+              <select
+                id={`filter-${key}`}
+                value={params.get(key) ?? FILTERS[key][0][0]}
+                onChange={(e) => update(key, e.target.value === FILTERS[key][0][0] ? '' : e.target.value)}
+              >
                 {FILTERS[key].map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           ))}
+          <label className="filter filter--check">
+            <input type="checkbox" checked={params.get('immediateStart') === 'true'} onChange={(e) => update('immediateStart', e.target.checked ? 'true' : '')} />
+            <span>Asks for an early start</span>
+          </label>
           <label className="filter filter--check">
             <input
               type="checkbox"
@@ -196,7 +220,7 @@ export function Opportunities() {
 }
 
 function filterLabel(key: FilterKey): string {
-  return { status: 'Status', disposition: 'Your decision', remote: 'Arrangement', source: 'Source', sort: 'Sort' }[key];
+  return { status: 'Status', disposition: 'Your decision', remote: 'Arrangement', source: 'Source', tier: 'Fit', sort: 'Sort' }[key];
 }
 
 function EmptyHint({ filtered }: { filtered: boolean }) {
@@ -235,6 +259,14 @@ function JobRow({
           {job.employmentType !== 'unknown' && <span>{EMPLOYMENT_LABEL[job.employmentType]}</span>}
           {salary && <span className="job-row__salary">{salary}</span>}
         </p>
+        {job.fit && (
+          <p className="job-row__fit">
+            <TierChip tier={job.fit.tier} />
+            {job.fit.matchedSkills.length > 0 && <span>You have {listSome(job.fit.matchedSkills)}</span>}
+            {job.fit.missingRequiredSkills.length > 0 && <span className="attention">Missing {listSome(job.fit.missingRequiredSkills)}</span>}
+            {job.fit.immediateStartAsked && <span className="badge">Asks for an early start</span>}
+          </p>
+        )}
         <p className="job-row__facts">
           <StatusChip status={job.status} lastVerifiedAt={job.lastVerifiedAt} />
           <span className="muted">{job.sources.map((s) => SOURCE_LABEL[s] ?? s).join(', ')}</span>
@@ -252,4 +284,8 @@ function JobRow({
       </div>
     </li>
   );
+}
+
+function listSome(items: string[]): string {
+  return items.length <= 3 ? items.join(', ') : `${items.slice(0, 3).join(', ')} +${items.length - 3}`;
 }

@@ -60,3 +60,25 @@ export function formatSalary(s: PublishedSalary | null): string | null {
   const range = s.min !== null && s.max !== null ? `${money.format(s.min)}–${money.format(s.max)}` : money.format((s.min ?? s.max)!);
   return `${range} per ${s.interval}`;
 }
+
+export const TIER_LABEL: Record<string, string> = {
+  strong: 'Strong fit',
+  possible: 'Possible fit',
+  stretch: 'Stretch',
+  ineligible: 'Not eligible',
+  unknown: 'Fit unknown',
+};
+
+export const VERDICT_LABEL: Record<string, string> = {
+  meets: 'Meets',
+  partial: 'Partly',
+  gap: 'Gap',
+  unknown: 'Unknown',
+};
+
+export const EVIDENCE_LABEL: Record<string, string> = {
+  posting: 'Posting',
+  profile: 'Your profile',
+  settings: 'Your settings',
+  inferred: 'Career Strike’s inference',
+};

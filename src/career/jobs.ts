@@ -4,6 +4,9 @@ import type { Db } from '../store/db.js';
 import { blocksToText, textToBlocks } from '../sources/html.js';
 import { safeHttpUrl, unresolvedFacts } from '../sources/normalize.js';
 import type { NormalizedPosting, PublishedSalary, RemotePolicy, TextBlock } from '../sources/types.js';
+import { evaluateFit, type Fit, type FitSettings, type Tier } from '../matching/fit.js';
+import { extractRequirements, type PostingRequirements, REQUIREMENTS_VERSION } from '../matching/requirements.js';
+import type { CandidateProfile } from './profile.js';
 
 /** A posting verified within this window is shown as open; older ones as "may have closed". */
 export const FRESH_FOR_MS = 72 * 60 * 60 * 1000;
@@ -29,6 +32,23 @@ export interface JobSummary {
   duplicateOf: string | null;
   disposition: Disposition;
   employerExcluded: boolean;
+  /** Present when a candidate context was supplied. SENSITIVE: derived from the profile. */
+  fit?: FitSummary;
+}
+
+export interface FitSummary {
+  tier: Tier;
+  tierRule: string;
+  matchedSkills: string[];
+  missingRequiredSkills: string[];
+  immediateStartAsked: boolean;
+}
+
+/** Everything matching needs about the candidate. */
+export interface CandidateContext {
+  excludedEmployers: readonly string[];
+  profile?: CandidateProfile;
+  settings?: FitSettings;
 }
 
 export interface JobDetail extends JobSummary {
@@ -40,6 +60,8 @@ export interface JobDetail extends JobSummary {
   unresolved: string[];
   sourceRecords: { source: string; board: string; sourceJobId: string; url: string | null; fetchedAt: string }[];
   duplicates: { id: string; title: string; employer: string; sources: string[] }[];
+  requirements: PostingRequirements;
+  fitDetail?: Fit;
 }
 
 const newId = (prefix: string): string => `${prefix}_${randomBytes(9).toString('base64url')}`;
@@ -82,15 +104,15 @@ export function syncBoard(db: Db, source: string, board: string, postings: Norma
   const insertJob = db.prepare(`
     INSERT INTO jobs (id, canonical_key, duplicate_key, employer, title, location_text, remote_policy, employment_type,
       department, salary_json, description_json, description_text, apply_url, posting_url, published_at, status,
-      first_seen_at, last_seen_at, last_verified_at, unresolved_json)
+      first_seen_at, last_seen_at, last_verified_at, unresolved_json, requirements_json, requirements_version)
     VALUES (@id, @canonical, @dup, @employer, @title, @location, @remote, @employment, @department, @salary, @descJson,
-      @descText, @apply, @posting, @published, 'OPEN', @at, @at, @at, @unresolved)`);
+      @descText, @apply, @posting, @published, 'OPEN', @at, @at, @at, @unresolved, @reqJson, @reqVersion)`);
   const updateJob = db.prepare(`
     UPDATE jobs SET duplicate_key = @dup, employer = @employer, title = @title, location_text = @location,
       remote_policy = @remote, employment_type = @employment, department = @department, salary_json = @salary,
       description_json = @descJson, description_text = @descText, apply_url = @apply, posting_url = @posting,
       published_at = @published, status = 'OPEN', closed_at = NULL, last_seen_at = @at, last_verified_at = @at,
-      unresolved_json = @unresolved
+      unresolved_json = @unresolved, requirements_json = @reqJson, requirements_version = @reqVersion
     WHERE id = @id`);
   const touchJob = db.prepare("UPDATE jobs SET status = 'OPEN', closed_at = NULL, last_seen_at = ?, last_verified_at = ? WHERE id = ?");
   const insertSource = db.prepare(
@@ -122,6 +144,8 @@ export function syncBoard(db: Db, source: string, board: string, postings: Norma
         posting: p.postingUrl,
         published: p.publishedAt,
         unresolved: JSON.stringify(p.unresolved),
+        reqJson: JSON.stringify(extractRequirements(p.title, p.description)),
+        reqVersion: REQUIREMENTS_VERSION,
         at,
       };
       const existing = findSource.get(source, board, p.sourceJobId) as { job_id: string; content_hash: string } | undefined;
@@ -171,6 +195,18 @@ function linkDuplicates(db: Db): void {
   `);
 }
 
+/** Recompute requirements stored by an older extraction version. Returns how many were updated. */
+export function backfillRequirements(db: Db): number {
+  const rows = db
+    .prepare('SELECT id, title, description_json FROM jobs WHERE requirements_version != ?')
+    .all(REQUIREMENTS_VERSION) as { id: string; title: string; description_json: string }[];
+  const update = db.prepare('UPDATE jobs SET requirements_json = ?, requirements_version = ? WHERE id = ?');
+  db.transaction(() => {
+    for (const r of rows) update.run(JSON.stringify(extractRequirements(r.title, JSON.parse(r.description_json) as TextBlock[])), REQUIREMENTS_VERSION, r.id);
+  })();
+  return rows.length;
+}
+
 export const ManualJobInput = z
   .object({
     employer: z.string().trim().min(1, 'Enter the employer’s name').max(200),
@@ -201,8 +237,9 @@ export function addManualJob(db: Db, input: z.infer<typeof ManualJobInput>, now 
   db.transaction(() => {
     db.prepare(
       `INSERT INTO jobs (id, canonical_key, duplicate_key, employer, title, location_text, remote_policy, employment_type,
-        description_json, description_text, apply_url, posting_url, status, first_seen_at, last_seen_at, unresolved_json)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'unknown', ?, ?, ?, ?, 'UNVERIFIED', ?, ?, ?)`,
+        description_json, description_text, apply_url, posting_url, status, first_seen_at, last_seen_at, unresolved_json,
+        requirements_json, requirements_version)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'unknown', ?, ?, ?, ?, 'UNVERIFIED', ?, ?, ?, ?, ?)`,
     ).run(
       id,
       `manual:${id}`,
@@ -218,6 +255,8 @@ export function addManualJob(db: Db, input: z.infer<typeof ManualJobInput>, now 
       at,
       at,
       JSON.stringify(unresolved),
+      JSON.stringify(extractRequirements(input.title, description)),
+      REQUIREMENTS_VERSION,
     );
     db.prepare(
       'INSERT INTO job_sources (job_id, source, board, source_job_id, source_url, fetched_at, content_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -227,6 +266,12 @@ export function addManualJob(db: Db, input: z.infer<typeof ManualJobInput>, now 
   return id;
 }
 
+/** Query-string boolean: only "true"/"1" are true. (z.coerce.boolean would turn "false" into true.) */
+const flag = z
+  .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
+  .transform((v) => v === true || v === 'true' || v === '1')
+  .default(false);
+
 export const JobQuery = z
   .object({
     q: z.string().trim().max(200).optional(),
@@ -234,9 +279,11 @@ export const JobQuery = z
     remote: z.enum(['remote', 'hybrid', 'onsite', 'unknown']).optional(),
     disposition: z.enum(['none', 'shortlisted', 'excluded', 'not_excluded']).default('not_excluded'),
     source: z.enum(['greenhouse', 'lever', 'ashby', 'manual']).optional(),
-    includeExcludedEmployers: z.coerce.boolean().default(false),
-    includeDuplicates: z.coerce.boolean().default(false),
-    sort: z.enum(['newest', 'recently_verified', 'employer', 'title']).default('newest'),
+    includeExcludedEmployers: flag,
+    includeDuplicates: flag,
+    sort: z.enum(['newest', 'recently_verified', 'employer', 'title', 'best_fit']).default('newest'),
+    tier: z.enum(['strong', 'possible', 'stretch', 'ineligible', 'unknown', 'eligible']).optional(),
+    immediateStart: flag,
     limit: z.coerce.number().int().min(1).max(200).default(50),
     offset: z.coerce.number().int().min(0).default(0),
   })
@@ -257,15 +304,61 @@ interface JobRow {
   duplicate_of: string | null;
   disposition: Disposition | null;
   sources: string;
+  requirements_json: string | null;
+  description_text: string;
 }
 
 const SUMMARY_SELECT = `
   SELECT j.id, j.employer, j.title, j.location_text, j.remote_policy, j.employment_type, j.salary_json, j.status,
-    j.first_seen_at, j.last_verified_at, j.published_at, j.duplicate_of, u.disposition,
+    j.first_seen_at, j.last_verified_at, j.published_at, j.duplicate_of, u.disposition, j.requirements_json, j.description_text,
     (SELECT group_concat(DISTINCT s.source) FROM job_sources s WHERE s.job_id = j.id) AS sources
   FROM jobs j LEFT JOIN job_user_state u ON u.job_id = j.id`;
 
-function toSummary(row: JobRow, excludedEmployers: Set<string>, now: number): JobSummary {
+const EMPTY_REQUIREMENTS: PostingRequirements = {
+  version: REQUIREMENTS_VERSION,
+  skills: [],
+  yearsRequired: null,
+  seniority: null,
+  urgency: [],
+  locationConstraints: [],
+};
+
+function requirementsOf(row: { requirements_json: string | null }): PostingRequirements {
+  return row.requirements_json ? (JSON.parse(row.requirements_json) as PostingRequirements) : EMPTY_REQUIREMENTS;
+}
+
+function fitFor(row: JobRow, status: EffectiveStatus, ctx: CandidateContext): Fit | undefined {
+  if (!ctx.profile || !ctx.settings) return undefined;
+  return evaluateFit(
+    {
+      title: row.title,
+      employer: row.employer,
+      locationText: row.location_text,
+      remotePolicy: row.remote_policy,
+      employmentType: row.employment_type,
+      salary: row.salary_json ? (JSON.parse(row.salary_json) as PublishedSalary) : null,
+      status,
+      descriptionText: row.description_text,
+      requirements: requirementsOf(row),
+    },
+    ctx.profile,
+    ctx.settings,
+  );
+}
+
+function summariseFit(fit: Fit): FitSummary {
+  return {
+    tier: fit.tier,
+    tierRule: fit.tierRule,
+    matchedSkills: fit.matchedSkills,
+    missingRequiredSkills: fit.missingRequiredSkills,
+    immediateStartAsked: fit.immediateStart.asked,
+  };
+}
+
+function toSummary(row: JobRow, excludedEmployers: Set<string>, now: number, ctx?: CandidateContext): JobSummary & { fitDetail?: Fit } {
+  const status = effectiveStatus(row.status, row.last_verified_at, now);
+  const fit = ctx ? fitFor(row, status, ctx) : undefined;
   return {
     id: row.id,
     employer: row.employer,
@@ -274,7 +367,7 @@ function toSummary(row: JobRow, excludedEmployers: Set<string>, now: number): Jo
     remotePolicy: row.remote_policy,
     employmentType: row.employment_type,
     salary: row.salary_json ? (JSON.parse(row.salary_json) as PublishedSalary) : null,
-    status: effectiveStatus(row.status, row.last_verified_at, now),
+    status,
     firstSeenAt: row.first_seen_at,
     lastVerifiedAt: row.last_verified_at,
     publishedAt: row.published_at,
@@ -282,15 +375,19 @@ function toSummary(row: JobRow, excludedEmployers: Set<string>, now: number): Jo
     duplicateOf: row.duplicate_of,
     disposition: row.disposition ?? 'none',
     employerExcluded: excludedEmployers.has(norm(row.employer)),
+    ...(fit ? { fit: summariseFit(fit), fitDetail: fit } : {}),
   };
 }
+
+const TIER_ORDER: Record<Tier, number> = { strong: 0, possible: 1, stretch: 2, unknown: 3, ineligible: 4 };
 
 export function listJobs(
   db: Db,
   query: z.infer<typeof JobQuery>,
-  excludedEmployers: readonly string[],
+  ctx: CandidateContext,
   now = Date.now(),
-): { total: number; jobs: JobSummary[] } {
+): { total: number; jobs: JobSummary[]; fitAvailable: boolean } {
+  const excludedEmployers = ctx.excludedEmployers;
   const where: string[] = [];
   const params: Record<string, unknown> = {};
   const freshSince = new Date(now - FRESH_FOR_MS).toISOString();
@@ -331,15 +428,28 @@ export function listJobs(
     recently_verified: 'j.last_verified_at DESC, j.id',
     employer: 'j.employer COLLATE NOCASE, j.title COLLATE NOCASE',
     title: 'j.title COLLATE NOCASE, j.employer COLLATE NOCASE',
+    best_fit: 'COALESCE(j.published_at, j.first_seen_at) DESC, j.id',
   }[query.sort];
 
   const rows = db.prepare(`${SUMMARY_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY ${order}`).all(params) as JobRow[];
-  // Employer exclusion uses normalised names, so it is applied here rather than in SQL.
-  const visible = rows.map((r) => toSummary(r, excluded, now)).filter((j) => query.includeExcludedEmployers || !j.employerExcluded);
-  return { total: visible.length, jobs: visible.slice(query.offset, query.offset + query.limit) };
+  const fitAvailable = Boolean(ctx.profile && ctx.settings);
+  // Employer exclusion, fit and urgency are computed per job, so they are applied here.
+  let visible = rows.map((r) => toSummary(r, excluded, now, ctx)).filter((j) => query.includeExcludedEmployers || !j.employerExcluded);
+  if (query.immediateStart) visible = visible.filter((j) => j.fit?.immediateStartAsked ?? requirementsOf(rows.find((r) => r.id === j.id)!).urgency.length > 0);
+  if (query.tier && fitAvailable) {
+    visible = visible.filter((j) => (query.tier === 'eligible' ? j.fit!.tier !== 'ineligible' : j.fit!.tier === query.tier));
+  }
+  if (query.sort === 'best_fit' && fitAvailable) {
+    // Stable: ties keep newest-first order. An immediate-start request the candidate can meet ranks first within a tier.
+    const urgentMatch = (j: JobSummary & { fitDetail?: Fit }): number => (j.fitDetail?.immediateStart.asked && j.fitDetail.immediateStart.candidateAvailable ? 0 : 1);
+    visible = [...visible].sort((a, b) => TIER_ORDER[a.fit!.tier] - TIER_ORDER[b.fit!.tier] || urgentMatch(a) - urgentMatch(b));
+  }
+  const page = visible.slice(query.offset, query.offset + query.limit).map(({ fitDetail: _omit, ...j }) => j);
+  return { total: visible.length, jobs: page, fitAvailable };
 }
 
-export function getJob(db: Db, id: string, excludedEmployers: readonly string[], now = Date.now()): JobDetail | null {
+export function getJob(db: Db, id: string, ctx: CandidateContext, now = Date.now()): JobDetail | null {
+  const excludedEmployers = ctx.excludedEmployers;
   const row = db.prepare(`${SUMMARY_SELECT} WHERE j.id = ?`).get(id) as JobRow | undefined;
   if (!row) return null;
   const extra = db
@@ -371,8 +481,11 @@ export function getJob(db: Db, id: string, excludedEmployers: readonly string[],
       .all(extra.duplicate_key, id) as { id: string; title: string; employer: string; sources: string | null }[]
   ).map((d) => ({ id: d.id, title: d.title, employer: d.employer, sources: d.sources ? d.sources.split(',') : [] }));
 
+  const { fitDetail, ...summary } = toSummary(row, new Set(excludedEmployers.map(norm)), now, ctx);
   return {
-    ...toSummary(row, new Set(excludedEmployers.map(norm)), now),
+    ...summary,
+    ...(fitDetail ? { fitDetail } : {}),
+    requirements: requirementsOf(row),
     department: extra.department,
     description: JSON.parse(extra.description_json) as TextBlock[],
     applyUrl: extra.apply_url,

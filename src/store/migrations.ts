@@ -131,4 +131,27 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX tasks_created ON tasks (created_at);
     `,
   },
+  {
+    version: 4,
+    name: 'profile_and_requirements',
+    sql: `
+      -- SENSITIVE: facts about the candidate. Only approved facts are ever used for matching,
+      -- drafting or disclosure. Facts entered by the candidate are approved when saved.
+      CREATE TABLE profile_facts (
+        id         TEXT PRIMARY KEY,
+        kind       TEXT NOT NULL CHECK (kind IN ('skill', 'role', 'education', 'certification', 'language')),
+        value_json TEXT NOT NULL,
+        source     TEXT NOT NULL CHECK (source IN ('user', 'document')),
+        source_ref TEXT,
+        approved   INTEGER NOT NULL CHECK (approved IN (0, 1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX profile_facts_kind ON profile_facts (kind);
+
+      -- PUBLIC (derived from posting text only): requirements extracted with quoted evidence.
+      ALTER TABLE jobs ADD COLUMN requirements_json TEXT;
+      ALTER TABLE jobs ADD COLUMN requirements_version INTEGER NOT NULL DEFAULT 0;
+    `,
+  },
 ];

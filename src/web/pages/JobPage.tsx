@@ -1,5 +1,6 @@
 import { type ReactElement, useEffect, useState } from 'react';
 import type { JobDetail } from '../api';
+import { FitPanel, RequirementsPanel } from '../components/FitPanel';
 import { DispositionControls, StatusChip } from '../components/jobBits';
 import { EMPLOYMENT_LABEL, formatDate, formatDateTime, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../format';
 import { ExternalLink, Link } from '../router';
@@ -62,6 +63,8 @@ export function JobPage({ id }: { id: string }) {
         </div>
       )}
 
+      {job.fitDetail && <FitPanel fit={job.fitDetail} />}
+
       <div className="job__grid">
         <section aria-labelledby="facts-title" className="job__facts">
           <h2 id="facts-title">What the posting says</h2>
@@ -113,6 +116,8 @@ export function JobPage({ id }: { id: string }) {
           )}
         </section>
 
+        <div className="job__main">
+        <RequirementsPanel req={job.requirements} />
         <section aria-labelledby="desc-title" className="job__description">
           <h2 id="desc-title">Posting</h2>
           {job.description.length === 0 ? (
@@ -121,6 +126,7 @@ export function JobPage({ id }: { id: string }) {
             <Description blocks={job.description} />
           )}
         </section>
+        </div>
       </div>
     </article>
   );

@@ -12,12 +12,14 @@ export interface CareerState {
   settings: Record<string, unknown>;
   jobs?: { open: number; unverified: number; unreviewed: number; shortlisted: number };
   boards?: { source: string; board: string; health: string; lastError: string | null }[];
+  matches?: { strongUnreviewed: number; immediateStartUnreviewed: number; profileFacts: number };
+  availability?: string;
 }
 
 type Rule = (state: CareerState) => NextAction | NextAction[] | null;
 
 const isEmptyList = (v: unknown): boolean => !Array.isArray(v) || v.length === 0;
-const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
 
 const RULES: readonly Rule[] = [
   ({ boards }) =>
@@ -29,6 +31,33 @@ const RULES: readonly Rule[] = [
         reason: b.health === 'NOT_FOUND' ? 'The board does not exist on this source. The name may be misspelled.' : `The last fetch failed: ${b.lastError ?? 'unknown error'}.`,
         href: '/opportunities/sources',
       })),
+  ({ matches }) =>
+    matches && matches.strongUnreviewed > 0
+      ? {
+          rule: 'matches.strong-unreviewed',
+          title: `Look at ${plural(matches.strongUnreviewed, 'strong match', 'strong matches')} first`,
+          reason: 'Your listed skills meet these verified-open postings and nothing else in your settings rules them out.',
+          href: '/opportunities?status=OPEN&disposition=none&tier=strong&sort=best_fit',
+        }
+      : null,
+  ({ matches, availability }) =>
+    matches && matches.immediateStartUnreviewed > 0 && (availability === 'immediate' || availability === 'two_weeks')
+      ? {
+          rule: 'matches.immediate-start',
+          title: `${plural(matches.immediateStartUnreviewed, 'role')} ${matches.immediateStartUnreviewed === 1 ? 'asks' : 'ask'} for an early start`,
+          reason: 'The posting text asks for an immediate or early start, and you said you can join soon.',
+          href: '/opportunities?status=OPEN&disposition=none&immediateStart=true&sort=best_fit',
+        }
+      : null,
+  ({ matches }) =>
+    matches && matches.profileFacts === 0
+      ? {
+          rule: 'profile.skills-missing',
+          title: 'Add your skills and past roles',
+          reason: 'Career Strike compares postings with your profile. Without skills or roles, it cannot say how well a role fits.',
+          href: '/profile',
+        }
+      : null,
   ({ jobs }) =>
     jobs && jobs.unreviewed > 0
       ? {

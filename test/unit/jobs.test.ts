@@ -27,3 +27,13 @@ describe('effective status', () => {
     expect(effectiveStatus('OPEN', new Date(now - FRESH_FOR_MS - 1000).toISOString(), now)).toBe('STALE');
   });
 });
+
+describe('job query flags', () => {
+  it('parses query-string booleans strictly', async () => {
+    const { JobQuery } = await import('../../src/career/jobs.js');
+    expect(JobQuery.parse({ includeExcludedEmployers: 'false' }).includeExcludedEmployers).toBe(false);
+    expect(JobQuery.parse({ includeExcludedEmployers: 'true' }).includeExcludedEmployers).toBe(true);
+    expect(JobQuery.parse({}).immediateStart).toBe(false);
+    expect(JobQuery.safeParse({ immediateStart: 'yes' }).success).toBe(false);
+  });
+});

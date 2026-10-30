@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Discovery } from '../career/discovery.js';
-import { jobCounts } from '../career/jobs.js';
+import { candidateContext } from '../career/context.js';
+import { backfillRequirements, JobQuery, jobCounts, listJobs } from '../career/jobs.js';
 import { nextActions } from '../career/next-actions.js';
 import { type Logger, nullLogger } from '../core/log.js';
 import { type Db, schemaVersion } from '../store/db.js';
@@ -53,6 +54,8 @@ export function buildServer({
   const interrupted = tasks.recoverInterrupted();
   if (interrupted > 0) logger.warn('tasks.interrupted', { count: interrupted });
   const discovery = new Discovery(db, adapters, tasks);
+  const backfilled = backfillRequirements(db);
+  if (backfilled > 0) logger.info('jobs.requirements-backfilled', { count: backfilled });
   app.decorateRequest('principal', null);
   app.addHook('onClose', async () => {
     await tasks.cancelAll();
@@ -163,6 +166,13 @@ export function buildServer({
     const settings = getSettings(db);
     const counts = jobCounts(db);
     const boards = discovery.listBoards();
+    const ctx = candidateContext(db);
+    const fresh = listJobs(db, JobQuery.parse({ status: 'OPEN', disposition: 'none', limit: 200 }), ctx).jobs;
+    const matches = {
+      strongUnreviewed: fresh.filter((j) => j.fit?.tier === 'strong').length,
+      immediateStartUnreviewed: fresh.filter((j) => j.fit?.immediateStartAsked && j.fit.tier !== 'ineligible').length,
+      profileFacts: (ctx.profile?.skills.length ?? 0) + (ctx.profile?.roles.length ?? 0),
+    };
     return {
       service: { version, schemaVersion: schemaVersion(db), startedAt: startedAt ?? null },
       aiHosts: { connected: [] as string[] },
@@ -174,7 +184,8 @@ export function buildServer({
         lastSuccessfulDiscovery: discovery.lastSuccessfulDiscovery(),
       },
       activeTasks: tasks.list(20).filter((t) => t.state === 'RUNNING' || t.state === 'QUEUED'),
-      nextActions: nextActions({ settings, jobs: counts, boards }),
+      matches,
+      nextActions: nextActions({ settings, jobs: counts, boards, matches, availability: ctx.settings?.joiningAvailability }),
     };
   });
 

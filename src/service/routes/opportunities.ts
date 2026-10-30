@@ -1,9 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
+import { candidateContext } from '../../career/context.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
+import { addFact, deleteFact, listFacts, NewFact, updateFact } from '../../career/profile.js';
 import type { Db } from '../../store/db.js';
-import { getSettings } from '../../store/settings.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { TaskSupervisor } from '../../supervisor/tasks.js';
@@ -24,7 +25,7 @@ function invalid(reply: FastifyReply, issues: z.core.$ZodIssue[]): FastifyReply 
 
 export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; discovery: Discovery; tasks: TaskSupervisor }): void {
   const { db, discovery, tasks } = deps;
-  const excludedEmployers = (): string[] => (getSettings(db)['search.excludedEmployers'] as string[] | undefined) ?? [];
+  const ctx = () => candidateContext(db);
 
   // ---- monitored boards ----
 
@@ -82,18 +83,18 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
   app.get('/api/jobs', async (req, reply) => {
     const parsed = JobQuery.safeParse(req.query);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
-    return listJobs(db, parsed.data, excludedEmployers());
+    return listJobs(db, parsed.data, ctx());
   });
 
   app.post('/api/jobs', async (req, reply) => {
     const parsed = ManualJobInput.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
     const id = addManualJob(db, parsed.data);
-    return reply.code(201).send({ job: getJob(db, id, excludedEmployers()) });
+    return reply.code(201).send({ job: getJob(db, id, ctx()) });
   });
 
   app.get<{ Params: { id: string } }>('/api/jobs/:id', async (req, reply) => {
-    const job = getJob(db, req.params.id, excludedEmployers());
+    const job = getJob(db, req.params.id, ctx());
     return job ? { job } : reply.code(404).send({ error: 'NOT_FOUND' });
   });
 
@@ -101,6 +102,29 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
     const parsed = DispositionBody.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
     if (!setDisposition(db, req.params.id, parsed.data.disposition, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
-    return { job: getJob(db, req.params.id, excludedEmployers()) };
+    return { job: getJob(db, req.params.id, ctx()) };
+  });
+
+  // ---- candidate profile (SENSITIVE) ----
+
+  app.get('/api/profile', async () => ({ facts: listFacts(db) }));
+
+  app.post('/api/profile/facts', async (req, reply) => {
+    const parsed = NewFact.safeParse(req.body);
+    if (!parsed.success) return invalid(reply, parsed.error.issues);
+    return reply.code(201).send({ fact: addFact(db, parsed.data, actorOf(req)) });
+  });
+
+  app.put<{ Params: { id: string } }>('/api/profile/facts/:id', async (req, reply) => {
+    const body = req.body as { value?: unknown } | null;
+    const result = updateFact(db, req.params.id, body?.value, actorOf(req));
+    if (result === 'not_found') return reply.code(404).send({ error: 'NOT_FOUND' });
+    if (result instanceof z.ZodError) return invalid(reply, result.issues);
+    return { fact: result };
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/profile/facts/:id', async (req, reply) => {
+    if (!deleteFact(db, req.params.id, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return { ok: true };
   });
 }

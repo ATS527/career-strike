@@ -6,6 +6,7 @@ import { Home } from './pages/Home';
 import { JobPage } from './pages/JobPage';
 import { NotFound } from './pages/NotFound';
 import { Opportunities } from './pages/Opportunities';
+import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
 import { Sources } from './pages/Sources';
 import { Link, navigate, usePath } from './router';
@@ -15,6 +16,7 @@ type Connection = 'checking' | 'connected' | 'unauthenticated' | 'unavailable';
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/opportunities', label: 'Opportunities' },
+  { href: '/profile', label: 'Profile' },
   { href: '/settings', label: 'Settings' },
 ] as const;
 
@@ -104,6 +106,7 @@ export function App() {
 function renderPage(path: string) {
   if (path === '/') return <Home />;
   if (path === '/settings') return <Settings />;
+  if (path === '/profile') return <Profile />;
   if (path === '/opportunities') return <Opportunities />;
   if (path === '/opportunities/sources') return <Sources />;
   if (path === '/opportunities/new') return <AddJob />;
