@@ -80,3 +80,9 @@ export function kindOfTestFile(file: string): Kind | null {
   if (file.startsWith('test/live/')) return 'live-source';
   return null;
 }
+
+/** One criterion per line: readable diffs when evidence changes. */
+export function serializeRegistry(registry: Registry): string {
+  const lines = registry.criteria.map((c) => `    ${JSON.stringify(c)}`);
+  return `{\n  "version": ${registry.version},\n  "criteria": [\n${lines.join(',\n')}\n  ]\n}\n`;
+}

@@ -7,7 +7,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { type Criterion, type Kind, kindOfTestFile, type Registry, RegistrySchema, validateRegistry } from './registry.js';
+import { type Criterion, type Kind, kindOfTestFile, type Registry, RegistrySchema, serializeRegistry, validateRegistry } from './registry.js';
 
 const REGISTRY = 'acceptance/registry.json';
 
@@ -46,10 +46,6 @@ function git(...args: string[]): string {
   return execFileSync('git', args, { encoding: 'utf8' }).trim();
 }
 
-export function serializeRegistry(registry: Registry): string {
-  const lines = registry.criteria.map((c) => `    ${JSON.stringify(c)}`);
-  return `{\n  "version": ${registry.version},\n  "criteria": [\n${lines.join(',\n')}\n  ]\n}\n`;
-}
 
 function main(): number {
   if (git('status', '--porcelain') !== '') {
