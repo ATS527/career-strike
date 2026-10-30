@@ -1,0 +1,35 @@
+{
+  "name": "career-strike",
+  "version": "0.1.0",
+  "description": "Local-first, privacy-first job-hunting platform with an independent dashboard and MCP integrations.",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "career-strike": "dist/cli/index.js"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "dev:serve": "tsx src/cli/index.ts serve",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test",
+    "acceptance": "tsx scripts/acceptance.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3",
+    "commander": "15.0.0",
+    "fastify": "5.12.7",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.19.2",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}
