@@ -1,8 +1,14 @@
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
+import { Discovery } from '../career/discovery.js';
+import { jobCounts } from '../career/jobs.js';
 import { nextActions } from '../career/next-actions.js';
 import { type Logger, nullLogger } from '../core/log.js';
 import { type Db, schemaVersion } from '../store/db.js';
 import { describeSettings, getSettings, SettingError, setSetting } from '../store/settings.js';
+import { createAdapters } from '../sources/adapters.js';
+import type { SourceAdapter, SourceId } from '../sources/types.js';
+import { TaskSupervisor } from '../supervisor/tasks.js';
+import { registerOpportunityRoutes } from './routes/opportunities.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
 import { clearedSessionCookie, readCookie, SESSION_COOKIE, sessionCookie, SessionStore } from './sessions.js';
 import { DASHBOARD_CSP, type StaticAsset } from './static.js';
@@ -14,6 +20,8 @@ export interface ServerOptions {
   startedAt?: string;
   assets?: Map<string, StaticAsset> | null;
   logger?: Logger;
+  /** Job-source adapters; tests inject adapters backed by fixtures. */
+  adapters?: Readonly<Record<SourceId, SourceAdapter>>;
 }
 
 /** Who is calling: the local CLI/MCP client (bearer token) or a browser dashboard session. */
@@ -29,11 +37,26 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const CLIENT_ROUTE = /^\/(?:[a-z0-9-]+(?:\/[A-Za-z0-9_-]+)*)?$/;
 const UNAUTHENTICATED_API = new Set(['/api/health']);
 
-export function buildServer({ db, token, version, startedAt, assets = null, logger = nullLogger }: ServerOptions): FastifyInstance {
+export function buildServer({
+  db,
+  token,
+  version,
+  startedAt,
+  assets = null,
+  logger = nullLogger,
+  adapters = createAdapters(),
+}: ServerOptions): FastifyInstance {
   // forceCloseConnections: open dashboard tabs hold keep-alive sockets that would otherwise block shutdown.
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
   const sessions = new SessionStore(db);
+  const tasks = new TaskSupervisor(db, logger);
+  const interrupted = tasks.recoverInterrupted();
+  if (interrupted > 0) logger.warn('tasks.interrupted', { count: interrupted });
+  const discovery = new Discovery(db, adapters, tasks);
   app.decorateRequest('principal', null);
+  app.addHook('onClose', async () => {
+    await tasks.cancelAll();
+  });
 
   const boundPort = (): number => {
     const addr = app.server.address();
@@ -138,12 +161,24 @@ export function buildServer({ db, token, version, startedAt, assets = null, logg
 
   app.get('/api/overview', async () => {
     const settings = getSettings(db);
+    const counts = jobCounts(db);
+    const boards = discovery.listBoards();
     return {
       service: { version, schemaVersion: schemaVersion(db), startedAt: startedAt ?? null },
       aiHosts: { connected: [] as string[] },
-      nextActions: nextActions({ settings }),
+      jobs: counts,
+      sources: {
+        boards: boards.length,
+        healthy: boards.filter((b) => b.health === 'OK').length,
+        failing: boards.filter((b) => b.health === 'DEGRADED' || b.health === 'NOT_FOUND').length,
+        lastSuccessfulDiscovery: discovery.lastSuccessfulDiscovery(),
+      },
+      activeTasks: tasks.list(20).filter((t) => t.state === 'RUNNING' || t.state === 'QUEUED'),
+      nextActions: nextActions({ settings, jobs: counts, boards }),
     };
   });
+
+  registerOpportunityRoutes(app, { db, discovery, tasks });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));
 

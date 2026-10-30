@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { createFileLogger } from '../core/log.js';
 import { type AppPaths, ensureHome } from '../core/paths.js';
 import { VERSION } from '../core/version.js';
+import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { openDb } from '../store/db.js';
 import { probeHealth, readRuntime, removeRuntime, type RuntimeInfo, writeRuntime } from './runtime.js';
 import { newToken } from './security.js';
@@ -27,7 +28,14 @@ export interface RunningService {
   stop(): Promise<void>;
 }
 
-export async function startService(paths: AppPaths, opts: { port?: number; webDir?: string } = {}): Promise<RunningService> {
+export interface StartOptions {
+  port?: number;
+  webDir?: string;
+  /** Test seam: job-source adapters backed by fixtures instead of the network. */
+  adapters?: Readonly<Record<SourceId, SourceAdapter>>;
+}
+
+export async function startService(paths: AppPaths, opts: StartOptions = {}): Promise<RunningService> {
   ensureHome(paths);
   const existing = readRuntime(paths.runtimeFile);
   if (existing && (await probeHealth(existing))) throw new AlreadyRunningError(existing);
@@ -37,7 +45,7 @@ export async function startService(paths: AppPaths, opts: { port?: number; webDi
   const token = newToken();
   const startedAt = new Date().toISOString();
   const assets = loadStaticAssets(opts.webDir ?? WEB_DIR);
-  const app = buildServer({ db, token, version: VERSION, startedAt, assets, logger });
+  const app = buildServer({ db, token, version: VERSION, startedAt, assets, logger, ...(opts.adapters ? { adapters: opts.adapters } : {}) });
   try {
     await app.listen({ host: '127.0.0.1', port: opts.port ?? DEFAULT_PORT });
   } catch (err) {

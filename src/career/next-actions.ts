@@ -10,13 +10,34 @@ export interface NextAction {
 
 export interface CareerState {
   settings: Record<string, unknown>;
+  jobs?: { open: number; unverified: number; unreviewed: number; shortlisted: number };
+  boards?: { source: string; board: string; health: string; lastError: string | null }[];
 }
 
-type Rule = (state: CareerState) => NextAction | null;
+type Rule = (state: CareerState) => NextAction | NextAction[] | null;
 
 const isEmptyList = (v: unknown): boolean => !Array.isArray(v) || v.length === 0;
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 const RULES: readonly Rule[] = [
+  ({ boards }) =>
+    (boards ?? [])
+      .filter((b) => b.health === 'DEGRADED' || b.health === 'NOT_FOUND')
+      .map((b) => ({
+        rule: 'sources.board-failing',
+        title: `Check the ${b.source} board “${b.board}”`,
+        reason: b.health === 'NOT_FOUND' ? 'The board does not exist on this source. The name may be misspelled.' : `The last fetch failed: ${b.lastError ?? 'unknown error'}.`,
+        href: '/opportunities/sources',
+      })),
+  ({ jobs }) =>
+    jobs && jobs.unreviewed > 0
+      ? {
+          rule: 'jobs.unreviewed',
+          title: `Review ${plural(jobs.unreviewed, 'verified open role')}`,
+          reason: 'These postings were verified open within the last 72 hours and you have not shortlisted or excluded them yet.',
+          href: '/opportunities?disposition=none&status=OPEN',
+        }
+      : null,
   ({ settings }) =>
     isEmptyList(settings['search.preferredRoles'])
       ? {
@@ -44,8 +65,20 @@ const RULES: readonly Rule[] = [
           href: '/settings#search.eligibleCountries',
         }
       : null,
+  ({ jobs, boards }) =>
+    jobs && boards && boards.length === 0 && jobs.open + jobs.unverified === 0
+      ? {
+          rule: 'jobs.no-sources',
+          title: 'Add a job board to monitor, or add a job by hand',
+          reason: 'Career Strike has no opportunities yet because no job board is monitored and no job was entered.',
+          href: '/opportunities/sources',
+        }
+      : null,
 ];
 
 export function nextActions(state: CareerState): NextAction[] {
-  return RULES.map((rule) => rule(state)).filter((a): a is NextAction => a !== null);
+  return RULES.flatMap((rule) => {
+    const out = rule(state);
+    return out === null ? [] : Array.isArray(out) ? out : [out];
+  });
 }

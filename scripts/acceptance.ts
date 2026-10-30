@@ -77,7 +77,11 @@ function main(): number {
   if (vitestFiles.length > 0) {
     const out = path.join(tmp, 'vitest.json');
     commands.push(`vitest run ${vitestFiles.join(' ')}`);
-    spawnSync('npx', ['vitest', 'run', '--reporter=json', `--outputFile=${out}`, ...vitestFiles], { stdio: 'inherit' });
+    const live = vitestFiles.some((f) => kindOfTestFile(f) === 'live-source');
+    spawnSync('npx', ['vitest', 'run', '--reporter=json', `--outputFile=${out}`, ...vitestFiles], {
+      stdio: 'inherit',
+      env: { ...process.env, ...(live ? { CS_LIVE: '1' } : {}) },
+    });
     const report = JSON.parse(fs.readFileSync(out, 'utf8')) as { testResults: FileResult[] };
     for (const r of report.testResults) results.set(path.relative(process.cwd(), r.name), r);
   }
