@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type FetchImpl, guardedGetJson } from './fetch-guard.js';
 import { htmlToBlocks } from './html.js';
 import { employmentTypeFrom, isoOrNull, publishedSalary, remotePolicyFrom, safeHttpUrl, unresolvedFacts } from './normalize.js';
-import { type NormalizedPosting, type SourceAdapter, SourceError, type SourceId } from './types.js';
+import { type ApplicationQuestion, type NormalizedPosting, type SourceAdapter, SourceError, type SourceId } from './types.js';
 
 // Schemas describe only the fields Career Strike reads; unknown fields are ignored.
 // Shapes were checked against live responses from each public API on 2026-10-30.
@@ -42,10 +42,57 @@ const GreenhouseJobs = z.object({
   ),
 });
 
+const GreenhouseQuestion = z.object({
+  label: z.string(),
+  required: z.boolean().nullish(),
+  fields: z.array(z.object({ name: z.string(), type: z.string(), values: z.array(z.object({ label: z.string() })).nullish() })),
+});
+const GreenhouseJobQuestions = z.object({
+  questions: z.array(GreenhouseQuestion).nullish(),
+  location_questions: z.array(GreenhouseQuestion).nullish(),
+  demographic_questions: z.object({ questions: z.array(z.object({ label: z.string() })).nullish() }).nullish(),
+  // Shape varies by employer and is rarely present; read defensively so it can never break the form.
+  compliance: z.unknown().optional(),
+});
+
+function complianceLabels(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((c) =>
+    c && typeof c === 'object' && Array.isArray((c as { questions?: unknown }).questions)
+      ? ((c as { questions: unknown[] }).questions
+          .map((q) => (q && typeof q === 'object' && typeof (q as { label?: unknown }).label === 'string' ? (q as { label: string }).label : null))
+          .filter((l): l is string => l !== null))
+      : [],
+  );
+}
+
+function greenhouseQuestion(q: z.infer<typeof GreenhouseQuestion>, voluntary: boolean): ApplicationQuestion | null {
+  const visible = q.fields.filter((f) => f.type !== 'input_hidden');
+  const field = visible.find((f) => f.type === 'input_file') ?? visible[0];
+  if (!field) return null;
+  const kind: ApplicationQuestion['kind'] =
+    field.type === 'input_file' ? 'file' : field.type === 'textarea' ? 'long_text' : field.type.startsWith('multi_value') ? 'choice' : 'text';
+  return { key: field.name, label: q.label, required: q.required === true, kind, options: (field.values ?? []).map((v) => v.label), voluntary };
+}
+
 function greenhouse(fetchImpl?: FetchImpl): SourceAdapter {
   return {
     id: 'greenhouse',
     label: 'Greenhouse',
+    async applicationQuestions(board, sourceJobId, signal) {
+      if (!/^\d{1,20}$/.test(sourceJobId)) throw new SourceError('not_found', 'Not a Greenhouse job id');
+      const data = await guardedGetJson(
+        `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(assertBoard(board))}/jobs/${sourceJobId}?questions=true`,
+        { fetchImpl, signal },
+      );
+      const parsed = parse(GreenhouseJobQuestions, data, 'Greenhouse');
+      const main = [...(parsed.questions ?? []), ...(parsed.location_questions ?? [])].map((q) => greenhouseQuestion(q, false));
+      // Demographic and compliance questions are voluntary; Career Strike lists them but never answers.
+      const voluntary = [...(parsed.demographic_questions?.questions ?? []).map((q) => q.label), ...complianceLabels(parsed.compliance)].map(
+        (label): ApplicationQuestion => ({ key: `voluntary:${label}`, label, required: false, kind: 'choice', options: [], voluntary: true }),
+      );
+      return [...main.filter((q): q is ApplicationQuestion => q !== null), ...voluntary];
+    },
     boardUrl: (board) => `https://job-boards.greenhouse.io/${encodeURIComponent(board)}`,
     async list(board, signal) {
       const data = await guardedGetJson(

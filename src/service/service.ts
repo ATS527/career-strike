@@ -6,6 +6,7 @@ import { type AppPaths, ensureHome } from '../core/paths.js';
 import { VERSION } from '../core/version.js';
 import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { openDb } from '../store/db.js';
+import { defaultSecretStore, type SecretStore } from '../vault/secrets.js';
 import { probeHealth, readRuntime, removeRuntime, type RuntimeInfo, writeRuntime } from './runtime.js';
 import { newToken } from './security.js';
 import { buildServer } from './server.js';
@@ -33,6 +34,7 @@ export interface StartOptions {
   webDir?: string;
   /** Test seam: job-source adapters backed by fixtures instead of the network. */
   adapters?: Readonly<Record<SourceId, SourceAdapter>>;
+  secrets?: SecretStore;
 }
 
 export async function startService(paths: AppPaths, opts: StartOptions = {}): Promise<RunningService> {
@@ -45,7 +47,17 @@ export async function startService(paths: AppPaths, opts: StartOptions = {}): Pr
   const token = newToken();
   const startedAt = new Date().toISOString();
   const assets = loadStaticAssets(opts.webDir ?? WEB_DIR);
-  const app = buildServer({ db, token, version: VERSION, startedAt, assets, logger, ...(opts.adapters ? { adapters: opts.adapters } : {}) });
+  const app = buildServer({
+    db,
+    token,
+    version: VERSION,
+    startedAt,
+    assets,
+    logger,
+    vaultDir: paths.vault,
+    secrets: opts.secrets ?? defaultSecretStore(paths.home),
+    ...(opts.adapters ? { adapters: opts.adapters } : {}),
+  });
   try {
     await app.listen({ host: '127.0.0.1', port: opts.port ?? DEFAULT_PORT });
   } catch (err) {

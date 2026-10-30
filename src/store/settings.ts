@@ -78,6 +78,38 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     classification: 'SENSITIVE',
     defaultValue: null,
   },
+  'identity.fullName': {
+    label: 'Full name',
+    help: 'As you want it to appear on applications.',
+    schema: z.string().trim().max(150).nullable(),
+    classification: 'SENSITIVE',
+    defaultValue: null,
+  },
+  'identity.email': {
+    label: 'Email for applications',
+    help: 'Shown to employers only in applications you approve.',
+    schema: z.email('Enter a valid email address').max(254).nullable(),
+    classification: 'SENSITIVE',
+    defaultValue: null,
+  },
+  'identity.phone': {
+    label: 'Phone for applications',
+    help: 'Include the country code, e.g. +91 98765 43210.',
+    schema: z
+      .string()
+      .trim()
+      .regex(/^\+?[0-9 ()-]{7,25}$/, 'Use digits, spaces and an optional leading +')
+      .nullable(),
+    classification: 'SENSITIVE',
+    defaultValue: null,
+  },
+  'identity.profileLinks': {
+    label: 'Profile links',
+    help: 'LinkedIn, GitHub or portfolio links, one per line.',
+    schema: z.array(z.url({ protocol: /^https$/, error: 'Use https:// links' }).max(300)).max(5),
+    classification: 'SENSITIVE',
+    defaultValue: [],
+  },
   'search.excludedEmployers': {
     label: 'Excluded employers',
     help: 'Employers to hide from recommendations, one per line.',

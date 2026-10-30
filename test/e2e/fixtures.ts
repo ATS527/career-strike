@@ -29,7 +29,7 @@ export class CsService {
   }
 
   env(): NodeJS.ProcessEnv {
-    return { ...process.env, CAREER_STRIKE_HOME: this.home };
+    return { ...process.env, CAREER_STRIKE_HOME: this.home, CAREER_STRIKE_SECRET_STORE: 'file' };
   }
 
   private async startProcess(port: number): Promise<void> {

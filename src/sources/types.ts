@@ -53,4 +53,15 @@ export interface SourceAdapter {
   list(board: string, signal?: AbortSignal): Promise<NormalizedPosting[]>;
   /** Public page for a board, for linking. */
   boardUrl(board: string): string;
+  /** The employer's published application form, where the ATS publishes it publicly. */
+  applicationQuestions?(board: string, sourceJobId: string, signal?: AbortSignal): Promise<ApplicationQuestion[]>;
+}
+
+export interface ApplicationQuestion {
+  key: string;
+  label: string;
+  required: boolean;
+  kind: 'text' | 'long_text' | 'file' | 'choice';
+  options: string[];
+  voluntary: boolean;
 }

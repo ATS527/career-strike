@@ -154,4 +154,74 @@ export const MIGRATIONS: readonly Migration[] = [
       ALTER TABLE jobs ADD COLUMN requirements_version INTEGER NOT NULL DEFAULT 0;
     `,
   },
+  {
+    version: 5,
+    name: 'applications_and_approvals',
+    sql: `
+      -- SENSITIVE: files in the private vault. The vault path is never stored here or exposed.
+      CREATE TABLE documents (
+        id          TEXT PRIMARY KEY,
+        kind        TEXT NOT NULL CHECK (kind IN ('resume', 'cover_letter', 'other')),
+        filename    TEXT NOT NULL,
+        mime        TEXT NOT NULL,
+        size_bytes  INTEGER NOT NULL,
+        sha256      TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+      );
+
+      -- PERSONAL: one application per job; its state is the tracker's source of truth.
+      CREATE TABLE applications (
+        id             TEXT PRIMARY KEY,
+        job_id         TEXT NOT NULL UNIQUE REFERENCES jobs (id),
+        state          TEXT NOT NULL,
+        mode           TEXT NOT NULL CHECK (mode IN ('manual', 'assisted', 'automated')),
+        current_version INTEGER NOT NULL,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      );
+
+      -- SENSITIVE: every version of what would be submitted, with its hash and why it changed.
+      CREATE TABLE application_versions (
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        version        INTEGER NOT NULL,
+        payload_json   TEXT NOT NULL,
+        payload_hash   TEXT NOT NULL,
+        created_by     TEXT NOT NULL,
+        reason         TEXT NOT NULL,
+        created_at     TEXT NOT NULL,
+        PRIMARY KEY (application_id, version)
+      );
+
+      -- SENSITIVE: an approval binds one exact payload, destination and identity. Single use.
+      CREATE TABLE approvals (
+        id             TEXT PRIMARY KEY,
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        version        INTEGER NOT NULL,
+        payload_hash   TEXT NOT NULL,
+        destination    TEXT NOT NULL,
+        identity_hash  TEXT NOT NULL,
+        nonce          TEXT NOT NULL,
+        issued_at      TEXT NOT NULL,
+        expires_at     TEXT NOT NULL,
+        mac            TEXT NOT NULL,
+        state          TEXT NOT NULL CHECK (state IN ('ACTIVE', 'CONSUMED', 'INVALIDATED', 'EXPIRED', 'REVOKED')),
+        state_reason   TEXT,
+        consumed_at    TEXT
+      );
+      CREATE UNIQUE INDEX approvals_one_active ON approvals (application_id) WHERE state = 'ACTIVE';
+
+      -- PERSONAL: every state change with who made it and why.
+      CREATE TABLE application_events (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        from_state     TEXT,
+        to_state       TEXT NOT NULL,
+        actor          TEXT NOT NULL,
+        note           TEXT,
+        evidence_json  TEXT,
+        at             TEXT NOT NULL
+      );
+      CREATE INDEX application_events_app ON application_events (application_id, id);
+    `,
+  },
 ];

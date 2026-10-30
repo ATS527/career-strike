@@ -9,6 +9,10 @@ import { describeSettings, getSettings, SettingError, setSetting } from '../stor
 import { createAdapters } from '../sources/adapters.js';
 import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { TaskSupervisor } from '../supervisor/tasks.js';
+import { ApplicationService } from '../applications/service.js';
+import { DocumentVault } from '../vault/documents.js';
+import type { SecretStore } from '../vault/secrets.js';
+import { registerApplicationRoutes } from './routes/applications.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
 import { clearedSessionCookie, readCookie, SESSION_COOKIE, sessionCookie, SessionStore } from './sessions.js';
@@ -23,6 +27,9 @@ export interface ServerOptions {
   logger?: Logger;
   /** Job-source adapters; tests inject adapters backed by fixtures. */
   adapters?: Readonly<Record<SourceId, SourceAdapter>>;
+  /** Private vault directory for candidate documents. */
+  vaultDir: string;
+  secrets: SecretStore;
 }
 
 /** Who is calling: the local CLI/MCP client (bearer token) or a browser dashboard session. */
@@ -46,6 +53,8 @@ export function buildServer({
   assets = null,
   logger = nullLogger,
   adapters = createAdapters(),
+  vaultDir,
+  secrets,
 }: ServerOptions): FastifyInstance {
   // forceCloseConnections: open dashboard tabs hold keep-alive sockets that would otherwise block shutdown.
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
@@ -190,6 +199,23 @@ export function buildServer({
   });
 
   registerOpportunityRoutes(app, { db, discovery, tasks });
+
+  const vault = new DocumentVault(db, vaultDir);
+  const applications = new ApplicationService(
+    db,
+    secrets,
+    vault,
+    async (jobId) => {
+      // Only Greenhouse publishes application forms publicly; elsewhere the standard fields are used.
+      const src = db.prepare("SELECT board, source_job_id FROM job_sources WHERE job_id = ? AND source = 'greenhouse' LIMIT 1").get(jobId) as
+        | { board: string; source_job_id: string }
+        | undefined;
+      if (!src || !adapters.greenhouse.applicationQuestions) return null;
+      return adapters.greenhouse.applicationQuestions(src.board, src.source_job_id);
+    },
+    logger,
+  );
+  registerApplicationRoutes(app, { applications, vault });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));
 

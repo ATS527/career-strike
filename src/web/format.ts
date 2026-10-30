@@ -82,3 +82,29 @@ export const EVIDENCE_LABEL: Record<string, string> = {
   settings: 'Your settings',
   inferred: 'Career Strike’s inference',
 };
+
+export const APP_STATE_LABEL: Record<string, string> = {
+  DRAFTED: 'Draft',
+  NEEDS_INFORMATION: 'Needs information',
+  READY_FOR_REVIEW: 'Ready for your review',
+  APPROVED: 'Approved — not yet submitted',
+  NEEDS_MANUAL_ACTION: 'Submit on the employer’s site',
+  SUBMISSION_IN_PROGRESS: 'Submitting',
+  SUBMITTED_CONFIRMED: 'Submitted',
+  SUBMISSION_UNCONFIRMED: 'Submission not confirmed',
+  SUBMISSION_FAILED: 'Submission failed',
+  RESPONSE_RECEIVED: 'Response received',
+  INTERVIEW: 'Interviewing',
+  OFFER: 'Offer',
+  REJECTED: 'Not successful',
+  WITHDRAWN: 'Withdrawn',
+  CLOSED: 'Closed',
+  EXPIRED: 'Expired',
+  DUPLICATE: 'Duplicate',
+  BLOCKED: 'Blocked',
+  CANCELLED: 'Cancelled',
+};
+
+export function shortHash(hash: string): string {
+  return `${hash.slice(0, 12)}…`;
+}

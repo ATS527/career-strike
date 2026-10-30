@@ -1,18 +1,36 @@
 import { type ReactElement, useEffect, useState } from 'react';
-import type { JobDetail } from '../api';
+import { api, ApiError, type ApplicationSummary, type JobDetail } from '../api';
 import { FitPanel, RequirementsPanel } from '../components/FitPanel';
 import { DispositionControls, StatusChip } from '../components/jobBits';
 import { EMPLOYMENT_LABEL, formatDate, formatDateTime, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../format';
-import { ExternalLink, Link } from '../router';
+import { ExternalLink, Link, navigate } from '../router';
 import { useResource } from '../useResource';
 import { ErrorPanel, Loading } from './states';
 
 export function JobPage({ id }: { id: string }) {
   const res = useResource<{ job: JobDetail }>(`/api/jobs/${encodeURIComponent(id)}`);
   const [job, setJob] = useState<JobDetail | null>(null);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
   useEffect(() => {
     if (res.state === 'ready') setJob(res.data.job);
   }, [res]);
+  useEffect(() => {
+    api<{ applications: ApplicationSummary[] }>('/api/applications').then(
+      (r) => setApplicationId(r.applications.find((a) => a.jobId === id)?.id ?? null),
+      () => setApplicationId(null),
+    );
+  }, [id]);
+
+  const prepare = async (): Promise<void> => {
+    setPrepareError(null);
+    try {
+      const r = await api<{ application: { id: string } }>('/api/applications', { method: 'POST', body: { jobId: id } });
+      navigate(`/applications/${r.application.id}`);
+    } catch (err) {
+      setPrepareError(err instanceof ApiError ? ((err.body as { message?: string } | null)?.message ?? 'Could not prepare an application.') : 'Could not prepare an application.');
+    }
+  };
 
   if (res.state === 'loading') return <Loading label="Loading job" />;
   if (res.state === 'error') return <ErrorPanel message="This job could not be loaded. It may not exist." onRetry={res.retry} />;
@@ -44,10 +62,26 @@ export function JobPage({ id }: { id: string }) {
         </div>
         <div className="job__actions">
           <DispositionControls jobId={job.id} title={job.title} disposition={job.disposition} onChange={(d) => setJob({ ...job, disposition: d })} />
+          {applicationId ? (
+            <Link href={`/applications/${applicationId}`} className="button">
+              Open your application
+            </Link>
+          ) : (
+            job.status !== 'CLOSED' && (
+              <button type="button" onClick={() => void prepare()}>
+                Prepare an application
+              </button>
+            )
+          )}
           {job.applyUrl && job.status !== 'CLOSED' && (
-            <ExternalLink href={job.applyUrl} className="button">
+            <ExternalLink href={job.applyUrl} className="button button--quiet">
               Open the official posting
             </ExternalLink>
+          )}
+          {prepareError && (
+            <p className="save-status save-status--error" role="alert">
+              {prepareError}
+            </p>
           )}
         </div>
       </header>

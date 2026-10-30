@@ -188,6 +188,7 @@ pre {
 
 .masthead nav ul {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
   list-style: none;
   margin: 0;
@@ -624,6 +625,10 @@ textarea {
   .masthead nav {
     order: 3;
     flex-basis: 100%;
+  }
+
+  .masthead nav a {
+    padding: 0.4rem 0.55rem;
   }
 
   .action {
@@ -1458,4 +1463,139 @@ input[type='url'] {
 
 .field-note {
   font-size: 0.85rem;
+}
+
+/* ---- applications ---- */
+
+.app-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 26rem);
+}
+
+.package {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 1.1rem;
+  align-self: start;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.package h2 {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.package h3 {
+  font-size: 0.95rem;
+  margin-top: 0.5rem;
+}
+
+.package .facts div {
+  grid-template-columns: 8rem minmax(0, 1fr);
+}
+
+.package .facts dd {
+  overflow-wrap: anywhere;
+}
+
+.disclosures {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.93rem;
+  color: var(--ink-soft);
+}
+
+.letter {
+  white-space: pre-wrap;
+  font-family: var(--font-body);
+  font-size: 0.93rem;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  margin: 0;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.app-actions {
+  display: grid;
+  gap: 0.6rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule-strong);
+}
+
+.app-actions .banner {
+  display: grid;
+  margin: 0;
+  background: var(--paper);
+  border-color: var(--accent);
+}
+
+.ack {
+  align-items: flex-start;
+}
+
+.req {
+  color: var(--attention);
+  font-weight: 400;
+}
+
+.app-message {
+  min-height: 1.4em;
+  margin: 0.75rem 0 0;
+}
+
+.history summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.upload-inline {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.doc-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.chip--app-approved,
+.chip--app-ready_for_review {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chip--app-cancelled {
+  color: var(--ink-faint);
+}
+
+@media (max-width: 960px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+input[type='file'] {
+  max-width: 100%;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.fact-form .record__part {
+  min-width: 0;
+}
+
+/* Grid items default to min-width: auto; let long labels wrap and file inputs shrink. */
+.record__part {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.record__part input[type='file'] {
+  width: 100%;
 }

@@ -23,6 +23,10 @@ export function setCsrfToken(token: string | null): void {
   csrfToken = token;
 }
 
+export function currentCsrfToken(): string {
+  return csrfToken ?? '';
+}
+
 export function onConnectionProblem(listener: ConnectionListener): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -245,4 +249,69 @@ export interface ProfileFact {
   source: 'user' | 'document';
   approved: boolean;
   createdAt: string;
+}
+
+export interface StoredDocument {
+  id: string;
+  kind: 'resume' | 'cover_letter' | 'other';
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+  sha256: string;
+  createdAt: string;
+}
+
+export type ApplicationState =
+  | 'DRAFTED' | 'NEEDS_INFORMATION' | 'READY_FOR_REVIEW' | 'APPROVED' | 'NEEDS_MANUAL_ACTION' | 'SUBMISSION_IN_PROGRESS'
+  | 'SUBMITTED_CONFIRMED' | 'SUBMISSION_UNCONFIRMED' | 'SUBMISSION_FAILED' | 'RESPONSE_RECEIVED' | 'INTERVIEW' | 'OFFER'
+  | 'REJECTED' | 'WITHDRAWN' | 'CLOSED' | 'EXPIRED' | 'DUPLICATE' | 'BLOCKED' | 'CANCELLED';
+
+export interface PayloadField {
+  key: string;
+  label: string;
+  required: boolean;
+  kind: 'text' | 'long_text' | 'file' | 'choice';
+  options: string[];
+  source: 'identity' | 'document' | 'draft' | 'candidate' | 'empty';
+  value: string | null;
+}
+
+export interface ApplicationPayload {
+  job: { id: string; canonicalKey: string; employer: string; title: string };
+  destination: { method: 'manual' | 'assisted' | 'test-ats'; url: string | null };
+  identity: { fullName: string | null; email: string | null; phone: string | null; links: string[] };
+  fields: PayloadField[];
+  coverLetter: string | null;
+  attachments: { documentId: string; kind: string; filename: string; sha256: string }[];
+  notAnswered: string[];
+}
+
+export interface ApplicationView {
+  id: string;
+  jobId: string;
+  state: ApplicationState;
+  mode: string;
+  version: number;
+  payload: ApplicationPayload;
+  payloadHash: string;
+  createdAt: string;
+  updatedAt: string;
+  job: { title: string; employer: string; status: string };
+  versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
+  events: { from: string | null; to: string; actor: string; note: string | null; at: string }[];
+  approval: { valid: boolean; reason: string; approval: { id: string; state: string; version: number; issuedAt: string; expiresAt: string; stateReason: string | null } | null };
+  warnings: { kind: string; message: string }[];
+  missingRequired: string[];
+  disclosures: string[];
+  allowedTransitions: ApplicationState[];
+}
+
+export interface ApplicationSummary {
+  id: string;
+  jobId: string;
+  state: ApplicationState;
+  title: string;
+  employer: string;
+  version: number;
+  updatedAt: string;
 }

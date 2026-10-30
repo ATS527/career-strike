@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, onConnectionProblem, setCsrfToken } from './api';
 import { AddJob } from './pages/AddJob';
+import { ApplicationPage } from './pages/ApplicationPage';
+import { Applications } from './pages/Applications';
 import { Compare } from './pages/Compare';
 import { Home } from './pages/Home';
 import { JobPage } from './pages/JobPage';
@@ -16,6 +18,7 @@ type Connection = 'checking' | 'connected' | 'unauthenticated' | 'unavailable';
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/opportunities', label: 'Opportunities' },
+  { href: '/applications', label: 'Applications' },
   { href: '/profile', label: 'Profile' },
   { href: '/settings', label: 'Settings' },
 ] as const;
@@ -111,6 +114,9 @@ function renderPage(path: string) {
   if (path === '/opportunities/sources') return <Sources />;
   if (path === '/opportunities/new') return <AddJob />;
   if (path === '/opportunities/compare') return <Compare />;
+  if (path === '/applications') return <Applications />;
+  const application = /^\/applications\/([A-Za-z0-9_-]+)$/.exec(path);
+  if (application) return <ApplicationPage key={application[1]} id={application[1]!} />;
   const job = /^\/jobs\/([A-Za-z0-9_-]+)$/.exec(path);
   if (job) return <JobPage key={job[1]} id={job[1]!} />;
   return <NotFound onHome={() => navigate('/')} />;

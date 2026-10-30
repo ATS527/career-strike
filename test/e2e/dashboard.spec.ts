@@ -142,6 +142,10 @@ test.describe('settings', () => {
       'candidate.joiningAvailability': 'immediate',
       'candidate.salaryExpectation': { currency: 'INR', minimum: 2400000, interval: 'year' },
       'search.excludedEmployers': ['Synthetic Corp'],
+      'identity.fullName': null,
+      'identity.email': null,
+      'identity.phone': null,
+      'identity.profileLinks': [],
     };
     expect(await cs.settings()).toEqual(expected);
 

@@ -1,0 +1,463 @@
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { candidateContext } from '../career/context.js';
+import { getJob } from '../career/jobs.js';
+import type { Logger } from '../core/log.js';
+import { nullLogger } from '../core/log.js';
+import type { Db } from '../store/db.js';
+import { getSettings } from '../store/settings.js';
+import type { DocumentVault } from '../vault/documents.js';
+import type { SecretStore } from '../vault/secrets.js';
+import { buildDraft, factGuard, type FormQuestion, type GuardWarning, type Identity } from './drafts.js';
+import { ApplicationPayload, disclosures, identityHash, missingRequired, payloadHash } from './payload.js';
+import { allowedTransitions, type ApplicationState, canTransition, TransitionError } from './states.js';
+
+export const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+export class ApplicationError extends Error {
+  constructor(
+    readonly code:
+      | 'JOB_NOT_FOUND'
+      | 'JOB_CLOSED'
+      | 'ALREADY_EXISTS'
+      | 'NOT_FOUND'
+      | 'INCOMPLETE'
+      | 'STALE_REVIEW'
+      | 'WARNINGS_NOT_ACKNOWLEDGED'
+      | 'NOT_EDITABLE'
+      | 'INVALID_CHANGE',
+    message: string,
+    readonly details: unknown = null,
+  ) {
+    super(message);
+  }
+}
+
+export interface ApprovalStatus {
+  id: string;
+  state: 'ACTIVE' | 'CONSUMED' | 'INVALIDATED' | 'EXPIRED' | 'REVOKED';
+  version: number;
+  payloadHash: string;
+  issuedAt: string;
+  expiresAt: string;
+  stateReason: string | null;
+}
+
+export interface ApprovalCheck {
+  valid: boolean;
+  reason: string;
+  approval: ApprovalStatus | null;
+}
+
+export interface ApplicationView {
+  id: string;
+  jobId: string;
+  state: ApplicationState;
+  mode: 'manual' | 'assisted' | 'automated';
+  version: number;
+  payload: ApplicationPayload;
+  payloadHash: string;
+  createdAt: string;
+  updatedAt: string;
+  job: { title: string; employer: string; status: string };
+  versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
+  events: { from: string | null; to: string; actor: string; note: string | null; at: string }[];
+  approval: ApprovalCheck;
+  warnings: GuardWarning[];
+  missingRequired: string[];
+  disclosures: string[];
+  allowedTransitions: readonly ApplicationState[];
+}
+
+export interface ApplicationSummary {
+  id: string;
+  jobId: string;
+  state: ApplicationState;
+  title: string;
+  employer: string;
+  version: number;
+  updatedAt: string;
+}
+
+export interface ChangeSet {
+  fields?: { key: string; value: string | null }[];
+  coverLetter?: string | null;
+  resumeDocumentId?: string | null;
+  method?: 'manual' | 'assisted';
+}
+
+interface AppRow {
+  id: string;
+  job_id: string;
+  state: ApplicationState;
+  mode: 'manual' | 'assisted' | 'automated';
+  current_version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ApprovalRow {
+  id: string;
+  application_id: string;
+  version: number;
+  payload_hash: string;
+  destination: string;
+  identity_hash: string;
+  nonce: string;
+  issued_at: string;
+  expires_at: string;
+  mac: string;
+  state: ApprovalStatus['state'];
+  state_reason: string | null;
+  consumed_at: string | null;
+}
+
+export class ApplicationService {
+  constructor(
+    private readonly db: Db,
+    private readonly secrets: SecretStore,
+    private readonly vault: DocumentVault,
+    private readonly questionsFor: (jobId: string) => Promise<FormQuestion[] | null>,
+    private readonly logger: Logger = nullLogger,
+  ) {}
+
+  // ---- reading ----
+
+  list(): ApplicationSummary[] {
+    return (
+      this.db
+        .prepare(
+          `SELECT a.id, a.job_id, a.state, a.current_version, a.updated_at, j.title, j.employer
+           FROM applications a JOIN jobs j ON j.id = a.job_id ORDER BY a.updated_at DESC`,
+        )
+        .all() as { id: string; job_id: string; state: ApplicationState; current_version: number; updated_at: string; title: string; employer: string }[]
+    ).map((r) => ({ id: r.id, jobId: r.job_id, state: r.state, title: r.title, employer: r.employer, version: r.current_version, updatedAt: r.updated_at }));
+  }
+
+  byJob(jobId: string): string | null {
+    return (this.db.prepare('SELECT id FROM applications WHERE job_id = ?').pluck().get(jobId) as string | undefined) ?? null;
+  }
+
+  async get(id: string): Promise<ApplicationView | null> {
+    const app = this.row(id);
+    if (!app) return null;
+    const { payload, hash } = this.version(id, app.current_version);
+    const job = this.db.prepare('SELECT title, employer, status FROM jobs WHERE id = ?').get(app.job_id) as { title: string; employer: string; status: string };
+    const profile = candidateContext(this.db).profile!;
+    const texts = [payload.coverLetter ?? '', ...payload.fields.filter((f) => f.kind === 'long_text' && f.key !== 'cover_letter_text').map((f) => f.value ?? '')];
+    const warnings = dedupe(texts.flatMap((t) => factGuard(t, profile)));
+    return {
+      id: app.id,
+      jobId: app.job_id,
+      state: app.state,
+      mode: app.mode,
+      version: app.current_version,
+      payload,
+      payloadHash: hash,
+      createdAt: app.created_at,
+      updatedAt: app.updated_at,
+      job,
+      versions: (
+        this.db
+          .prepare('SELECT version, created_by, reason, created_at, payload_hash FROM application_versions WHERE application_id = ? ORDER BY version DESC')
+          .all(id) as { version: number; created_by: string; reason: string; created_at: string; payload_hash: string }[]
+      ).map((v) => ({ version: v.version, createdBy: v.created_by, reason: v.reason, createdAt: v.created_at, payloadHash: v.payload_hash })),
+      events: (
+        this.db.prepare('SELECT from_state, to_state, actor, note, at FROM application_events WHERE application_id = ? ORDER BY id').all(id) as {
+          from_state: string | null;
+          to_state: string;
+          actor: string;
+          note: string | null;
+          at: string;
+        }[]
+      ).map((e) => ({ from: e.from_state, to: e.to_state, actor: e.actor, note: e.note, at: e.at })),
+      approval: await this.verifyApproval(id),
+      warnings,
+      missingRequired: missingRequired(payload),
+      disclosures: disclosures(payload),
+      allowedTransitions: allowedTransitions(app.state),
+    };
+  }
+
+  // ---- drafting ----
+
+  async create(jobId: string, actor: string): Promise<string> {
+    const ctx = candidateContext(this.db);
+    const job = getJob(this.db, jobId, ctx);
+    if (!job) throw new ApplicationError('JOB_NOT_FOUND', 'That job does not exist.');
+    if (job.status === 'CLOSED') throw new ApplicationError('JOB_CLOSED', 'This posting has closed, so there is nothing to apply to.');
+    const existing = this.byJob(jobId);
+    if (existing) throw new ApplicationError('ALREADY_EXISTS', 'You already have an application for this job.', { applicationId: existing });
+
+    let questions: FormQuestion[] | null = null;
+    try {
+      questions = await this.questionsFor(jobId);
+    } catch (err) {
+      // The form could not be read; fall back to the standard fields rather than guessing.
+      this.logger.warn('applications.questions-unavailable', { jobId, message: err instanceof Error ? err.message : String(err) });
+    }
+    const settings = getSettings(this.db);
+    const resume = this.vault.list().find((d) => d.kind === 'resume') ?? null;
+    const canonicalKey = this.db.prepare('SELECT canonical_key FROM jobs WHERE id = ?').pluck().get(jobId) as string;
+    const { payload } = buildDraft(
+      {
+        job: { id: job.id, canonicalKey, employer: job.employer, title: job.title, applyUrl: job.applyUrl },
+        questions,
+        identity: identityFrom(settings),
+        profile: ctx.profile!,
+        fit: job.fitDetail ?? null,
+        joiningAvailability: String(settings['candidate.joiningAvailability'] ?? 'unspecified'),
+        resume,
+      },
+      'manual',
+    );
+
+    const id = `app_${randomBytes(9).toString('base64url')}`;
+    const at = new Date().toISOString();
+    const reason = questions ? 'First draft from your approved profile and the employer’s published form' : 'First draft from your approved profile';
+    this.db.transaction(() => {
+      this.db
+        .prepare("INSERT INTO applications (id, job_id, state, mode, current_version, created_at, updated_at) VALUES (?, ?, 'DRAFTED', 'manual', 1, ?, ?)")
+        .run(id, jobId, at, at);
+      this.insertVersion(id, 1, payload, 'career-strike', reason, at);
+      this.event(id, null, 'DRAFTED', actor, reason, at);
+    })();
+    return id;
+  }
+
+  /**
+   * Save a new version. Any change to what would be submitted invalidates an existing approval
+   * and returns the application to DRAFTED: approval always covers exactly one version.
+   */
+  async update(id: string, changes: ChangeSet, actor: string, reason = 'Edited by you'): Promise<void> {
+    const app = this.requireRow(id);
+    if (!['DRAFTED', 'NEEDS_INFORMATION', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED'].includes(app.state)) {
+      throw new ApplicationError('NOT_EDITABLE', `An application in state ${app.state} can no longer be edited.`);
+    }
+    const { payload: current, hash: currentHash } = this.version(id, app.current_version);
+    const next: ApplicationPayload = structuredClone(current);
+
+    for (const change of changes.fields ?? []) {
+      const field = next.fields.find((f) => f.key === change.key);
+      if (!field) throw new ApplicationError('INVALID_CHANGE', `There is no field “${change.key}” on this application.`);
+      if (field.kind === 'file') throw new ApplicationError('INVALID_CHANGE', 'Choose files with the document picker.');
+      if (field.kind === 'choice' && change.value !== null && field.options.length && !field.options.includes(change.value)) {
+        throw new ApplicationError('INVALID_CHANGE', `“${change.value}” is not one of the employer’s options.`);
+      }
+      field.value = change.value === null || change.value.trim() === '' ? null : change.value;
+      field.source = field.value === null ? 'empty' : 'candidate';
+      if (field.key === 'cover_letter_text') next.coverLetter = field.value;
+    }
+    if (changes.coverLetter !== undefined) {
+      next.coverLetter = changes.coverLetter;
+      const field = next.fields.find((f) => f.key === 'cover_letter_text');
+      if (field) {
+        field.value = changes.coverLetter;
+        field.source = changes.coverLetter ? 'candidate' : 'empty';
+      }
+    }
+    if (changes.resumeDocumentId !== undefined) {
+      next.attachments = next.attachments.filter((a) => a.kind !== 'resume');
+      const resumeField = next.fields.find((f) => f.kind === 'file' && /resume|cv/i.test(`${f.key} ${f.label}`));
+      if (changes.resumeDocumentId) {
+        const doc = this.vault.get(changes.resumeDocumentId);
+        if (!doc) throw new ApplicationError('INVALID_CHANGE', 'That document does not exist.');
+        next.attachments.push({ documentId: doc.id, kind: 'resume', filename: doc.filename, sha256: doc.sha256 });
+        if (resumeField) Object.assign(resumeField, { value: doc.filename, source: 'document' });
+      } else if (resumeField) Object.assign(resumeField, { value: null, source: 'empty' });
+    }
+    if (changes.method) next.destination.method = changes.method;
+
+    const parsed = ApplicationPayload.safeParse(next);
+    if (!parsed.success) throw new ApplicationError('INVALID_CHANGE', 'That change is not valid.', parsed.error.issues);
+    if (payloadHash(parsed.data) === currentHash) return;
+
+    const version = app.current_version + 1;
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      this.insertVersion(id, version, parsed.data, actor, reason, at);
+      this.db.prepare('UPDATE applications SET current_version = ?, mode = ?, updated_at = ? WHERE id = ?').run(version, parsed.data.destination.method, at, id);
+      this.invalidateApprovals(id, `Version ${version} changed what would be submitted`, 'INVALIDATED');
+      if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED') this.transition(id, app.state, 'DRAFTED', actor, 'Edited after review; needs a fresh review', at);
+    })();
+  }
+
+  // ---- review ----
+
+  markReady(id: string, actor: string): void {
+    const app = this.requireRow(id);
+    const { payload } = this.version(id, app.current_version);
+    const missing = missingRequired(payload);
+    if (missing.length) throw new ApplicationError('INCOMPLETE', `Fill in the required items first: ${missing.join(', ')}.`, { missing });
+    if (!payload.destination.url) throw new ApplicationError('INCOMPLETE', 'This job has no official application link to send you to.');
+    this.db.transaction(() => this.transition(id, app.state, 'READY_FOR_REVIEW', actor, 'Ready for your review', new Date().toISOString()))();
+  }
+
+  saveForLater(id: string, actor: string): void {
+    const app = this.requireRow(id);
+    this.db.transaction(() => this.transition(id, app.state, 'DRAFTED', actor, 'Saved for later', new Date().toISOString()))();
+  }
+
+  reject(id: string, actor: string, note: string | null): void {
+    const app = this.requireRow(id);
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      this.invalidateApprovals(id, 'Application rejected at review', 'REVOKED');
+      this.transition(id, app.state, 'CANCELLED', actor, note ? `Rejected at review: ${note}` : 'Rejected at review', at);
+    })();
+  }
+
+  /**
+   * Approve exactly the version and payload hash the candidate reviewed. The approval is bound by
+   * an HMAC (key in the OS keychain) over the version, payload hash, destination and identity, and
+   * can be used once. Only the dashboard can call this.
+   */
+  async approve(id: string, reviewed: { version: number; payloadHash: string; acknowledgeWarnings: boolean }, actor: string): Promise<ApprovalStatus> {
+    const view = await this.get(id);
+    if (!view) throw new ApplicationError('NOT_FOUND', 'Application not found.');
+    if (!canTransition(view.state, 'APPROVED')) throw new TransitionError(view.state, 'APPROVED');
+    if (reviewed.version !== view.version || reviewed.payloadHash !== view.payloadHash) {
+      throw new ApplicationError('STALE_REVIEW', 'The application changed after you reviewed it. Review the current version.');
+    }
+    if (view.warnings.length > 0 && !reviewed.acknowledgeWarnings) {
+      throw new ApplicationError('WARNINGS_NOT_ACKNOWLEDGED', 'Confirm the flagged statements are accurate before approving.', view.warnings);
+    }
+    const key = await this.secrets.getOrCreate('approval-key');
+    const issued = new Date();
+    const row = {
+      id: `apv_${randomBytes(9).toString('base64url')}`,
+      application_id: id,
+      version: view.version,
+      payload_hash: view.payloadHash,
+      destination: destinationKey(view.payload),
+      identity_hash: identityHash(view.payload),
+      nonce: randomBytes(16).toString('hex'),
+      issued_at: issued.toISOString(),
+      expires_at: new Date(issued.getTime() + APPROVAL_TTL_MS).toISOString(),
+    };
+    const mac = computeMac(key, row);
+    this.db.transaction(() => {
+      this.invalidateApprovals(id, 'Superseded by a new approval', 'INVALIDATED');
+      this.db
+        .prepare(
+          `INSERT INTO approvals (id, application_id, version, payload_hash, destination, identity_hash, nonce, issued_at, expires_at, mac, state)
+           VALUES (@id, @application_id, @version, @payload_hash, @destination, @identity_hash, @nonce, @issued_at, @expires_at, @mac, 'ACTIVE')`,
+        )
+        .run({ ...row, mac });
+      this.transition(id, view.state, 'APPROVED', actor, `Approved version ${view.version}`, row.issued_at);
+    })();
+    return (await this.verifyApproval(id)).approval!;
+  }
+
+  /**
+   * Check that the active approval still covers exactly what would be submitted now. Used before
+   * any submission; any doubt makes it invalid.
+   */
+  async verifyApproval(id: string, now = Date.now()): Promise<ApprovalCheck> {
+    const app = this.row(id);
+    if (!app) return { valid: false, reason: 'Application not found.', approval: null };
+    const latest = this.db.prepare('SELECT * FROM approvals WHERE application_id = ? ORDER BY issued_at DESC, rowid DESC LIMIT 1').get(id) as
+      | ApprovalRow
+      | undefined;
+    if (!latest) return { valid: false, reason: 'Not approved.', approval: null };
+    const status = toStatus(latest);
+    if (latest.state !== 'ACTIVE') return { valid: false, reason: `Approval is ${latest.state.toLowerCase()}${latest.state_reason ? `: ${latest.state_reason}` : ''}.`, approval: status };
+    if (Date.parse(latest.expires_at) <= now) {
+      this.db.prepare("UPDATE approvals SET state = 'EXPIRED', state_reason = 'Approval is older than 7 days' WHERE id = ? AND state = 'ACTIVE'").run(latest.id);
+      return { valid: false, reason: 'Approval expired. Review and approve again.', approval: { ...status, state: 'EXPIRED' } };
+    }
+    const key = await this.secrets.getOrCreate('approval-key');
+    if (!macMatches(key, latest)) return { valid: false, reason: 'Approval signature does not verify; it was not issued by this Career Strike.', approval: status };
+    if (latest.version !== app.current_version) return { valid: false, reason: 'Approval covers an older version.', approval: status };
+    // Re-hash the stored payload so a modified record cannot borrow an earlier approval.
+    let current: { payload: ApplicationPayload; hash: string };
+    try {
+      current = this.version(id, app.current_version);
+    } catch {
+      return { valid: false, reason: 'The approved version is unreadable.', approval: status };
+    }
+    if (current.hash !== latest.payload_hash) return { valid: false, reason: 'What would be submitted differs from what was approved.', approval: status };
+    if (destinationKey(current.payload) !== latest.destination) return { valid: false, reason: 'The destination differs from the approved one.', approval: status };
+    if (identityHash(current.payload) !== latest.identity_hash) return { valid: false, reason: 'The identity differs from the approved one.', approval: status };
+    return { valid: true, reason: 'Approval matches exactly what would be submitted.', approval: status };
+  }
+
+  // ---- internals ----
+
+  private row(id: string): AppRow | undefined {
+    return this.db.prepare('SELECT * FROM applications WHERE id = ?').get(id) as AppRow | undefined;
+  }
+
+  private requireRow(id: string): AppRow {
+    const row = this.row(id);
+    if (!row) throw new ApplicationError('NOT_FOUND', 'Application not found.');
+    return row;
+  }
+
+  /** Load a version and recompute its hash from the stored JSON rather than trusting the stored hash. */
+  private version(id: string, version: number): { payload: ApplicationPayload; hash: string } {
+    const row = this.db.prepare('SELECT payload_json FROM application_versions WHERE application_id = ? AND version = ?').get(id, version) as
+      | { payload_json: string }
+      | undefined;
+    if (!row) throw new ApplicationError('NOT_FOUND', 'Application version not found.');
+    const payload = ApplicationPayload.parse(JSON.parse(row.payload_json));
+    return { payload, hash: payloadHash(payload) };
+  }
+
+  private insertVersion(id: string, version: number, payload: ApplicationPayload, createdBy: string, reason: string, at: string): void {
+    this.db
+      .prepare(
+        'INSERT INTO application_versions (application_id, version, payload_json, payload_hash, created_by, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(id, version, JSON.stringify(payload), payloadHash(payload), createdBy, reason, at);
+  }
+
+  private invalidateApprovals(id: string, reason: string, state: 'INVALIDATED' | 'REVOKED'): void {
+    this.db.prepare("UPDATE approvals SET state = ?, state_reason = ? WHERE application_id = ? AND state = 'ACTIVE'").run(state, reason, id);
+  }
+
+  private transition(id: string, from: ApplicationState, to: ApplicationState, actor: string, note: string, at: string): void {
+    if (!canTransition(from, to)) throw new TransitionError(from, to);
+    const changed = this.db.prepare('UPDATE applications SET state = ?, updated_at = ? WHERE id = ? AND state = ?').run(to, at, id, from).changes;
+    if (changed !== 1) throw new TransitionError(from, to);
+    this.event(id, from, to, actor, note, at);
+  }
+
+  private event(id: string, from: ApplicationState | null, to: ApplicationState, actor: string, note: string, at: string): void {
+    this.db.prepare('INSERT INTO application_events (application_id, from_state, to_state, actor, note, at) VALUES (?, ?, ?, ?, ?, ?)').run(id, from, to, actor, note, at);
+  }
+}
+
+export function identityFrom(settings: Record<string, unknown>): Identity {
+  return {
+    fullName: (settings['identity.fullName'] as string | null) ?? null,
+    email: (settings['identity.email'] as string | null) ?? null,
+    phone: (settings['identity.phone'] as string | null) ?? null,
+    links: (settings['identity.profileLinks'] as string[] | undefined) ?? [],
+  };
+}
+
+function destinationKey(payload: ApplicationPayload): string {
+  return `${payload.destination.method}:${payload.destination.url ?? ''}`;
+}
+
+type MacFields = Pick<ApprovalRow, 'id' | 'application_id' | 'version' | 'payload_hash' | 'destination' | 'identity_hash' | 'nonce' | 'issued_at' | 'expires_at'>;
+
+function computeMac(key: Buffer, r: MacFields): string {
+  const material = JSON.stringify([r.id, r.application_id, r.version, r.payload_hash, r.destination, r.identity_hash, r.nonce, r.issued_at, r.expires_at]);
+  return createHmac('sha256', key).update(material).digest('hex');
+}
+
+function macMatches(key: Buffer, r: ApprovalRow): boolean {
+  const expected = Buffer.from(computeMac(key, r), 'hex');
+  const actual = Buffer.from(r.mac, 'hex');
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+}
+
+function toStatus(r: ApprovalRow): ApprovalStatus {
+  return { id: r.id, state: r.state, version: r.version, payloadHash: r.payload_hash, issuedAt: r.issued_at, expiresAt: r.expires_at, stateReason: r.state_reason };
+}
+
+function dedupe(warnings: GuardWarning[]): GuardWarning[] {
+  const seen = new Set<string>();
+  return warnings.filter((w) => !seen.has(w.message) && seen.add(w.message));
+}

@@ -8,6 +8,7 @@ import { ErrorPanel, Loading } from './states';
 const GROUPS = [
   { id: 'search', title: 'What you are looking for' },
   { id: 'candidate', title: 'About you' },
+  { id: 'identity', title: 'Contact details for applications' },
 ] as const;
 
 export function Settings() {
@@ -171,7 +172,7 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
           <input
             id={inputId}
             type="text"
-            className="input--short"
+            className={kind.pattern && /^\^\[A-Z\]\{\d\}\$$/.test(kind.pattern) ? 'input--short' : undefined}
             value={draft as string}
             onChange={(e) => onChange(e.target.value)}
             aria-describedby={describedBy}
