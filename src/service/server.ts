@@ -281,7 +281,7 @@ export function buildServer({
     };
   });
 
-  registerOpportunityRoutes(app, { db, discovery, tasks });
+  registerOpportunityRoutes(app, { db, discovery, tasks, vault });
 
   registerApplicationRoutes(app, { applications, vault, submissions });
   registerInterviewRoutes(app, { interviews });

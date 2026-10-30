@@ -31,6 +31,23 @@ test.describe('profile', () => {
     await skills.getByRole('button', { name: 'Remove Kubernetes · 4 yrs' }).click();
     await expect(skills.getByText('None added yet.')).toBeVisible();
   });
+
+  test('skills suggested from pasted résumé text are used only after approval', async ({ page, cs }) => {
+    await signIn(page, cs);
+    await page.goto(`${cs.origin}/profile`);
+    await page.getByLabel('Résumé text').fill('Synthetic résumé: five years of Kubernetes and some Rust.');
+    await page.getByRole('button', { name: 'Suggest skills' }).click();
+    await expect(page.getByText('2 skills suggested below.')).toBeVisible();
+    const skills = page.locator('[data-fact-kind="skill"]');
+    await expect(skills.getByRole('listitem')).toHaveCount(2);
+    await expect(skills.getByText('Suggested — not used until you approve')).toHaveCount(2);
+    await skills.getByRole('button', { name: 'Approve Kubernetes' }).click();
+    await skills.getByRole('button', { name: 'Discard Rust' }).click();
+    await expect(skills.getByRole('listitem')).toHaveText([/^Kubernetes/]);
+    await expect(skills.getByText('Suggested — not used until you approve')).toHaveCount(0);
+    await expect(skills.getByRole('button', { name: 'Remove Kubernetes' })).toBeVisible();
+    expect(await page.getByLabel('Résumé text').inputValue()).toBe('');
+  });
 });
 
 test.describe('fit', () => {

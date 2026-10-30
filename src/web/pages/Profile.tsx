@@ -110,6 +110,7 @@ export function Profile() {
       </div>
       {error && <ErrorPanel message="Your profile could not be loaded." onRetry={() => void load()} />}
       {!facts && !error && <Loading label="Loading your profile" />}
+      {facts && <SuggestSkills onChange={() => void load()} />}
       {facts &&
         SECTIONS.map((section) => (
           <FactSection key={section.kind} section={section} facts={facts.filter((f) => f.kind === section.kind)} onChange={() => void load()} />
@@ -147,6 +148,16 @@ function FactSection({ section, facts, onChange }: { section: (typeof SECTIONS)[
     }
   };
 
+  const approve = async (fact: ProfileFact): Promise<void> => {
+    try {
+      await api(`/api/profile/facts/${fact.id}/approve`, { method: 'POST' });
+      setStatus(`Approved ${section.describe(fact.value)}.`);
+      onChange();
+    } catch {
+      setStatus('Could not approve. Try again.');
+    }
+  };
+
   const remove = async (fact: ProfileFact): Promise<void> => {
     try {
       await api(`/api/profile/facts/${fact.id}`, { method: 'DELETE' });
@@ -169,9 +180,15 @@ function FactSection({ section, facts, onChange }: { section: (typeof SECTIONS)[
           {facts.map((f) => (
             <li key={f.id}>
               <span>{section.describe(f.value)}</span>
-              {!f.approved && <span className="badge">Not approved — not used</span>}
+              {!f.approved && <span className="badge">Suggested — not used until you approve</span>}
+              {!f.approved && (
+                <button type="button" onClick={() => void approve(f)}>
+                  Approve<span className="visually-hidden"> {section.describe(f.value)}</span>
+                </button>
+              )}
               <button type="button" className="quiet" onClick={() => void remove(f)}>
-                Remove<span className="visually-hidden"> {section.describe(f.value)}</span>
+                {f.approved ? 'Remove' : 'Discard'}
+                <span className="visually-hidden"> {section.describe(f.value)}</span>
               </button>
             </li>
           ))}
@@ -216,6 +233,52 @@ function FactSection({ section, facts, onChange }: { section: (typeof SECTIONS)[
         })}
         <div className="fact-form__submit">
           <button type="submit">Add</button>
+        </div>
+      </form>
+      <p role="status" aria-live="polite" className="save-status">
+        {status}
+      </p>
+    </section>
+  );
+}
+
+/** Find known skills in pasted résumé text. The text itself is not kept. */
+function SuggestSkills({ onChange }: { onChange: () => void }) {
+  const [text, setText] = useState('');
+  const [status, setStatus] = useState<string | null>(null);
+  const submit = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    if (!text.trim()) {
+      setStatus('Paste your résumé text first.');
+      return;
+    }
+    try {
+      const { suggested } = await api<{ suggested: ProfileFact[] }>('/api/profile/suggestions', { method: 'POST', body: { text } });
+      setText('');
+      setStatus(
+        suggested.length === 0
+          ? 'No new skills found. Add any that are missing by hand below.'
+          : `${suggested.length} skill${suggested.length === 1 ? '' : 's'} suggested below. Approve the ones that are true; nothing is used until you do.`,
+      );
+      onChange();
+    } catch {
+      setStatus('Could not read the text. Check that the service is running.');
+    }
+  };
+  return (
+    <section className="settings-group" aria-labelledby="suggest-title">
+      <h2 id="suggest-title">Suggest skills from your résumé</h2>
+      <p className="help">
+        Paste the text of your résumé. Career Strike looks for skills it recognises, on this computer, and lists them for you to
+        approve or discard. The pasted text is not saved.
+      </p>
+      <form onSubmit={(e) => void submit(e)} noValidate>
+        <div className="record__part">
+          <label htmlFor="resume-text">Résumé text</label>
+          <textarea id="resume-text" rows={6} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" spellCheck={false} />
+        </div>
+        <div className="field__actions">
+          <button type="submit">Suggest skills</button>
         </div>
       </form>
       <p role="status" aria-live="polite" className="save-status">

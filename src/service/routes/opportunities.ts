@@ -3,15 +3,20 @@ import { z } from 'zod';
 import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { candidateContext } from '../../career/context.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
-import { addFact, deleteFact, listFacts, NewFact, updateFact } from '../../career/profile.js';
+import { addFact, approveFact, deleteFact, listFacts, NewFact, suggestSkills, updateFact } from '../../career/profile.js';
 import type { Db } from '../../store/db.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { TaskSupervisor } from '../../supervisor/tasks.js';
+import type { DocumentVault } from '../../vault/documents.js';
 
 const AddBoard = z.union([
   z.object({ source: z.enum(['greenhouse', 'lever', 'ashby']), board: z.string().trim().min(1).max(100) }).strict(),
   z.object({ url: z.string().trim().min(1).max(2000) }).strict(),
+]);
+const SuggestFrom = z.union([
+  z.object({ text: z.string().trim().min(1, 'Paste your résumé text').max(200_000) }).strict(),
+  z.object({ documentId: z.string().regex(/^doc_[A-Za-z0-9_-]+$/) }).strict(),
 ]);
 const DispositionBody = z.object({ disposition: z.enum(['none', 'shortlisted', 'excluded']) }).strict();
 
@@ -23,8 +28,8 @@ function invalid(reply: FastifyReply, issues: z.core.$ZodIssue[]): FastifyReply 
   return reply.code(400).send({ error: 'INVALID_INPUT', issues });
 }
 
-export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; discovery: Discovery; tasks: TaskSupervisor }): void {
-  const { db, discovery, tasks } = deps;
+export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; discovery: Discovery; tasks: TaskSupervisor; vault: DocumentVault }): void {
+  const { db, discovery, tasks, vault } = deps;
   const ctx = () => candidateContext(db);
   const practiceOrigin = (): string | null => (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
 
@@ -114,6 +119,30 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
     const parsed = NewFact.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
     return reply.code(201).send({ fact: addFact(db, parsed.data, actorOf(req)) });
+  });
+
+  // Résumé text is read here, locally, and never stored: only the suggested skills are kept.
+  app.post('/api/profile/suggestions', async (req, reply) => {
+    const parsed = SuggestFrom.safeParse(req.body);
+    if (!parsed.success) return invalid(reply, parsed.error.issues);
+    let text: string;
+    if ('text' in parsed.data) text = parsed.data.text;
+    else {
+      const doc = vault.get(parsed.data.documentId);
+      if (!doc) return reply.code(404).send({ error: 'NOT_FOUND' });
+      // PDF and Word text extraction is not built in; say so rather than guess.
+      if (doc.mime !== 'text/plain') {
+        return reply.code(400).send({ error: 'UNSUPPORTED_TYPE', message: 'Skills can be suggested from plain-text documents only. Paste the text of a PDF or Word résumé instead.' });
+      }
+      text = vault.read(doc.id)!.toString('utf8');
+    }
+    return reply.code(201).send({ suggested: suggestSkills(db, text, actorOf(req)) });
+  });
+
+  app.post<{ Params: { id: string } }>('/api/profile/facts/:id/approve', async (req, reply) => {
+    const fact = approveFact(db, req.params.id, actorOf(req));
+    if (!fact) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return { fact };
   });
 
   app.put<{ Params: { id: string } }>('/api/profile/facts/:id', async (req, reply) => {

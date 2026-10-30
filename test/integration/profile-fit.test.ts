@@ -75,6 +75,58 @@ describe('candidate profile', () => {
     const { jobs } = (await call('GET', '/api/jobs')).body as { jobs: { fit: { tier: string; matchedSkills: string[] } }[] };
     expect(jobs[0]!.fit).toMatchObject({ tier: 'unknown', matchedSkills: [] });
   });
+
+  it('suggests skills from résumé text as unapproved facts, used only once approved', async () => {
+    const { s, call, paths, seed } = await start();
+    seed([posting('1', 'Platform Engineer', ['Strong Kubernetes', 'Experience with Terraform'])]);
+    await call('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'Terraform' } });
+    const resume = 'Synthetic Person — ran k8s clusters, wrote Terraform and Python. Unique-marker-7f3a.';
+    const res = await call('POST', '/api/profile/suggestions', { text: resume });
+    expect(res.status).toBe(201);
+    const suggested = (res.body as { suggested: { id: string; value: { name: string }; source: string; approved: boolean }[] }).suggested;
+    // Terraform is already in the profile, so it is not suggested again.
+    expect(suggested.map((f) => f.value.name).sort()).toEqual(['Kubernetes', 'Python']);
+    expect(suggested.every((f) => f.source === 'document' && !f.approved)).toBe(true);
+
+    const fit = async () => ((await call('GET', '/api/jobs')).body as { jobs: { fit: { matchedSkills: string[] } }[] }).jobs[0]!.fit.matchedSkills;
+    expect(await fit()).toEqual(['Terraform']);
+    const k8s = suggested.find((f) => f.value.name === 'Kubernetes')!;
+    expect((await call('POST', `/api/profile/facts/${k8s.id}/approve`)).body).toMatchObject({ fact: { approved: true, source: 'document' } });
+    expect((await fit()).sort()).toEqual(['Kubernetes', 'Terraform']);
+    // Discarding a suggestion removes it; running again finds only what is still missing.
+    const py = suggested.find((f) => f.value.name === 'Python')!;
+    expect((await call('DELETE', `/api/profile/facts/${py.id}`)).status).toBe(200);
+    expect((await call('POST', `/api/profile/facts/fact_nope/approve`)).status).toBe(404);
+    expect(((await call('POST', '/api/profile/suggestions', { text: resume })).body as { suggested: { value: { name: string } }[] }).suggested.map((f) => f.value.name)).toEqual(['Python']);
+    expect((await call('POST', '/api/profile/suggestions', { text: '  ' })).status).toBe(400);
+
+    // The pasted text is never stored, nor written to the audit log or service log.
+    const db = openDb(paths.db);
+    const dump = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").pluck().all() as string[];
+    for (const table of dump) expect(JSON.stringify(db.prepare(`SELECT * FROM "${table}"`).all())).not.toContain('Unique-marker-7f3a');
+    db.close();
+    expect(JSON.stringify(s)).not.toContain('Unique-marker-7f3a');
+  });
+
+  it('reads skills from a stored plain-text résumé and says plainly that PDF text is not extracted', async () => {
+    const { s, call } = await start();
+    const upload = async (mime: string, bytes: Buffer) =>
+      (
+        await fetch(`http://127.0.0.1:${s.info.port}/api/documents`, {
+          method: 'POST',
+          headers: { authorization: `Bearer ${s.info.token}`, 'content-type': mime, 'x-cs-document-kind': 'resume', 'x-cs-filename': 'resume' },
+          body: bytes,
+        }).then((r) => r.json())
+      ) as { document: { id: string } };
+    const txt = await upload('text/plain', Buffer.from('Built services in Python and PostgreSQL.'));
+    const res = await call('POST', '/api/profile/suggestions', { documentId: txt.document.id });
+    expect((res.body as { suggested: { value: { name: string } }[] }).suggested.map((f) => f.value.name).sort()).toEqual(['PostgreSQL', 'Python']);
+    const pdf = await upload('application/pdf', Buffer.from('%PDF-1.4\nsynthetic'));
+    const refused = await call('POST', '/api/profile/suggestions', { documentId: pdf.document.id });
+    expect(refused.status).toBe(400);
+    expect(refused.body).toMatchObject({ error: 'UNSUPPORTED_TYPE' });
+    expect((await call('POST', '/api/profile/suggestions', { documentId: 'doc_missing' })).status).toBe(404);
+  });
 });
 
 describe('fit in the opportunities API', () => {

@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { canonicalSkill } from '../matching/skills.js';
+import { canonicalSkill, skillsIn } from '../matching/skills.js';
 import type { Db } from '../store/db.js';
 
 const thisYear = (): number => new Date().getUTCFullYear();
@@ -141,6 +141,45 @@ export function deleteFact(db: Db, id: string, actor: string): boolean {
     if (deleted) db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.fact.deleted', id);
   })();
   return deleted;
+}
+
+/**
+ * Suggest skills found in résumé text. Each becomes an unapproved, document-sourced fact: it is
+ * shown for the candidate to approve or discard and is invisible to matching and applications
+ * until approved. Skills already in the profile are not suggested again.
+ */
+export function suggestSkills(db: Db, text: string, actor: string): ProfileFact[] {
+  const have = new Set(
+    listFacts(db)
+      .filter((f) => f.kind === 'skill')
+      .map((f) => String(f.value.name).toLowerCase()),
+  );
+  const found = skillsIn(text).filter((name) => !have.has(name.toLowerCase()));
+  const at = new Date().toISOString();
+  const ids: string[] = [];
+  db.transaction(() => {
+    for (const name of found) {
+      const id = `fact_${randomBytes(9).toString('base64url')}`;
+      db.prepare(
+        "INSERT INTO profile_facts (id, kind, value_json, source, approved, created_at, updated_at) VALUES (?, 'skill', ?, 'document', 0, ?, ?)",
+      ).run(id, JSON.stringify({ name, years: null, level: null }), at, at);
+      ids.push(id);
+    }
+    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.skills.suggested', `${ids.length} suggested`);
+  })();
+  return ids.map((id) => toFact(db.prepare('SELECT * FROM profile_facts WHERE id = ?').get(id) as Row));
+}
+
+/** The candidate confirms a suggested fact; from now on it is used like one they typed. */
+export function approveFact(db: Db, id: string, actor: string): ProfileFact | null {
+  const at = new Date().toISOString();
+  let changed = false;
+  db.transaction(() => {
+    changed = db.prepare('UPDATE profile_facts SET approved = 1, updated_at = ? WHERE id = ? AND approved = 0').run(at, id).changes > 0;
+    if (changed) db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.fact.approved', id);
+  })();
+  const row = db.prepare('SELECT * FROM profile_facts WHERE id = ?').get(id) as Row | undefined;
+  return row ? toFact(row) : null;
 }
 
 /** The approved profile in the shape matching needs. Unapproved facts are invisible here. */
