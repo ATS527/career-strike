@@ -11,6 +11,8 @@ export interface SecretStore {
   readonly kind: 'keychain' | 'file';
   /** Return the named secret, creating a random 32-byte one on first use. */
   getOrCreate(name: string): Promise<Buffer>;
+  /** Remove the named secret if it exists. */
+  delete(name: string): Promise<void>;
 }
 
 /**
@@ -81,6 +83,11 @@ export class FileSecretStore implements SecretStore {
         return Buffer.from(fs.readFileSync(file, 'utf8').trim(), 'hex');
       }
     }
+  }
+
+  async delete(name: string): Promise<void> {
+    if (!/^[a-z0-9-]+$/.test(name)) throw new Error('Invalid secret name');
+    fs.rmSync(path.join(this.dir, `${name}.key`), { force: true });
   }
 }
 

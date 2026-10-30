@@ -6,9 +6,11 @@ import { Command, InvalidArgumentError } from 'commander';
 import { appPaths, ensureHome, findGitRoot } from '../core/paths.js';
 import { MIN_NODE_MAJOR, VERSION } from '../core/version.js';
 import { inspectDb, latestKnownVersion, openDb, schemaVersion } from '../store/db.js';
+import { backup, deleteAllData, exportData, restore } from '../store/lifecycle.js';
+import { defaultSecretStore } from '../vault/secrets.js';
 import { HOSTS, type Host, hostVersion, register, settlesTo, unregister } from '../mcp/hosts.js';
 import { runMcpStdio, tokenFile } from '../mcp/server.js';
-import { dashboardUrl, openInBrowser, startDetached, stopService } from '../service/control.js';
+import { dashboardUrl, openInBrowser, processAlive, startDetached, stopService } from '../service/control.js';
 import { localRequest } from '../service/http-client.js';
 import { probeHealth, readRuntime } from '../service/runtime.js';
 import { AlreadyRunningError, DEFAULT_PORT, startService } from '../service/service.js';
@@ -210,6 +212,66 @@ program
     checks.push({ name: 'service', ok: true, detail: running && info ? `running on port ${info.port}` : 'not running' });
     for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name.padEnd(18)} ${c.detail}`);
     if (checks.some((c) => !c.ok)) process.exitCode = 1;
+  });
+
+async function requireStopped(action: string): Promise<void> {
+  const info = readRuntime(appPaths().runtimeFile);
+  // A live process counts even if it does not answer: a hung service still holds the database open.
+  if (info && ((await probeHealth(info)) || processAlive(info.pid))) {
+    throw new Error(`The service is running (pid ${info.pid}). Stop it first with \`career-strike stop\`, then ${action}.`);
+  }
+}
+
+program
+  .command('export')
+  .description('Write all your career data and documents to a new folder, readable without Career Strike')
+  .argument('<folder>', 'a new or empty folder outside any git repository')
+  .action((folder: string) => {
+    const r = exportData(appPaths(), folder);
+    const rows = Object.values(r.tables).reduce((a, b) => a + b, 0);
+    console.log(`Exported ${rows} records and ${r.documents} documents to ${r.dir}`);
+    console.log(`Left out on purpose: ${r.omitted.join('; ')}.`);
+    console.log('This folder contains private information. Keep it somewhere only you can read.');
+  });
+
+program
+  .command('backup')
+  .description('Copy the database and documents to a new folder for `career-strike restore`')
+  .argument('<folder>', 'a new or empty folder outside any git repository')
+  .action((folder: string) => {
+    const r = backup(appPaths(), folder);
+    console.log(`Backed up ${r.files} files (schema v${r.schemaVersion}) to ${r.dir}`);
+    console.log('Approval signing keys stay in your keychain and are not part of the backup; approvals made before a restore on another computer must be given again.');
+  });
+
+program
+  .command('restore')
+  .description('Replace current data with a verified backup (current data is kept aside first)')
+  .argument('<folder>', 'a folder written by `career-strike backup`')
+  .action(async (folder: string) => {
+    await requireStopped('restore');
+    const r = restore(appPaths(), folder);
+    console.log(`Restored (schema v${r.schemaVersion}).${r.previous ? ` Your previous data was moved to ${r.previous}` : ''}`);
+  });
+
+const DELETE_PHRASE = 'delete my career data';
+program
+  .command('delete-data')
+  .description('Permanently delete all Career Strike data on this computer (export first if you want a copy)')
+  .option('--confirm <phrase>', `type exactly: "${DELETE_PHRASE}"`)
+  .action(async (opts: { confirm?: string }) => {
+    const paths = appPaths();
+    if (opts.confirm !== DELETE_PHRASE) {
+      console.error(`This permanently deletes your profile, applications, documents, settings, logs and backups in ${paths.home}.`);
+      console.error(`Nothing was deleted. To go ahead, run: career-strike delete-data --confirm "${DELETE_PHRASE}"`);
+      process.exitCode = 1;
+      return;
+    }
+    await requireStopped('delete your data');
+    const r = await deleteAllData(paths, defaultSecretStore(paths.home));
+    console.log(`Deleted: ${r.removed.join(', ') || 'nothing was stored'}; secrets: ${r.secretsRemoved.join(', ')}.`);
+    if (r.leftInPlace.length) console.log(`Not created by Career Strike, so left in place in ${paths.home}: ${r.leftInPlace.join(', ')}`);
+    console.log('AI assistants may still list Career Strike in their settings: run `career-strike disconnect <assistant>` to remove it.');
   });
 
 try {

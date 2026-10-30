@@ -58,7 +58,7 @@ export async function stopService(paths: AppPaths, timeoutMs = 10_000): Promise<
   throw new Error(`Service pid ${info.pid} did not stop within ${timeoutMs / 1000}s.`);
 }
 
-function processAlive(pid: number): boolean {
+export function processAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
