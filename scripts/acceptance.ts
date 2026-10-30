@@ -14,13 +14,13 @@ const REGISTRY = 'acceptance/registry.json';
 interface FileResult {
   name: string;
   status: string;
-  assertionResults: { fullName: string; status: string }[];
+  assertionResults: { fullName: string; status: string; failureMessages?: string[] }[];
 }
 
 interface PlaywrightSuite {
   file?: string;
   title: string;
-  specs?: { title: string; ok: boolean; tests?: { status?: string }[] }[];
+  specs?: { title: string; ok: boolean; tests?: { status?: string; results?: { error?: { message?: string } }[] }[] }[];
   suites?: PlaywrightSuite[];
 }
 
@@ -34,7 +34,8 @@ function playwrightResults(suites: PlaywrightSuite[]): FileResult[] {
       const entry = byFile.get(f) ?? { name: path.resolve('test/e2e', f), status: 'passed', assertionResults: [] };
       // A skipped test proved nothing: it never counts as evidence.
       const skipped = (spec.tests ?? []).every((t) => t.status === 'skipped');
-      entry.assertionResults.push({ fullName: spec.title, status: skipped ? 'skipped' : spec.ok ? 'passed' : 'failed' });
+      const errors = (spec.tests ?? []).flatMap((t) => (t.results ?? []).map((r) => r.error?.message).filter((m): m is string => !!m));
+      entry.assertionResults.push({ fullName: spec.title, status: skipped ? 'skipped' : spec.ok ? 'passed' : 'failed', failureMessages: errors });
       byFile.set(f, entry);
     }
     for (const child of suite.suites ?? []) visit(child, f);
@@ -120,8 +121,13 @@ function main(): number {
     const failed = c.tests.map((t) => results.get(t)).filter((r) => r !== undefined && r.status !== 'passed');
     if (missing.length > 0 || failed.length > 0) {
       failures += 1;
-      const firstFailure = failed[0]?.assertionResults.find((a) => a.status === 'failed')?.fullName;
-      const cause = missing.length > 0 ? `No result for ${missing.join(', ')}` : `${path.relative(process.cwd(), failed[0]!.name)}: ${firstFailure ?? 'file failed'}`;
+      const first = failed[0]?.assertionResults.find((a) => a.status === 'failed');
+      // Keep the first line of the error so a failure can be diagnosed from the registry alone.
+      const reason = (first?.failureMessages?.[0] ?? '').replace(/\u001b\[[0-9;]*m/g, '').split('\n').find((l) => l.trim() !== '')?.trim().slice(0, 240);
+      const cause =
+        missing.length > 0
+          ? `No result for ${missing.join(', ')}`
+          : `${path.relative(process.cwd(), failed[0]!.name)}: ${first?.fullName ?? 'file failed'}${reason ? ` — ${reason}` : ''}`;
       return { ...c, status: 'FAIL', failureCause: cause, evidence: { revision, command, exitCode: 1, at, kinds: kindsOf(c.tests) } };
     }
     const kinds = kindsOf(c.tests);
