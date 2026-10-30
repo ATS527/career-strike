@@ -8,6 +8,7 @@ import { Home } from './pages/Home';
 import { JobPage } from './pages/JobPage';
 import { NotFound } from './pages/NotFound';
 import { Opportunities } from './pages/Opportunities';
+import { Prep } from './pages/Prep';
 import { Profile } from './pages/Profile';
 import { Settings } from './pages/Settings';
 import { Sources } from './pages/Sources';
@@ -115,6 +116,8 @@ function renderPage(path: string) {
   if (path === '/opportunities/new') return <AddJob />;
   if (path === '/opportunities/compare') return <Compare />;
   if (path === '/applications') return <Applications />;
+  const prep = /^\/applications\/([A-Za-z0-9_-]+)\/prep$/.exec(path);
+  if (prep) return <Prep key={prep[1]} applicationId={prep[1]!} />;
   const application = /^\/applications\/([A-Za-z0-9_-]+)$/.exec(path);
   if (application) return <ApplicationPage key={application[1]} id={application[1]!} />;
   const job = /^\/jobs\/([A-Za-z0-9_-]+)$/.exec(path);

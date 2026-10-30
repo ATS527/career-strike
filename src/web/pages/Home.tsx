@@ -64,6 +64,18 @@ export function Home() {
               <Count label="Interviewing" value={overview.data.applications.interviewing} href="/applications" />
               <Count label="Offers" value={overview.data.applications.offers} href="/applications" />
             </dl>
+            {overview.data.interviews.length > 0 && (
+              <>
+                <h3 className="pipeline__sub">Upcoming interviews</h3>
+                <ul className="disclosures" data-testid="upcoming-interviews">
+                  {overview.data.interviews.map((i) => (
+                    <li key={i.id}>
+                      <Link href={`/applications/${i.applicationId}/prep`}>{i.stage}</Link> · {i.title} at {i.employer} · {ago(i.scheduledAt)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {overview.data.followUps.length > 0 && (
               <>
                 <h3 className="pipeline__sub">Upcoming follow-ups</h3>

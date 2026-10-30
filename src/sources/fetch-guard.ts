@@ -18,6 +18,7 @@ export interface GuardOptions {
   /** Overridable for tests; production uses ALLOWED_HOSTS. */
   allowedHosts?: ReadonlySet<string>;
   minIntervalMs?: number;
+  timeoutMs?: number;
 }
 
 export class BlockedUrlError extends SourceError {
@@ -64,7 +65,7 @@ export async function guardedGetJson(raw: string, opts: GuardOptions = {}): Prom
   if (wait > 0) await sleep(wait, opts.signal);
   lastRequestAt.set(url.host, Date.now());
 
-  const timeout = AbortSignal.timeout(TIMEOUT_MS);
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? TIMEOUT_MS);
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
   let res: Response;
   try {

@@ -15,6 +15,8 @@ import { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
 import { McpClientStore, type Scope } from '../mcp/clients.js';
 import { registerApplicationRoutes } from './routes/applications.js';
+import { InterviewService } from '../interview/service.js';
+import { registerInterviewRoutes } from './routes/interviews.js';
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
@@ -86,6 +88,7 @@ export function buildServer({
     (applyUrl) => submissions.methodFor(applyUrl),
   );
   const submissions = new SubmissionEngine(db, applications, vault, tasks);
+  const interviews = new InterviewService(db, applications);
   const recovered = applications.recoverInterruptedSubmissions();
   if (recovered > 0) logger.warn('submissions.interrupted', { count: recovered });
   const discovery = new Discovery(db, adapters, tasks, () => {
@@ -228,6 +231,7 @@ export function buildServer({
       expiredUnsent: sum('EXPIRED'),
     };
     const followUps = applications.openFollowUps();
+    const upcomingInterviews = interviews.upcoming();
     const matches = {
       strongUnreviewed: fresh.filter((j) => j.fit?.tier === 'strong').length,
       immediateStartUnreviewed: fresh.filter((j) => j.fit?.immediateStartAsked && j.fit.tier !== 'ineligible').length,
@@ -247,6 +251,7 @@ export function buildServer({
       matches,
       applications: appCounts,
       followUps: followUps.slice(0, 5),
+      interviews: upcomingInterviews.slice(0, 5),
       nextActions: nextActions({
         settings,
         jobs: counts,
@@ -255,6 +260,9 @@ export function buildServer({
         availability: ctx.settings?.joiningAvailability,
         applications: appCounts,
         followUpsDue: followUps.filter((f) => Date.parse(f.dueAt) <= Date.now()).map((f) => ({ id: f.id, note: f.note, title: f.title, employer: f.employer, applicationId: f.applicationId })),
+        interviewsSoon: upcomingInterviews
+          .filter((i) => Date.parse(i.scheduledAt) - Date.now() <= 7 * 24 * 3600_000)
+          .map((i) => ({ applicationId: i.applicationId, stage: i.stage, scheduledAt: i.scheduledAt, employer: i.employer ?? '', title: i.title ?? '' })),
       }),
     };
   });
@@ -262,6 +270,7 @@ export function buildServer({
   registerOpportunityRoutes(app, { db, discovery, tasks });
 
   registerApplicationRoutes(app, { applications, vault, submissions });
+  registerInterviewRoutes(app, { interviews });
   registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));

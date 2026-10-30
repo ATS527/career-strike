@@ -286,4 +286,35 @@ export const MIGRATIONS: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 9,
+    name: 'interviews_and_practice',
+    sql: `
+      -- PERSONAL: interviews and assessments for an application.
+      CREATE TABLE interviews (
+        id             TEXT PRIMARY KEY,
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        stage          TEXT NOT NULL,
+        format         TEXT NOT NULL CHECK (format IN ('phone', 'video', 'onsite', 'take_home', 'other')),
+        scheduled_at   TEXT NOT NULL,
+        notes          TEXT,
+        outcome        TEXT NOT NULL CHECK (outcome IN ('pending', 'passed', 'not_passed', 'cancelled')),
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      );
+      CREATE INDEX interviews_when ON interviews (scheduled_at);
+
+      -- SENSITIVE: the candidate's practice log, with self-rated confidence.
+      CREATE TABLE practice_sessions (
+        id             TEXT PRIMARY KEY,
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        topic_id       TEXT NOT NULL,
+        notes          TEXT,
+        confidence     INTEGER NOT NULL CHECK (confidence BETWEEN 1 AND 5),
+        minutes        INTEGER CHECK (minutes BETWEEN 1 AND 600),
+        practiced_at   TEXT NOT NULL
+      );
+      CREATE INDEX practice_sessions_app ON practice_sessions (application_id, topic_id);
+    `,
+  },
 ];

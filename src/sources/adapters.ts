@@ -83,7 +83,8 @@ function greenhouse(fetchImpl?: FetchImpl): SourceAdapter {
       if (!/^\d{1,20}$/.test(sourceJobId)) throw new SourceError('not_found', 'Not a Greenhouse job id');
       const data = await guardedGetJson(
         `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(assertBoard(board))}/jobs/${sourceJobId}?questions=true`,
-        { fetchImpl, signal },
+        // Drafting waits on this; fall back to the standard fields rather than keep the candidate waiting.
+        { fetchImpl, signal, timeoutMs: 8_000, minIntervalMs: 0 },
       );
       const parsed = parse(GreenhouseJobQuestions, data, 'Greenhouse');
       const main = [...(parsed.questions ?? []), ...(parsed.location_questions ?? [])].map((q) => greenhouseQuestion(q, false));

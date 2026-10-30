@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type PayloadField, type StoredDocument } from '../api';
+import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type Interview, type PayloadField, type StoredDocument } from '../api';
 import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
 import { ExternalLink, Link, navigate } from '../router';
 import { ErrorPanel, Loading } from './states';
@@ -95,6 +95,7 @@ export function ApplicationPage({ id }: { id: string }) {
           <h2 id="package-title">Exactly what would be sent</h2>
           <Package view={view} />
           <Actions view={view} busy={busy} post={post} run={run} />
+          <Interviews view={view} onChange={() => void load()} />
           <FollowUps view={view} onChange={() => void load()} />
           <History view={view} />
         </aside>
@@ -656,6 +657,98 @@ function FollowUps({ view, onChange }: { view: ApplicationView; onChange: () => 
           </span>
         )}
       </form>
+    </section>
+  );
+}
+
+const SUBMITTED = ['SUBMITTED_CONFIRMED', 'RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER'];
+const OUTCOME_TEXT: Record<Interview['outcome'], string> = { pending: 'Upcoming', passed: 'Went well / passed', not_passed: 'Not progressed', cancelled: 'Cancelled' };
+
+function Interviews({ view, onChange }: { view: ApplicationView; onChange: () => void }) {
+  const [list, setList] = useState<Interview[]>([]);
+  const [stage, setStage] = useState('');
+  const [format, setFormat] = useState('video');
+  const [when, setWhen] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCallback(async () => {
+    const prep = await api<{ interviews: Interview[] }>(`/api/applications/${view.id}/prep`).catch(() => ({ interviews: [] }));
+    setList(prep.interviews);
+  }, [view.id]);
+  useEffect(() => void reload(), [reload, view.state]);
+  const canSchedule = SUBMITTED.includes(view.state);
+  return (
+    <section className="follow-ups" aria-labelledby="int-title">
+      <h3 id="int-title">Interviews</h3>
+      <p>
+        <Link href={`/applications/${view.id}/prep`}>Prepare for interviews</Link>
+      </p>
+      {list.length > 0 && (
+        <ul className="disclosures" data-testid="interviews">
+          {list.map((i) => (
+            <li key={i.id}>
+              {i.stage} · {formatDateTime(i.scheduledAt)} · {i.format.replace('_', '-')} ·{' '}
+              <label className="visually-hidden" htmlFor={`int-${i.id}`}>
+                Outcome of {i.stage}
+              </label>
+              <select
+                id={`int-${i.id}`}
+                value={i.outcome}
+                onChange={async (e) => {
+                  await api(`/api/interviews/${i.id}`, { method: 'PUT', body: { outcome: e.target.value } }).catch(() => setError('Could not update.'));
+                  void reload();
+                }}
+              >
+                {Object.entries(OUTCOME_TEXT).map(([k, v]) => (
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </li>
+          ))}
+        </ul>
+      )}
+      {canSchedule ? (
+        <form
+          className="fu-form"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            setError(null);
+            try {
+              await api(`/api/applications/${view.id}/interviews`, { method: 'POST', body: { stage: stage.trim(), format, scheduledAt: new Date(when).toISOString(), notes: null } });
+              setStage('');
+              setWhen('');
+              onChange();
+              void reload();
+            } catch {
+              setError('Add the stage and a date and time.');
+            }
+          }}
+        >
+          <label htmlFor="int-stage">Stage</label>
+          <input id="int-stage" type="text" placeholder="e.g. phone screen" value={stage} onChange={(e) => setStage(e.target.value)} />
+          <label htmlFor="int-format">Format</label>
+          <select id="int-format" value={format} onChange={(e) => setFormat(e.target.value)}>
+            <option value="phone">Phone</option>
+            <option value="video">Video</option>
+            <option value="onsite">On-site</option>
+            <option value="take_home">Take-home assessment</option>
+            <option value="other">Other</option>
+          </select>
+          <label htmlFor="int-when">Date and time</label>
+          <input id="int-when" type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
+          <button type="submit" className="quiet">
+            Add interview
+          </button>
+          {error && (
+            <span role="alert" className="save-status--error">
+              {error}
+            </span>
+          )}
+        </form>
+      ) : (
+        <p className="muted">Interviews can be added once the application has been submitted.</p>
+      )}
     </section>
   );
 }

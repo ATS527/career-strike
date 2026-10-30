@@ -4,6 +4,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import { syncBoard } from '../../src/career/jobs.js';
+import { createAdapters } from '../../src/sources/adapters.js';
+import { fakeFetch } from '../fixtures/ats.js';
 import { type AppPaths, appPaths } from '../../src/core/paths.js';
 import { localRequest } from '../../src/service/http-client.js';
 import { type RunningService, startService } from '../../src/service/service.js';
@@ -44,7 +46,8 @@ function posting(id: string, over: Partial<NormalizedPosting> = {}): NormalizedP
 
 async function setup() {
   const paths: AppPaths = appPaths(path.join(tempDir(), 'data'));
-  const s = await startService(paths, { port: 0 });
+  // Offline: no request may leave the test (application drafting would otherwise fetch the form).
+  const s = await startService(paths, { port: 0, adapters: createAdapters(fakeFetch({})) });
   running.push(s);
   const db = openDb(paths.db);
   syncBoard(db, 'greenhouse', 'synthetic', [posting('1'), posting('2', { employer: CANARY.excludedEmployer, title: 'Hidden By Settings' })]);

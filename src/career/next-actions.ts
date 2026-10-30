@@ -16,6 +16,7 @@ export interface CareerState {
   availability?: string;
   applications?: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; interviewing: number; offers: number };
   followUpsDue?: { id: string; note: string; title: string; employer: string; applicationId: string }[];
+  interviewsSoon?: { applicationId: string; stage: string; scheduledAt: string; employer: string; title: string }[];
 }
 
 type Rule = (state: CareerState) => NextAction | NextAction[] | null;
@@ -24,6 +25,13 @@ const isEmptyList = (v: unknown): boolean => !Array.isArray(v) || v.length === 0
 const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
 
 const RULES: readonly Rule[] = [
+  ({ interviewsSoon }) =>
+    (interviewsSoon ?? []).map((i) => ({
+      rule: 'interviews.prepare',
+      title: `Prepare for your ${i.stage} with ${i.employer}`,
+      reason: `It is scheduled for ${i.scheduledAt.slice(0, 10)}. Practise the topics the posting asks for.`,
+      href: `/applications/${i.applicationId}/prep`,
+    })),
   ({ followUpsDue }) =>
     (followUpsDue ?? []).map((f) => ({
       rule: 'follow-ups.due',

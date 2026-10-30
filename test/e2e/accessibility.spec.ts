@@ -23,11 +23,11 @@ for (const scheme of ['light', 'dark'] as const) {
     await expect(page.locator('[data-setting]').first()).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
 
-    cs.seed('greenhouse', 'a11y', [{ title: 'Accessible Role' }, { title: 'Second Role', remotePolicy: 'unknown' }]);
+    cs.seed('lever', 'a11y', [{ title: 'Accessible Role' }, { title: 'Second Role', remotePolicy: 'unknown' }]);
     const ids = ((await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] }).jobs.map((j) => j.id);
     await cs.api('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'TypeScript' } });
     const created = (await cs.api('POST', '/api/applications', { jobId: ids[0] })).body as { application: { id: string } };
-    for (const route of ['/applications', `/applications/${created.application.id}`, '/opportunities', `/jobs/${ids[0]}`, `/opportunities/compare?ids=${ids.join(',')}`, '/opportunities/sources', '/opportunities/new', '/profile']) {
+    for (const route of ['/applications', `/applications/${created.application.id}`, `/applications/${created.application.id}/prep`, '/opportunities', `/jobs/${ids[0]}`, `/opportunities/compare?ids=${ids.join(',')}`, '/opportunities/sources', '/opportunities/new', '/profile']) {
       await page.goto(`${cs.origin}${route}`);
       await expect(page.locator('main h1')).toBeVisible();
       expect(await seriousViolations(page), route).toEqual([]);

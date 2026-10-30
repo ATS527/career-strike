@@ -85,6 +85,7 @@ export interface Overview {
   service: { version: string; schemaVersion: number; startedAt: string | null };
   applications: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; submitted: number; interviewing: number; offers: number; expiredUnsent: number };
   followUps: FollowUp[];
+  interviews: Interview[];
   aiHosts: { connected: string[]; configured: string[] };
   jobs: JobCounts;
   sources: { boards: number; healthy: number; failing: number; lastSuccessfulDiscovery: string | null };
@@ -330,4 +331,36 @@ export interface ApplicationSummary {
   employer: string;
   version: number;
   updatedAt: string;
+}
+
+export interface Interview {
+  id: string;
+  applicationId: string;
+  stage: string;
+  format: string;
+  scheduledAt: string;
+  notes: string | null;
+  outcome: 'pending' | 'passed' | 'not_passed' | 'cancelled';
+  title?: string;
+  employer?: string;
+}
+
+export interface PrepTopic {
+  id: string;
+  title: string;
+  kind: string;
+  source: 'posting' | 'inferred';
+  quote: string | null;
+  gap: boolean;
+  prompts: string[];
+  sessions: number;
+  lastConfidence: number | null;
+  lastPracticedAt: string | null;
+}
+
+export interface Prep {
+  application: { id: string; state: ApplicationState; title: string; employer: string };
+  topics: PrepTopic[];
+  sessions: { id: string; topicId: string; notes: string | null; confidence: number; minutes: number | null; practicedAt: string }[];
+  interviews: Interview[];
 }
