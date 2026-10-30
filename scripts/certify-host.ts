@@ -11,7 +11,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { syncBoard } from '../src/career/jobs.js';
-import { HOSTS, type Host, hostVersion, isRegistered } from '../src/mcp/hosts.js';
+import { HOSTS, type Host, hostVersion, isRegistered, settlesTo } from '../src/mcp/hosts.js';
 import { localRequest } from '../src/service/http-client.js';
 import { readRuntime } from '../src/service/runtime.js';
 import type { NormalizedPosting } from '../src/sources/types.js';
@@ -107,7 +107,7 @@ async function main(): Promise<number> {
     // 2. Connect through the host's own CLI.
     const connected = await cs('connect', host);
     check('connect', /Connected/.test(connected.stdout), connected.stdout.trim().split('\n')[0] ?? '');
-    check('host lists career-strike', await isRegistered(host), `${host} mcp list`);
+    check('host lists career-strike', await settlesTo(host, true), `${host} mcp list`);
     const admin = () => {
       const info = readRuntime(path.join(home, 'service.json'))!;
       return { info, call: (url: string) => localRequest(info.port, url, { headers: { authorization: `Bearer ${info.token}` } }) };
@@ -156,7 +156,7 @@ async function main(): Promise<number> {
 
     // 5. Disconnect cleanly.
     const disc = await cs('disconnect', host).catch((e: { stdout?: string; message: string }) => ({ stdout: e.stdout ?? e.message }));
-    check('disconnect removes it from the host', !(await isRegistered(host)), disc.stdout.trim());
+    check('disconnect removes it from the host', await settlesTo(host, false), disc.stdout.trim());
     const remaining = (await admin().call('/api/mcp-clients')).body as { clients: unknown[] };
     check('access revoked in Career Strike', remaining.clients.length === 0, `${remaining.clients.length} active clients`);
   } catch (err) {

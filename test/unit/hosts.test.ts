@@ -20,6 +20,24 @@ const CONFIG = `{
 `;
 
 describe('OpenCode config removal', () => {
+  it('handles the OpenCode 2.x shape (mcp.servers) and leaves no empty containers', () => {
+    const file = path.join(tempDir(), 'opencode.jsonc');
+    const original = '{\n  "$schema": "https://opencode.ai/config.json"\n}\n';
+    fs.writeFileSync(
+      file,
+      '{\n  "$schema": "https://opencode.ai/config.json",\n  "mcp": {\n    "servers": {\n      "career-strike": { "type": "local", "command": ["node"] }\n    }\n  }\n}\n',
+    );
+    expect(removeFromOpencodeConfig(file)).toBe('removed');
+    expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual(JSON.parse(original));
+  });
+
+  it('keeps other servers in the 2.x shape', () => {
+    const file = path.join(tempDir(), 'opencode.jsonc');
+    fs.writeFileSync(file, '{ "mcp": { "servers": { "career-strike": {}, "mine": { "type": "local" } } } }');
+    expect(removeFromOpencodeConfig(file)).toBe('removed');
+    expect(JSON.parse(fs.readFileSync(file, 'utf8'))).toEqual({ mcp: { servers: { mine: { type: 'local' } } } });
+  });
+
   it('removes only the career-strike entry, keeps comments and other servers, and writes a backup', () => {
     const file = path.join(tempDir(), 'opencode.jsonc');
     fs.writeFileSync(file, CONFIG);

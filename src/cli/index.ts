@@ -6,7 +6,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { appPaths, ensureHome, findGitRoot } from '../core/paths.js';
 import { MIN_NODE_MAJOR, VERSION } from '../core/version.js';
 import { inspectDb, latestKnownVersion, openDb, schemaVersion } from '../store/db.js';
-import { HOSTS, type Host, hostVersion, isRegistered, register, unregister } from '../mcp/hosts.js';
+import { HOSTS, type Host, hostVersion, register, settlesTo, unregister } from '../mcp/hosts.js';
 import { runMcpStdio, tokenFile } from '../mcp/server.js';
 import { dashboardUrl, openInBrowser, startDetached, stopService } from '../service/control.js';
 import { localRequest } from '../service/http-client.js';
@@ -114,6 +114,7 @@ program
     fs.writeFileSync(file, token, { mode: 0o600 });
     const env: Record<string, string> = process.env.CAREER_STRIKE_HOME ? { CAREER_STRIKE_HOME: paths.home } : {};
     await register(assistant, { command: process.execPath, args: [...process.execArgv, CLI_ENTRY, 'mcp', '--client', assistant], env });
+    if (!(await settlesTo(assistant, true))) throw new Error(`${assistant} did not list Career Strike after registration; check its MCP configuration.`);
     console.log(`Connected ${assistant} (${version}). It can search and read public postings, add jobs and boards, and shortlist.`);
     console.log(`Grant more access in the dashboard under Settings → AI assistants. Client id: ${client.id}`);
   });
@@ -133,9 +134,9 @@ program
         await localRequest(info.port, `/api/mcp-clients/${c.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } });
       }
     }
-    const still = await isRegistered(assistant);
+    const gone = await settlesTo(assistant, false);
     console.log(removed === 'removed' ? `Removed Career Strike from ${assistant}.` : `${assistant} did not have Career Strike configured.`);
-    if (still) {
+    if (!gone) {
       process.exitCode = 1;
       console.error(`${assistant} still lists ${'career-strike'}; check its MCP configuration.`);
     }
