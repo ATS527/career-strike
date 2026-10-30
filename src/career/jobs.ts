@@ -173,8 +173,8 @@ function linkDuplicates(db: Db): void {
 
 export const ManualJobInput = z
   .object({
-    employer: z.string().trim().min(1).max(200),
-    title: z.string().trim().min(1).max(300),
+    employer: z.string().trim().min(1, 'Enter the employer’s name').max(200),
+    title: z.string().trim().min(1, 'Enter the job title').max(300),
     url: z
       .string()
       .trim()

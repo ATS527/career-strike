@@ -1,16 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, onConnectionProblem, setCsrfToken } from './api';
+import { AddJob } from './pages/AddJob';
+import { Compare } from './pages/Compare';
 import { Home } from './pages/Home';
+import { JobPage } from './pages/JobPage';
 import { NotFound } from './pages/NotFound';
+import { Opportunities } from './pages/Opportunities';
 import { Settings } from './pages/Settings';
+import { Sources } from './pages/Sources';
 import { Link, navigate, usePath } from './router';
 
 type Connection = 'checking' | 'connected' | 'unauthenticated' | 'unavailable';
 
 const NAV = [
   { href: '/', label: 'Home' },
+  { href: '/opportunities', label: 'Opportunities' },
   { href: '/settings', label: 'Settings' },
 ] as const;
+
+function isCurrent(href: string, path: string): boolean {
+  if (href === '/') return path === '/';
+  return path === href || path.startsWith(`${href}/`) || (href === '/opportunities' && path.startsWith('/jobs/'));
+}
 
 const RETRY_MS = 3000;
 
@@ -66,7 +77,7 @@ export function App() {
           <ul>
             {NAV.map((item) => (
               <li key={item.href}>
-                <Link href={item.href} aria-current={path === item.href ? 'page' : undefined}>
+                <Link href={item.href} aria-current={isCurrent(item.href, path) ? 'page' : undefined}>
                   {item.label}
                 </Link>
               </li>
@@ -93,6 +104,12 @@ export function App() {
 function renderPage(path: string) {
   if (path === '/') return <Home />;
   if (path === '/settings') return <Settings />;
+  if (path === '/opportunities') return <Opportunities />;
+  if (path === '/opportunities/sources') return <Sources />;
+  if (path === '/opportunities/new') return <AddJob />;
+  if (path === '/opportunities/compare') return <Compare />;
+  const job = /^\/jobs\/([A-Za-z0-9_-]+)$/.exec(path);
+  if (job) return <JobPage key={job[1]} id={job[1]!} />;
   return <NotFound onHome={() => navigate('/')} />;
 }
 

@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test as base, expect, type Page } from '@playwright/test';
+import { syncBoard } from '../../src/career/jobs.js';
+import type { NormalizedPosting } from '../../src/sources/types.js';
+import { openDb } from '../../src/store/db.js';
 
 const CLI = path.resolve('dist/cli/index.js');
 
@@ -82,9 +85,53 @@ export class CsService {
     return ((await res.json()) as { settings: Record<string, unknown> }).settings;
   }
 
+  /** Write postings into this service's database exactly as a successful board fetch would. */
+  seed(source: 'greenhouse' | 'lever' | 'ashby', board: string, postings: Partial<NormalizedPosting>[], at = new Date()): void {
+    const db = openDb(path.join(this.home, 'career-strike.db'));
+    try {
+      syncBoard(db, source, board, postings.map((p, i) => syntheticPosting(source, board, i, p)), at);
+    } finally {
+      db.close();
+    }
+  }
+
+  async api(method: string, url: string, body?: unknown): Promise<{ status: number; body: unknown }> {
+    const res = await fetch(`${this.origin}${url}`, {
+      method,
+      headers: { authorization: `Bearer ${this.token}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    return { status: res.status, body: await res.json().catch(() => null) };
+  }
+
   cli(...args: string[]) {
     return spawnSync(process.execPath, [CLI, ...args], { env: this.env(), encoding: 'utf8', timeout: 20_000 });
   }
+}
+
+export function syntheticPosting(source: NormalizedPosting['source'], board: string, i: number, over: Partial<NormalizedPosting> = {}): NormalizedPosting {
+  return {
+    source,
+    board,
+    sourceJobId: `${board}-${i}`,
+    employer: 'Synthetic Labs',
+    title: `Synthetic Role ${i}`,
+    locationText: 'Remote - India',
+    remotePolicy: 'remote',
+    employmentType: 'full_time',
+    department: 'Engineering',
+    salary: null,
+    description: [
+      { type: 'heading', text: 'About the role' },
+      { type: 'paragraph', text: `Synthetic posting number ${i}.` },
+      { type: 'item', text: 'Build reliable systems' },
+    ],
+    applyUrl: `https://careers.example.com/${board}/${i}`,
+    postingUrl: `https://careers.example.com/${board}/${i}`,
+    publishedAt: new Date(Date.UTC(2026, 9, 1 + i)).toISOString(),
+    unresolved: ['Salary is not published in structured form.'],
+    ...over,
+  };
 }
 
 export async function signIn(page: Page, cs: CsService): Promise<void> {

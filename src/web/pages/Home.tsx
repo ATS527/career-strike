@@ -1,4 +1,5 @@
 import type { Overview } from '../api';
+import { ago } from '../format';
 import { Link } from '../router';
 import { useResource } from '../useResource';
 import { ErrorPanel, Loading } from './states';
@@ -46,6 +47,17 @@ export function Home() {
             )}
           </section>
 
+          <section aria-labelledby="pipeline-title" className="pipeline">
+            <h2 id="pipeline-title">Your pipeline</h2>
+            <dl className="counts" data-testid="pipeline">
+              <Count label="Verified open" value={overview.data.jobs.open} href="/opportunities?status=OPEN" note="checked within 72 hours" />
+              <Count label="Not reviewed" value={overview.data.jobs.unreviewed} href="/opportunities?status=OPEN&disposition=none" />
+              <Count label="Shortlisted" value={overview.data.jobs.shortlisted} href="/opportunities?disposition=shortlisted" />
+              <Count label="May have closed" value={overview.data.jobs.stale} href="/opportunities?status=STALE" note="not verified recently" />
+              <Count label="Added by you" value={overview.data.jobs.unverified} href="/opportunities?status=UNVERIFIED" note="unverified" />
+            </dl>
+          </section>
+
           <aside className="status" aria-labelledby="status-title">
             <h2 id="status-title">System</h2>
             <dl>
@@ -61,6 +73,35 @@ export function Home() {
                   <dd>{timeFormat.format(new Date(overview.data.service.startedAt))}</dd>
                 </div>
               )}
+              <div>
+                <dt>Job boards</dt>
+                <dd>
+                  {overview.data.sources.boards === 0 ? (
+                    <Link href="/opportunities/sources">None monitored yet</Link>
+                  ) : (
+                    <>
+                      <Link href="/opportunities/sources">
+                        {overview.data.sources.boards} monitored
+                      </Link>
+                      {overview.data.sources.failing > 0 && <span className="attention"> · {overview.data.sources.failing} failing</span>}
+                      <br />
+                      <span className="muted">Last successful fetch {ago(overview.data.sources.lastSuccessfulDiscovery)}</span>
+                    </>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>Running now</dt>
+                <dd data-testid="active-tasks">
+                  {overview.data.activeTasks.length === 0
+                    ? 'Nothing is running.'
+                    : overview.data.activeTasks.map((t) => (
+                        <span key={t.id} className="task-line">
+                          {t.kind.startsWith('discover:') ? 'Fetching a job board' : t.kind} · started {ago(t.startedAt ?? t.createdAt)}
+                        </span>
+                      ))}
+                </dd>
+              </div>
               <div>
                 <dt>AI assistants</dt>
                 <dd>
@@ -78,5 +119,21 @@ export function Home() {
         </div>
       )}
     </>
+  );
+}
+
+function Count({ label, value, href, note }: { label: string; value: number; href: string; note?: string }) {
+  return (
+    <div className="count">
+      <dt>
+        {label}
+        {note && <span className="count__note"> ({note})</span>}
+      </dt>
+      <dd>
+        <Link href={href} aria-label={`${value} ${label.toLowerCase()}${note ? `, ${note}` : ''}`}>
+          {value}
+        </Link>
+      </dd>
+    </div>
   );
 }

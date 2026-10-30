@@ -4,10 +4,14 @@ import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
 import type { Db } from '../../store/db.js';
 import { getSettings } from '../../store/settings.js';
+import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { TaskSupervisor } from '../../supervisor/tasks.js';
 
-const AddBoard = z.object({ source: z.enum(['greenhouse', 'lever', 'ashby']), board: z.string().trim().min(1).max(100) }).strict();
+const AddBoard = z.union([
+  z.object({ source: z.enum(['greenhouse', 'lever', 'ashby']), board: z.string().trim().min(1).max(100) }).strict(),
+  z.object({ url: z.string().trim().min(1).max(2000) }).strict(),
+]);
 const DispositionBody = z.object({ disposition: z.enum(['none', 'shortlisted', 'excluded']) }).strict();
 
 function actorOf(req: FastifyRequest): string {
@@ -29,8 +33,15 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
   app.post('/api/sources', async (req, reply) => {
     const parsed = AddBoard.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
+    const target = 'url' in parsed.data ? boardFromUrl(parsed.data.url) : parsed.data;
+    if (!target) {
+      return reply.code(400).send({
+        error: 'UNRECOGNISED_BOARD_URL',
+        message: 'Paste a Greenhouse, Lever or Ashby careers page link, e.g. https://jobs.lever.co/company',
+      });
+    }
     try {
-      const board = discovery.addBoard(parsed.data.source, parsed.data.board);
+      const board = discovery.addBoard(target.source, target.board);
       const run = discovery.discover(board.id, 'board-added', actorOf(req));
       return reply.code(201).send({ board: discovery.getBoard(board.id), task: run?.task ?? null });
     } catch (err) {

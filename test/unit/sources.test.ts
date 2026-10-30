@@ -147,3 +147,21 @@ describe('adapters', () => {
     await expect(adapters.lever.list('../../admin')).rejects.toBeInstanceOf(SourceError);
   });
 });
+
+describe('board URLs', () => {
+  it.each([
+    ['https://job-boards.greenhouse.io/synthetic', { source: 'greenhouse', board: 'synthetic' }],
+    ['https://boards.greenhouse.io/synthetic/jobs/123', { source: 'greenhouse', board: 'synthetic' }],
+    ['https://boards.greenhouse.io/embed/job_board?for=synthetic', { source: 'greenhouse', board: 'synthetic' }],
+    ['https://jobs.lever.co/synthetic/abc-123', { source: 'lever', board: 'synthetic' }],
+    ['https://jobs.ashbyhq.com/synthetic', { source: 'ashby', board: 'synthetic' }],
+  ])('recognises %s', async (url, expected) => {
+    const { boardFromUrl } = await import('../../src/sources/board-url.js');
+    expect(boardFromUrl(url)).toEqual(expected);
+  });
+
+  it.each(['https://careers.example.com/jobs', 'not a url', 'javascript:alert(1)', 'https://jobs.lever.co/'])('rejects %s', async (url) => {
+    const { boardFromUrl } = await import('../../src/sources/board-url.js');
+    expect(boardFromUrl(url)).toBeNull();
+  });
+});

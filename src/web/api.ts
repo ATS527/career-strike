@@ -68,6 +68,9 @@ export interface NextAction {
 export interface Overview {
   service: { version: string; schemaVersion: number; startedAt: string | null };
   aiHosts: { connected: string[] };
+  jobs: JobCounts;
+  sources: { boards: number; healthy: number; failing: number; lastSuccessfulDiscovery: string | null };
+  activeTasks: Task[];
   nextActions: NextAction[];
 }
 
@@ -103,4 +106,90 @@ export interface SettingsResponse {
 export interface ValidationIssue {
   message: string;
   path: (string | number)[];
+}
+
+export type EffectiveStatus = 'OPEN' | 'STALE' | 'CLOSED' | 'UNVERIFIED';
+export type Disposition = 'none' | 'shortlisted' | 'excluded';
+
+export interface PublishedSalary {
+  currency: string;
+  min: number | null;
+  max: number | null;
+  interval: 'year' | 'month' | 'week' | 'day' | 'hour';
+}
+
+export interface JobSummary {
+  id: string;
+  employer: string;
+  title: string;
+  locationText: string | null;
+  remotePolicy: 'remote' | 'hybrid' | 'onsite' | 'unknown';
+  employmentType: string;
+  salary: PublishedSalary | null;
+  status: EffectiveStatus;
+  firstSeenAt: string;
+  lastVerifiedAt: string | null;
+  publishedAt: string | null;
+  sources: string[];
+  duplicateOf: string | null;
+  disposition: Disposition;
+  employerExcluded: boolean;
+}
+
+export interface TextBlock {
+  type: 'heading' | 'paragraph' | 'item';
+  text: string;
+}
+
+export interface JobDetail extends JobSummary {
+  department: string | null;
+  description: TextBlock[];
+  applyUrl: string | null;
+  postingUrl: string | null;
+  closedAt: string | null;
+  unresolved: string[];
+  sourceRecords: { source: string; board: string; sourceJobId: string; url: string | null; fetchedAt: string }[];
+  duplicates: { id: string; title: string; employer: string; sources: string[] }[];
+}
+
+export interface JobList {
+  total: number;
+  jobs: JobSummary[];
+}
+
+export interface Task {
+  id: string;
+  kind: string;
+  trigger: string;
+  client: string;
+  state: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED' | 'INTERRUPTED';
+  createdAt: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  heartbeatAt: string | null;
+  progress: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
+  error: string | null;
+}
+
+export interface SourceBoard {
+  id: string;
+  source: 'greenhouse' | 'lever' | 'ashby';
+  board: string;
+  boardUrl: string;
+  addedAt: string;
+  health: 'NEVER_RUN' | 'OK' | 'DEGRADED' | 'NOT_FOUND';
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  consecutiveFailures: number;
+  lastTask: { id: string; state: Task['state']; endedAt: string | null } | null;
+}
+
+export interface JobCounts {
+  open: number;
+  stale: number;
+  unverified: number;
+  shortlisted: number;
+  unreviewed: number;
+  newSince24h: number;
 }

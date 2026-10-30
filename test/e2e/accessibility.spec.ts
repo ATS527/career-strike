@@ -22,6 +22,14 @@ for (const scheme of ['light', 'dark'] as const) {
     await page.goto(`${cs.origin}/settings`);
     await expect(page.locator('[data-setting]').first()).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
+
+    cs.seed('greenhouse', 'a11y', [{ title: 'Accessible Role' }, { title: 'Second Role', remotePolicy: 'unknown' }]);
+    const ids = ((await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] }).jobs.map((j) => j.id);
+    for (const route of ['/opportunities', `/jobs/${ids[0]}`, `/opportunities/compare?ids=${ids.join(',')}`, '/opportunities/sources', '/opportunities/new']) {
+      await page.goto(`${cs.origin}${route}`);
+      await expect(page.locator('main h1')).toBeVisible();
+      expect(await seriousViolations(page), route).toEqual([]);
+    }
   });
 }
 
@@ -54,13 +62,16 @@ for (const width of [375, 768, 1280]) {
   test(`layout fits a ${width}px viewport with actions reachable`, async ({ page, cs }) => {
     await page.setViewportSize({ width, height: 900 });
     await signIn(page, cs);
-    for (const route of ['/', '/settings']) {
+    cs.seed('greenhouse', 'layout', [{ title: 'A Rather Long Synthetic Job Title For Layout Testing Purposes' }, { title: 'Short' }]);
+    const ids = ((await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] }).jobs.map((j) => j.id);
+    for (const route of ['/', '/settings', '/opportunities', `/jobs/${ids[0]}`, '/opportunities/sources', '/opportunities/new']) {
       await page.goto(`${cs.origin}${route}`);
       await expect(page.locator('main h1')).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `${route} overflows horizontally`).toBeLessThanOrEqual(0);
       await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings' })).toBeInViewport();
     }
+    await page.goto(`${cs.origin}/settings`);
     const save = page.locator('[data-setting="search.excludedEmployers"]').getByRole('button', { name: 'Save' });
     await save.scrollIntoViewIfNeeded();
     await expect(save).toBeInViewport();

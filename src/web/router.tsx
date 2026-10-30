@@ -1,6 +1,7 @@
-import { type AnchorHTMLAttributes, type MouseEvent, useEffect, useSyncExternalStore } from 'react';
+import { type AnchorHTMLAttributes, type MouseEvent, type ReactNode, useEffect, useSyncExternalStore } from 'react';
 
-// Minimal history router: the dashboard has a handful of top-level pages.
+// Minimal history router: the dashboard has a handful of top-level pages. Filters live in the
+// query string so views are linkable and survive reloads.
 
 const subscribe = (notify: () => void): (() => void) => {
   window.addEventListener('popstate', notify);
@@ -11,10 +12,16 @@ export function usePath(): string {
   return useSyncExternalStore(subscribe, () => window.location.pathname);
 }
 
-export function navigate(to: string): void {
+export function useSearch(): string {
+  return useSyncExternalStore(subscribe, () => window.location.search);
+}
+
+export function navigate(to: string, opts: { replace?: boolean } = {}): void {
   const url = new URL(to, window.location.origin);
   if (url.origin !== window.location.origin) return;
-  window.history.pushState(null, '', url.pathname + url.hash);
+  const target = url.pathname + url.search + url.hash;
+  if (opts.replace) window.history.replaceState(null, '', target);
+  else window.history.pushState(null, '', target);
   window.dispatchEvent(new PopStateEvent('popstate'));
 }
 
@@ -38,4 +45,22 @@ export function Link({ href, onClick, ...rest }: AnchorHTMLAttributes<HTMLAnchor
     navigate(href);
   };
   return <a href={href} onClick={handle} {...rest} />;
+}
+
+/** Link to an employer site. Only http(s) URLs render as links; they open without referrer or opener. */
+export function ExternalLink({ href, children, className }: { href: string | null; children: ReactNode; className?: string }) {
+  let safe: string | null = null;
+  try {
+    const url = href ? new URL(href) : null;
+    if (url && (url.protocol === 'https:' || url.protocol === 'http:')) safe = url.href;
+  } catch {
+    safe = null;
+  }
+  if (!safe) return <span className={className}>{children}</span>;
+  return (
+    <a href={safe} target="_blank" rel="noopener noreferrer external" className={className}>
+      {children}
+      <span className="visually-hidden"> (opens the employer’s site in a new tab)</span>
+    </a>
+  );
 }
