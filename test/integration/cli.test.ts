@@ -3,6 +3,7 @@ import { once } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { latestKnownVersion } from '../../src/store/db.js';
 import { tempDir } from '../helpers.js';
 
 const CLI = ['--import', 'tsx', path.resolve('src/cli/index.ts')];
@@ -46,7 +47,7 @@ describe('career-strike CLI', () => {
 
     const init = runCli(home, ['init']);
     expect(init.status, init.stderr).toBe(0);
-    expect(init.stdout).toContain('Database schema: v1');
+    expect(init.stdout).toContain(`Database schema: v${latestKnownVersion()}`);
 
     const after = runCli(home, ['doctor']);
     expect(after.status, after.stdout).toBe(0);
@@ -80,6 +81,33 @@ describe('career-strike CLI', () => {
     const after = runCli(home, ['status', '--json']);
     expect(after.status).toBe(3);
     expect(JSON.parse(after.stdout)).toEqual({ state: 'stopped' });
+  });
+
+  it('start runs a detached service, dashboard prints a working single-use link, stop ends it', async () => {
+    const home = path.join(tempDir(), 'data');
+    const start = runCli(home, ['start', '--port', '0']);
+    try {
+      expect(start.status, start.stderr).toBe(0);
+      expect(start.stdout).toMatch(/running on http:\/\/127\.0\.0\.1:\d+ \(pid \d+\)/);
+      const again = runCli(home, ['start', '--port', '0']);
+      expect(again.stdout).toBe(start.stdout);
+
+      const dash = runCli(home, ['dashboard', '--no-open']);
+      expect(dash.status, dash.stderr).toBe(0);
+      const url = new URL(dash.stdout.trim());
+      expect(url.hostname).toBe('127.0.0.1');
+      expect(url.pathname).toBe('/auth/launch');
+      const res = await fetch(url, { redirect: 'manual' });
+      expect(res.status).toBe(303);
+      expect(res.headers.get('set-cookie')).toContain('HttpOnly');
+      expect((await fetch(url, { redirect: 'manual' })).status).toBe(401);
+    } finally {
+      const stop = runCli(home, ['stop']);
+      expect(stop.status, stop.stderr).toBe(0);
+      expect(stop.stdout.trim()).toBe('stopped');
+    }
+    expect(runCli(home, ['stop']).stdout.trim()).toBe('not-running');
+    expect(runCli(home, ['status']).status).toBe(3);
   });
 
   it('refuses to initialise inside a git working tree', () => {

@@ -27,4 +27,19 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX audit_events_at ON audit_events (at);
     `,
   },
+  {
+    version: 2,
+    name: 'dashboard_sessions',
+    sql: `
+      -- Session ids are stored hashed; the raw id only exists in the browser's HttpOnly cookie.
+      CREATE TABLE dashboard_sessions (
+        id_hash      TEXT PRIMARY KEY,
+        csrf_token   TEXT NOT NULL,
+        created_at   TEXT NOT NULL,
+        expires_at   TEXT NOT NULL,
+        last_seen_at TEXT NOT NULL
+      );
+      CREATE INDEX dashboard_sessions_expires ON dashboard_sessions (expires_at);
+    `,
+  },
 ];

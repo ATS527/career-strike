@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { Command, InvalidArgumentError } from 'commander';
 import { appPaths, ensureHome, findGitRoot } from '../core/paths.js';
 import { MIN_NODE_MAJOR, VERSION } from '../core/version.js';
 import { inspectDb, latestKnownVersion, openDb, schemaVersion } from '../store/db.js';
+import { dashboardUrl, openInBrowser, startDetached, stopService } from '../service/control.js';
 import { probeHealth, readRuntime } from '../service/runtime.js';
 import { AlreadyRunningError, DEFAULT_PORT, startService } from '../service/service.js';
+
+const CLI_ENTRY = fileURLToPath(import.meta.url);
 
 function parsePort(value: string): number {
   const n = Number(value);
@@ -39,6 +43,38 @@ program
     };
     process.once('SIGINT', shutdown);
     process.once('SIGTERM', shutdown);
+  });
+
+program
+  .command('start')
+  .description('Start the local service in the background')
+  .option('-p, --port <port>', 'port to bind on 127.0.0.1', parsePort, DEFAULT_PORT)
+  .action(async (opts: { port: number }) => {
+    const info = await startDetached(appPaths(), CLI_ENTRY, opts.port);
+    console.log(`running on http://127.0.0.1:${info.port} (pid ${info.pid})`);
+  });
+
+program
+  .command('stop')
+  .description('Stop the background service')
+  .action(async () => {
+    console.log(await stopService(appPaths()));
+  });
+
+program
+  .command('dashboard')
+  .description('Open the dashboard in your browser, starting the service if needed')
+  .option('-p, --port <port>', 'port to use if the service must be started', parsePort, DEFAULT_PORT)
+  .option('--no-open', 'print the single-use dashboard link instead of opening a browser')
+  .action(async (opts: { port: number; open: boolean }) => {
+    const info = await startDetached(appPaths(), CLI_ENTRY, opts.port);
+    const url = await dashboardUrl(info);
+    if (opts.open) {
+      openInBrowser(url);
+      console.log(`Opened the dashboard (service on http://127.0.0.1:${info.port}).`);
+    } else {
+      console.log(url);
+    }
   });
 
 program

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type AppPaths, appPaths } from '../../src/core/paths.js';
 import { localRequest } from '../../src/service/http-client.js';
+import { latestKnownVersion } from '../../src/store/db.js';
 import { AlreadyRunningError, type RunningService, startService } from '../../src/service/service.js';
 import { tempDir } from '../helpers.js';
 
@@ -25,7 +26,7 @@ describe('local service', () => {
     expect((s.app.server.address() as AddressInfo).address).toBe('127.0.0.1');
     const res = await localRequest(s.info.port, '/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', service: 'career-strike', schemaVersion: 1, pid: process.pid });
+    expect(res.body).toMatchObject({ status: 'ok', service: 'career-strike', schemaVersion: latestKnownVersion(), pid: process.pid });
     expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
