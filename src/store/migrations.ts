@@ -259,4 +259,31 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX mcp_clients_name ON mcp_clients (name);
     `,
   },
+  {
+    version: 8,
+    name: 'submission_attempts',
+    sql: `
+      -- SENSITIVE: each attempt to deliver an approved application. One attempt per approval:
+      -- the approval id is the idempotency key, so a retry can never create a second submission.
+      CREATE TABLE submission_attempts (
+        id             TEXT PRIMARY KEY,
+        application_id TEXT NOT NULL REFERENCES applications (id) ON DELETE CASCADE,
+        approval_id    TEXT NOT NULL UNIQUE REFERENCES approvals (id),
+        endpoint       TEXT NOT NULL,
+        state          TEXT NOT NULL CHECK (state IN ('IN_PROGRESS', 'CONFIRMED', 'UNCONFIRMED', 'FAILED')),
+        started_at     TEXT NOT NULL,
+        ended_at       TEXT,
+        receipt_json   TEXT,
+        error          TEXT
+      );
+      CREATE INDEX submission_attempts_app ON submission_attempts (application_id);
+
+      -- Internal (not a user setting): the owned practice endpoint automated submission may target.
+      CREATE TABLE practice_endpoint (
+        id         INTEGER PRIMARY KEY CHECK (id = 1),
+        origin     TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+    `,
+  },
 ];

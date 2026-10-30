@@ -10,6 +10,7 @@ import { createAdapters } from '../sources/adapters.js';
 import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { TaskSupervisor } from '../supervisor/tasks.js';
 import { ApplicationService } from '../applications/service.js';
+import { SubmissionEngine } from '../applications/submission.js';
 import { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
 import { McpClientStore, type Scope } from '../mcp/clients.js';
@@ -82,7 +83,11 @@ export function buildServer({
       return adapters.greenhouse.applicationQuestions(src.board, src.source_job_id);
     },
     logger,
+    (applyUrl) => submissions.methodFor(applyUrl),
   );
+  const submissions = new SubmissionEngine(db, applications, vault, tasks);
+  const recovered = applications.recoverInterruptedSubmissions();
+  if (recovered > 0) logger.warn('submissions.interrupted', { count: recovered });
   const discovery = new Discovery(db, adapters, tasks, () => {
     const expired = applications.expireForClosedJobs();
     if (expired > 0) logger.info('applications.expired', { count: expired });
@@ -256,7 +261,7 @@ export function buildServer({
 
   registerOpportunityRoutes(app, { db, discovery, tasks });
 
-  registerApplicationRoutes(app, { applications, vault });
+  registerApplicationRoutes(app, { applications, vault, submissions });
   registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));

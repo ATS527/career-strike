@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ApplicationError, type ApplicationService } from '../../applications/service.js';
+import type { SubmissionEngine } from '../../applications/submission.js';
 import { TransitionError } from '../../applications/states.js';
 import { ACCEPTED_DOCUMENT_TYPES, DocumentError, type DocumentVault, MAX_DOCUMENT_BYTES } from '../../vault/documents.js';
 
@@ -15,6 +16,8 @@ const ERROR_STATUS: Record<ApplicationError['code'], number> = {
   WARNINGS_NOT_ACKNOWLEDGED: 422,
   INVALID_CHANGE: 400,
   APPROVAL_INVALID: 409,
+  NOT_AUTOMATABLE: 409,
+  DUPLICATE: 409,
 };
 
 const Create = z.object({ jobId: z.string().min(1).max(100) }).strict();
@@ -59,8 +62,11 @@ function fail(reply: FastifyReply, err: unknown): FastifyReply {
   throw err;
 }
 
-export function registerApplicationRoutes(app: FastifyInstance, deps: { applications: ApplicationService; vault: DocumentVault }): void {
-  const { applications, vault } = deps;
+export function registerApplicationRoutes(
+  app: FastifyInstance,
+  deps: { applications: ApplicationService; vault: DocumentVault; submissions: SubmissionEngine },
+): void {
+  const { applications, vault, submissions } = deps;
 
   // ---- documents (SENSITIVE; never exposes vault paths) ----
 
@@ -141,6 +147,7 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: { applicat
 
   action('ready', (id, req) => applications.markReady(id, actorOf(req)));
   action('save-for-later', (id, req) => applications.saveForLater(id, actorOf(req)));
+  action('redraft', (id, req) => applications.redraft(id, actorOf(req)));
   action('reject', (id, req) => {
     const parsed = Reject.safeParse(req.body ?? {});
     return applications.reject(id, actorOf(req), parsed.success ? parsed.data.note : null);
@@ -162,6 +169,31 @@ export function registerApplicationRoutes(app: FastifyInstance, deps: { applicat
     });
 
   dashboardAction('start-submission', (id) => applications.startManualSubmission(id, 'dashboard'));
+  dashboardAction('submit', (id) => submissions.submit(id, 'dashboard'));
+  dashboardAction('reconcile', (id) => submissions.reconcile(id, 'dashboard'));
+
+  // ---- practice endpoint (owned, local) ----
+
+  app.get('/api/practice', async () => ({ origin: submissions.practiceOrigin() }));
+
+  app.post('/api/practice/endpoint', async (req, reply) => {
+    if (req.principal?.kind !== 'local-client') return reply.code(403).send({ error: 'LOCAL_CLIENT_REQUIRED' });
+    const body = z.object({ origin: z.string().max(100) }).strict().safeParse(req.body);
+    if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
+    try {
+      return { origin: submissions.setPracticeOrigin(body.data.origin) };
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+
+  app.post('/api/practice/jobs', async (req, reply) => {
+    try {
+      return reply.code(201).send({ jobId: submissions.createPracticeJob() });
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
   dashboardAction('confirm-submitted', (id, body) => applications.confirmSubmitted(id, Confirm.parse(body), 'dashboard'));
   dashboardAction('mark-unconfirmed', (id, body) => applications.markUnconfirmed(id, Reject.parse(body ?? {}).note, 'dashboard'));
   dashboardAction('outcome', (id, body) => {

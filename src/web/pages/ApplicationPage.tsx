@@ -33,6 +33,12 @@ export function ApplicationPage({ id }: { id: string }) {
     }
   }, [id]);
   useEffect(() => void load(), [load]);
+  // While an automated submission is being sent, follow it until it settles.
+  useEffect(() => {
+    if (view?.state !== 'SUBMISSION_IN_PROGRESS') return;
+    const timer = window.setInterval(() => void load(), 700);
+    return () => window.clearInterval(timer);
+  }, [view?.state, load]);
 
   const run = async (label: string, request: () => Promise<{ application: ApplicationView }>): Promise<void> => {
     setBusy(true);
@@ -415,7 +421,56 @@ function Actions({
           </button>
         </>
       )}
-      {view.state === 'APPROVED' && (
+      {view.duplicateRisk.length > 0 && (
+        <div className="banner banner--attention" role="note" data-testid="duplicate-risk">
+          <strong>Possible duplicate.</strong> You have {view.duplicateRisk.length === 1 ? 'another application' : `${view.duplicateRisk.length} other applications`} for
+          this same role:{' '}
+          {view.duplicateRisk.map((d, i) => (
+            <span key={d.applicationId}>
+              {i > 0 && ', '}
+              <Link href={`/applications/${d.applicationId}`}>{APP_STATE_LABEL[d.state]}</Link>
+            </span>
+          ))}
+          . Career Strike will not submit the same role twice.
+        </div>
+      )}
+      {view.state === 'APPROVED' && view.payload.destination.method === 'test-ats' && (
+        <div className="banner" role="note">
+          <p>
+            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> — {view.approval.reason}
+          </p>
+          <p className="help">This goes to the practice endpoint on this computer, not to an employer. It is sent once, with a receipt.</p>
+          <button type="button" disabled={busy || !view.approval.valid} onClick={() => void run('Sending to the practice endpoint…', () => post('submit'))}>
+            Submit to the practice endpoint
+          </button>
+        </div>
+      )}
+      {view.state === 'SUBMISSION_IN_PROGRESS' && (
+        <p className="banner" role="status" aria-live="polite">
+          Sending… Career Strike is waiting for a receipt.
+        </p>
+      )}
+      {view.state === 'SUBMISSION_UNCONFIRMED' && view.mode === 'automated' && (
+        <div className="banner banner--attention" role="note">
+          <p>
+            <strong>Career Strike does not know whether it arrived.</strong> It will not resend it. Ask the endpoint whether it has a record of this submission.
+          </p>
+          <button type="button" disabled={busy} onClick={() => void run('Checked with the endpoint.', () => post('reconcile'))}>
+            Check whether it arrived
+          </button>
+        </div>
+      )}
+      {view.state === 'SUBMISSION_FAILED' && (
+        <div className="banner banner--attention" role="note">
+          <p>
+            <strong>It was not submitted.</strong> To try again, prepare it again and approve the new version.
+          </p>
+          <button type="button" disabled={busy} onClick={() => void run('Back to drafts. Review and approve it again.', () => post('redraft'))}>
+            Prepare it again
+          </button>
+        </div>
+      )}
+      {view.state === 'APPROVED' && view.payload.destination.method !== 'test-ats' && (
         <div className="banner" role="note">
           <p>
             <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> — {view.approval.reason}
@@ -439,7 +494,9 @@ function Actions({
           )}
         </div>
       )}
-      {(view.state === 'NEEDS_MANUAL_ACTION' || view.state === 'SUBMISSION_UNCONFIRMED') && <ConfirmSubmission view={view} busy={busy} post={post} run={run} />}
+      {(view.state === 'NEEDS_MANUAL_ACTION' || (view.state === 'SUBMISSION_UNCONFIRMED' && view.mode !== 'automated')) && (
+        <ConfirmSubmission view={view} busy={busy} post={post} run={run} />
+      )}
       {OUTCOMES.some((o) => can(o)) && view.state !== 'NEEDS_MANUAL_ACTION' && (
         <RecordOutcome key={`${view.state}:${view.events.length}`} view={view} busy={busy} post={post} run={run} can={can} />
       )}
@@ -613,7 +670,11 @@ function History({ view }: { view: ApplicationView }) {
             {formatDateTime(e.at)} · {e.from ? `${APP_STATE_LABEL[e.from] ?? e.from} → ` : ''}
             {APP_STATE_LABEL[e.to] ?? e.to}
             {e.note ? ` · ${e.note}` : ''}
-            {e.evidence && typeof e.evidence.reference === 'string' ? ` · ref ${e.evidence.reference}` : ''} <span className="muted">({e.actor})</span>
+            {e.evidence && typeof e.evidence.reference === 'string' ? ` · ref ${e.evidence.reference}` : ''}
+            {e.evidence && typeof (e.evidence.receipt as { receiptId?: unknown } | undefined)?.receiptId === 'string'
+              ? ` · receipt ${(e.evidence.receipt as { receiptId: string }).receiptId}`
+              : ''}{' '}
+            <span className="muted">({e.actor})</span>
           </li>
         ))}
       </ol>

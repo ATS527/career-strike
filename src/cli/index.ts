@@ -143,6 +143,27 @@ program
   });
 
 program
+  .command('practice')
+  .description('Run an owned practice endpoint on this computer and add a practice job, to try automated submission safely')
+  .option('-p, --port <port>', 'port for the practice endpoint (0 = any free port)', parsePort, 0)
+  .action(async (opts: { port: number }) => {
+    const { startPracticeAts } = await import('../practice/test-ats.js');
+    const paths = appPaths();
+    const info = await startDetached(paths, CLI_ENTRY, DEFAULT_PORT);
+    const ats = await startPracticeAts(opts.port);
+    const auth = { authorization: `Bearer ${info.token}` };
+    const set = await localRequest(info.port, '/api/practice/endpoint', { method: 'POST', body: { origin: ats.origin }, headers: auth });
+    if (set.status !== 200) throw new Error(`Could not register the practice endpoint (HTTP ${set.status}).`);
+    const job = await localRequest(info.port, '/api/practice/jobs', { method: 'POST', body: {}, headers: auth });
+    console.log(`Practice endpoint running at ${ats.origin} (nothing sent here leaves this computer).`);
+    console.log(`A practice job was added: open the dashboard, prepare an application for “Practice application”, approve it and submit.`);
+    console.log(`Job id: ${(job.body as { jobId: string }).jobId}. Press Ctrl-C to stop the practice endpoint.`);
+    const stop = (): void => void ats.close().then(() => process.exit(0));
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+  });
+
+program
   .command('status')
   .description('Report whether the local service is running')
   .option('--json', 'machine-readable output')

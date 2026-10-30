@@ -314,6 +314,7 @@ export interface ApplicationView {
   versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
   events: { from: string | null; to: string; actor: string; note: string | null; evidence: Record<string, unknown> | null; at: string }[];
   followUps: FollowUp[];
+  duplicateRisk: { applicationId: string; state: ApplicationState; source: string }[];
   approval: { valid: boolean; reason: string; approval: { id: string; state: string; version: number; issuedAt: string; expiresAt: string; stateReason: string | null } | null };
   warnings: { kind: string; message: string }[];
   missingRequired: string[];

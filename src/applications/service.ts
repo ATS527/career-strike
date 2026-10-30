@@ -25,7 +25,9 @@ export class ApplicationError extends Error {
       | 'WARNINGS_NOT_ACKNOWLEDGED'
       | 'NOT_EDITABLE'
       | 'INVALID_CHANGE'
-      | 'APPROVAL_INVALID',
+      | 'APPROVAL_INVALID'
+      | 'NOT_AUTOMATABLE'
+      | 'DUPLICATE',
     message: string,
     readonly details: unknown = null,
   ) {
@@ -63,6 +65,8 @@ export interface ApplicationView {
   versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
   events: { from: string | null; to: string; actor: string; note: string | null; evidence: unknown; at: string }[];
   followUps: FollowUp[];
+  /** Other applications for the same role (same employer, title and place), whatever their source. */
+  duplicateRisk: { applicationId: string; state: ApplicationState; source: string }[];
   approval: ApprovalCheck;
   warnings: GuardWarning[];
   missingRequired: string[];
@@ -133,6 +137,8 @@ export class ApplicationService {
     private readonly vault: DocumentVault,
     private readonly questionsFor: (jobId: string) => Promise<FormQuestion[] | null>,
     private readonly logger: Logger = nullLogger,
+    /** Which delivery method a job's application link allows; only the owned practice endpoint is automatable. */
+    private readonly methodFor: (applyUrl: string | null) => 'manual' | 'test-ats' = () => 'manual',
   ) {}
 
   // ---- reading ----
@@ -187,6 +193,15 @@ export class ApplicationService {
         }[]
       ).map((e) => ({ from: e.from_state, to: e.to_state, actor: e.actor, note: e.note, evidence: e.evidence_json ? JSON.parse(e.evidence_json) : null, at: e.at })),
       followUps: this.followUps(id),
+      duplicateRisk: (
+        this.db
+          .prepare(
+            `SELECT a.id, a.state, (SELECT group_concat(DISTINCT s.source) FROM job_sources s WHERE s.job_id = j.id) AS source
+             FROM applications a JOIN jobs j ON j.id = a.job_id
+             WHERE j.duplicate_key = (SELECT duplicate_key FROM jobs WHERE id = ?) AND a.id != ? AND a.state NOT IN ('CANCELLED', 'EXPIRED', 'DUPLICATE')`,
+          )
+          .all(app.job_id, id) as { id: string; state: ApplicationState; source: string | null }[]
+      ).map((r) => ({ applicationId: r.id, state: r.state, source: r.source ?? 'manual' })),
       approval: await this.verifyApproval(id),
       warnings,
       missingRequired: missingRequired(payload),
@@ -225,7 +240,7 @@ export class ApplicationService {
         joiningAvailability: String(settings['candidate.joiningAvailability'] ?? 'unspecified'),
         resume,
       },
-      'manual',
+      this.methodFor(job.applyUrl),
     );
 
     const id = `app_${randomBytes(9).toString('base64url')}`;
@@ -233,8 +248,8 @@ export class ApplicationService {
     const reason = questions ? 'First draft from your approved profile and the employer’s published form' : 'First draft from your approved profile';
     this.db.transaction(() => {
       this.db
-        .prepare("INSERT INTO applications (id, job_id, state, mode, current_version, created_at, updated_at) VALUES (?, ?, 'DRAFTED', 'manual', 1, ?, ?)")
-        .run(id, jobId, at, at);
+        .prepare("INSERT INTO applications (id, job_id, state, mode, current_version, created_at, updated_at) VALUES (?, ?, 'DRAFTED', ?, 1, ?, ?)")
+        .run(id, jobId, payload.destination.method === 'test-ats' ? 'automated' : 'manual', at, at);
       this.insertVersion(id, 1, payload, 'career-strike', reason, at);
       this.event(id, null, 'DRAFTED', actor, reason, at);
     })();
@@ -282,7 +297,10 @@ export class ApplicationService {
         if (resumeField) Object.assign(resumeField, { value: doc.filename, source: 'document' });
       } else if (resumeField) Object.assign(resumeField, { value: null, source: 'empty' });
     }
-    if (changes.method) next.destination.method = changes.method;
+    if (changes.method) {
+      if (next.destination.method === 'test-ats') throw new ApplicationError('INVALID_CHANGE', 'Practice applications are always submitted automatically.');
+      next.destination.method = changes.method;
+    }
 
     const parsed = ApplicationPayload.safeParse(next);
     if (!parsed.success) throw new ApplicationError('INVALID_CHANGE', 'That change is not valid.', parsed.error.issues);
@@ -292,7 +310,8 @@ export class ApplicationService {
     const at = new Date().toISOString();
     this.db.transaction(() => {
       this.insertVersion(id, version, parsed.data, actor, reason, at);
-      this.db.prepare('UPDATE applications SET current_version = ?, mode = ?, updated_at = ? WHERE id = ?').run(version, parsed.data.destination.method, at, id);
+      const mode = parsed.data.destination.method === 'test-ats' ? 'automated' : parsed.data.destination.method;
+      this.db.prepare('UPDATE applications SET current_version = ?, mode = ?, updated_at = ? WHERE id = ?').run(version, mode, at, id);
       this.invalidateApprovals(id, `Version ${version} changed what would be submitted`, 'INVALIDATED');
       if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED') this.transition(id, app.state, 'DRAFTED', actor, 'Edited after review; needs a fresh review', at);
     })();
@@ -307,6 +326,13 @@ export class ApplicationService {
     if (missing.length) throw new ApplicationError('INCOMPLETE', `Fill in the required items first: ${missing.join(', ')}.`, { missing });
     if (!payload.destination.url) throw new ApplicationError('INCOMPLETE', 'This job has no official application link to send you to.');
     this.db.transaction(() => this.transition(id, app.state, 'READY_FOR_REVIEW', actor, 'Ready for your review', new Date().toISOString()))();
+  }
+
+  /** After a failed submission, start again from a draft. A new approval will be required. */
+  redraft(id: string, actor: string): void {
+    const app = this.requireRow(id);
+    if (app.state !== 'SUBMISSION_FAILED') throw new TransitionError(app.state, 'DRAFTED');
+    this.db.transaction(() => this.transition(id, app.state, 'DRAFTED', actor, 'Prepared again after a failed submission; needs a new approval', new Date().toISOString()))();
   }
 
   saveForLater(id: string, actor: string): void {
@@ -406,6 +432,9 @@ export class ApplicationService {
    */
   async startManualSubmission(id: string, actor: string): Promise<void> {
     const app = this.requireRow(id);
+    if (this.version(id, app.current_version).payload.destination.method === 'test-ats') {
+      throw new ApplicationError('INVALID_CHANGE', 'Practice applications are submitted automatically, not by hand.');
+    }
     const check = await this.verifyApproval(id);
     if (!check.valid || !check.approval) throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
     const at = new Date().toISOString();
@@ -419,6 +448,98 @@ export class ApplicationService {
         payloadHash: check.approval!.payloadHash,
       });
     })();
+  }
+
+  // ---- automated submission (owned practice endpoint only) ----
+
+  /**
+   * Begin an automated submission: verify the approval, refuse duplicates, then in one transaction
+   * consume the approval, record the attempt (unique per approval) and enter SUBMISSION_IN_PROGRESS.
+   * Delivery happens afterwards; its outcome is recorded with finishAttempt.
+   */
+  async beginAutomatedSubmission(
+    id: string,
+    endpoint: string,
+    actor: string,
+  ): Promise<{ attemptId: string; idempotencyKey: string; payload: ApplicationPayload; payloadHash: string }> {
+    const app = this.requireRow(id);
+    const { payload, hash } = this.version(id, app.current_version);
+    if (payload.destination.method !== 'test-ats') {
+      throw new ApplicationError('NOT_AUTOMATABLE', 'Real employers do not allow automated submission. Submit it on their site.');
+    }
+    const duplicate = this.db
+      .prepare(
+        `SELECT a.id FROM applications a JOIN jobs j ON j.id = a.job_id
+         WHERE j.duplicate_key = (SELECT duplicate_key FROM jobs WHERE id = ?) AND a.id != ?
+           AND a.state IN ('SUBMISSION_IN_PROGRESS', 'SUBMITTED_CONFIRMED', 'SUBMISSION_UNCONFIRMED', 'RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER')`,
+      )
+      .pluck()
+      .get(app.job_id, id) as string | undefined;
+    if (duplicate) {
+      this.db.transaction(() => {
+        this.invalidateApprovals(id, 'Duplicate of an application already submitted', 'REVOKED');
+        this.transition(id, app.state, 'DUPLICATE', 'career-strike', 'You already submitted an application for this role', new Date().toISOString(), { duplicateOf: duplicate });
+      })();
+      throw new ApplicationError('DUPLICATE', 'You have already submitted an application for this role, so this one was not sent.', { duplicateOf: duplicate });
+    }
+    const check = await this.verifyApproval(id);
+    if (!check.valid || !check.approval) throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
+    const attemptId = `sub_${randomBytes(9).toString('base64url')}`;
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      const consumed = this.db
+        .prepare("UPDATE approvals SET state = 'CONSUMED', consumed_at = ?, state_reason = 'Used for an automated submission' WHERE id = ? AND state = 'ACTIVE'")
+        .run(at, check.approval!.id).changes;
+      if (consumed !== 1) throw new ApplicationError('APPROVAL_INVALID', 'Cannot submit: this approval has already been used.');
+      this.db
+        .prepare("INSERT INTO submission_attempts (id, application_id, approval_id, endpoint, state, started_at) VALUES (?, ?, ?, ?, 'IN_PROGRESS', ?)")
+        .run(attemptId, id, check.approval!.id, endpoint, at);
+      this.transition(id, app.state, 'SUBMISSION_IN_PROGRESS', actor, `Submitting version ${app.current_version} to ${new URL(endpoint).host}`, at, {
+        attemptId,
+        approvalId: check.approval!.id,
+        payloadHash: hash,
+      });
+    })();
+    // The approval id is the idempotency key: the endpoint can recognise any repeat of this attempt.
+    return { attemptId, idempotencyKey: check.approval.id, payload, payloadHash: hash };
+  }
+
+  /** Record what delivery achieved. Only a verified receipt confirms; ambiguity stays unconfirmed. */
+  finishAttempt(attemptId: string, outcome: { state: 'CONFIRMED'; receipt: unknown } | { state: 'UNCONFIRMED' | 'FAILED'; error: string }, actor = 'career-strike'): void {
+    const attempt = this.db.prepare('SELECT application_id, state FROM submission_attempts WHERE id = ?').get(attemptId) as
+      | { application_id: string; state: string }
+      | undefined;
+    if (!attempt) throw new ApplicationError('NOT_FOUND', 'Submission attempt not found.');
+    const app = this.requireRow(attempt.application_id);
+    const at = new Date().toISOString();
+    const to: ApplicationState = outcome.state === 'CONFIRMED' ? 'SUBMITTED_CONFIRMED' : outcome.state === 'FAILED' ? 'SUBMISSION_FAILED' : 'SUBMISSION_UNCONFIRMED';
+    const note =
+      outcome.state === 'CONFIRMED'
+        ? 'The endpoint returned a receipt, verified by looking it up'
+        : outcome.state === 'FAILED'
+          ? `Not submitted: ${outcome.error}`
+          : `Outcome unknown: ${outcome.error}. It will not be resent automatically.`;
+    this.db.transaction(() => {
+      this.db
+        .prepare('UPDATE submission_attempts SET state = ?, ended_at = ?, receipt_json = ?, error = ? WHERE id = ?')
+        .run(outcome.state, at, outcome.state === 'CONFIRMED' ? JSON.stringify(outcome.receipt) : null, outcome.state === 'CONFIRMED' ? null : outcome.error, attemptId);
+      if (app.state !== to) this.transition(app.id, app.state, to, actor, note, at, outcome.state === 'CONFIRMED' ? { type: 'endpoint-receipt', receipt: outcome.receipt } : null);
+    })();
+  }
+
+  /** The latest attempt for reconciliation: its idempotency key and endpoint. */
+  latestAttempt(id: string): { id: string; approvalId: string; endpoint: string; state: string } | null {
+    const row = this.db
+      .prepare('SELECT id, approval_id, endpoint, state FROM submission_attempts WHERE application_id = ? ORDER BY started_at DESC, rowid DESC LIMIT 1')
+      .get(id) as { id: string; approval_id: string; endpoint: string; state: string } | undefined;
+    return row ? { id: row.id, approvalId: row.approval_id, endpoint: row.endpoint, state: row.state } : null;
+  }
+
+  /** After a restart, a submission that was in flight has an unknown outcome. It is never resumed. */
+  recoverInterruptedSubmissions(): number {
+    const rows = this.db.prepare("SELECT id FROM submission_attempts WHERE state = 'IN_PROGRESS'").pluck().all() as string[];
+    for (const attemptId of rows) this.finishAttempt(attemptId, { state: 'UNCONFIRMED', error: 'the service stopped while it was being sent' });
+    return rows.length;
   }
 
   /** Only the candidate's explicit confirmation (with what they saw) marks a manual submission as sent. */

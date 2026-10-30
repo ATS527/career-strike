@@ -117,7 +117,7 @@ function fillQuestion(q: FormQuestion, input: DraftInput, coverLetter: string): 
   return { ...base, source: 'empty', value: null };
 }
 
-export function buildDraft(input: DraftInput, method: 'manual' | 'assisted'): { payload: ApplicationPayload; claims: Claim[] } {
+export function buildDraft(input: DraftInput, method: 'manual' | 'assisted' | 'test-ats'): { payload: ApplicationPayload; claims: Claim[] } {
   const letter = draftCoverLetter(input);
   const questions = input.questions ?? DEFAULT_QUESTIONS;
   const fields = questions.filter((q) => !q.voluntary).map((q) => fillQuestion(q, input, letter.text));
