@@ -139,7 +139,8 @@ async function main(): Promise<number> {
     const searched = served.some((e) => e.path === '/api/mcp/jobs' && e.status === 200);
     const read = served.some((e) => e.path === `/api/mcp/jobs/${jobIds[0]}` || e.path === `/api/mcp/jobs/${jobIds[1]}`);
     check('search and read reached Career Strike (service log)', searched && read, `${served.length} MCP requests served`);
-    check('assistant used the structured results', reply.includes(`${marker} Role`), 'a synthetic title from the search result appears in the reply');
+    // "Role 2" never appears in the prompt (which hosts may echo), only in the search result.
+    check('assistant used the structured results', reply.includes(`${marker} Role 2`), 'a title that exists only in the search result appears in the reply');
     check('private fit refused without a grant', /not allowed|Settings → AI assistants|grant/i.test(reply), 'refusal message relayed by the assistant');
     check('tool error handled', /No job with id job_does_not_exist/.test(reply), 'error text relayed by the assistant');
 
