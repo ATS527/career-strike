@@ -121,7 +121,7 @@ export function registerMcpRoutes(
     if (!require(req, reply, 'public:write')) return reply;
     const body = z.object({ url: z.string().trim().min(1).max(2000) }).strict().safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
-    const target = boardFromUrl(body.data.url);
+    const target = boardFromUrl(body.data.url, (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null);
     if (!target) return reply.code(400).send({ error: 'UNRECOGNISED_BOARD_URL', message: 'Give a Greenhouse, Lever or Ashby careers page link.' });
     try {
       const board = discovery.addBoard(target.source, target.board);

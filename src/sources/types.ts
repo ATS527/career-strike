@@ -1,4 +1,4 @@
-export type SourceId = 'greenhouse' | 'lever' | 'ashby';
+export type SourceId = 'greenhouse' | 'lever' | 'ashby' | 'practice';
 export type RemotePolicy = 'remote' | 'hybrid' | 'onsite' | 'unknown';
 export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'temporary' | 'internship' | 'unknown';
 

@@ -146,6 +146,7 @@ test.describe('settings', () => {
       'identity.email': null,
       'identity.phone': null,
       'identity.profileLinks': [],
+      'monitoring.discoveryIntervalHours': '0',
     };
     expect(await cs.settings()).toEqual(expected);
 

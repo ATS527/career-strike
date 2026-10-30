@@ -317,4 +317,62 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX practice_sessions_app ON practice_sessions (application_id, topic_id);
     `,
   },
+  {
+    version: 10,
+    name: 'scheduling',
+    sql: `
+      -- PERSONAL: each schedule slot is claimed once. The primary key makes a second claim fail, so
+      -- the same slot can never run twice, even if two processes race.
+      CREATE TABLE schedule_slots (
+        schedule   TEXT NOT NULL,
+        slot       TEXT NOT NULL,
+        claimed_at TEXT NOT NULL,
+        claimed_by INTEGER NOT NULL,
+        result     TEXT,
+        PRIMARY KEY (schedule, slot)
+      );
+      ALTER TABLE tasks ADD COLUMN attempt INTEGER NOT NULL DEFAULT 1;
+      -- Scheduled fetches of a failing board wait until this time (bounded exponential backoff).
+      ALTER TABLE source_boards ADD COLUMN next_attempt_at TEXT;
+    `,
+  },
+  {
+    version: 11,
+    name: 'practice_source',
+    sql: `
+      -- Allow the owned practice board as a source. SQLite cannot alter a CHECK constraint, so the
+      -- two tables are rebuilt with identical columns and data.
+      CREATE TABLE source_boards_v11 (
+        id                   TEXT PRIMARY KEY,
+        source               TEXT NOT NULL CHECK (source IN ('greenhouse', 'lever', 'ashby', 'practice')),
+        board                TEXT NOT NULL,
+        added_at             TEXT NOT NULL,
+        health               TEXT NOT NULL DEFAULT 'NEVER_RUN' CHECK (health IN ('NEVER_RUN', 'OK', 'DEGRADED', 'NOT_FOUND')),
+        last_success_at      TEXT,
+        last_error           TEXT,
+        consecutive_failures INTEGER NOT NULL DEFAULT 0,
+        next_attempt_at      TEXT,
+        UNIQUE (source, board)
+      );
+      INSERT INTO source_boards_v11 (id, source, board, added_at, health, last_success_at, last_error, consecutive_failures, next_attempt_at)
+        SELECT id, source, board, added_at, health, last_success_at, last_error, consecutive_failures, next_attempt_at FROM source_boards;
+      DROP TABLE source_boards;
+      ALTER TABLE source_boards_v11 RENAME TO source_boards;
+
+      CREATE TABLE job_sources_v11 (
+        job_id        TEXT NOT NULL REFERENCES jobs (id) ON DELETE CASCADE,
+        source        TEXT NOT NULL CHECK (source IN ('greenhouse', 'lever', 'ashby', 'manual', 'practice')),
+        board         TEXT NOT NULL,
+        source_job_id TEXT NOT NULL,
+        source_url    TEXT,
+        fetched_at    TEXT NOT NULL,
+        content_hash  TEXT NOT NULL,
+        PRIMARY KEY (source, board, source_job_id)
+      );
+      INSERT INTO job_sources_v11 SELECT job_id, source, board, source_job_id, source_url, fetched_at, content_hash FROM job_sources;
+      DROP TABLE job_sources;
+      ALTER TABLE job_sources_v11 RENAME TO job_sources;
+      CREATE INDEX job_sources_job ON job_sources (job_id);
+    `,
+  },
 ];

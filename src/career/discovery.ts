@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { Db } from '../store/db.js';
 import { assertBoard } from '../sources/adapters.js';
 import { type SourceAdapter, SourceError, type SourceId } from '../sources/types.js';
+import { backoffMs } from '../supervisor/scheduler.js';
 import type { Task, TaskSupervisor } from '../supervisor/tasks.js';
 import { type SyncResult, syncBoard } from './jobs.js';
 
@@ -15,6 +16,8 @@ export interface SourceBoard {
   lastSuccessAt: string | null;
   lastError: string | null;
   consecutiveFailures: number;
+  /** When a scheduled fetch may next try a failing board. */
+  nextAttemptAt: string | null;
   lastTask: { id: string; state: string; endedAt: string | null } | null;
 }
 
@@ -27,6 +30,7 @@ interface BoardRow {
   last_success_at: string | null;
   last_error: string | null;
   consecutive_failures: number;
+  next_attempt_at: string | null;
 }
 
 export class DuplicateBoardError extends Error {}
@@ -79,16 +83,17 @@ export class Discovery {
       lastSuccessAt: r.last_success_at,
       lastError: r.last_error,
       consecutiveFailures: r.consecutive_failures,
+      nextAttemptAt: r.next_attempt_at,
       lastTask: last ? { id: last.id, state: last.state, endedAt: last.endedAt } : null,
     };
   }
 
   /** Fetch one board as a supervised task. A board already being fetched is not fetched twice. */
-  discover(boardId: string, trigger: string, client: string): { task: Task; created: boolean } | null {
+  discover(boardId: string, trigger: string, client: string, attempt = 1): { task: Task; created: boolean } | null {
     const board = this.getBoard(boardId);
     if (!board) return null;
     return this.tasks.start(
-      { kind: `discover:${board.id}`, dedupeKey: `discover:${board.id}`, trigger, client, params: { source: board.source, board: board.board } },
+      { kind: `discover:${board.id}`, dedupeKey: `discover:${board.id}`, trigger, client, params: { source: board.source, board: board.board }, attempt },
       async (ctx) => {
         ctx.progress({ step: 'fetching', source: board.source, board: board.board });
         let result: SyncResult;
@@ -103,13 +108,15 @@ export class Discovery {
           // A failed fetch never touches job status or verification times.
           const health = err instanceof SourceError && err.kind === 'not_found' ? 'NOT_FOUND' : 'DEGRADED';
           const message = err instanceof Error ? err.message : String(err);
+          const failures = board.consecutiveFailures + 1;
+          // Scheduled fetches of this board back off; a fetch the candidate starts by hand never waits.
           this.db
-            .prepare('UPDATE source_boards SET health = ?, last_error = ?, consecutive_failures = consecutive_failures + 1 WHERE id = ?')
-            .run(health, message, board.id);
+            .prepare('UPDATE source_boards SET health = ?, last_error = ?, consecutive_failures = ?, next_attempt_at = ? WHERE id = ?')
+            .run(health, message, failures, new Date(Date.now() + backoffMs(failures)).toISOString(), board.id);
           throw err;
         }
         this.db
-          .prepare("UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0 WHERE id = ?")
+          .prepare("UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0, next_attempt_at = NULL WHERE id = ?")
           .run(new Date().toISOString(), board.id);
         return result;
       },

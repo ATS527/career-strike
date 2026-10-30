@@ -8,6 +8,7 @@ import { type Db, schemaVersion } from '../store/db.js';
 import { describeSettings, getSettings, SettingError, setSetting } from '../store/settings.js';
 import { createAdapters } from '../sources/adapters.js';
 import type { SourceAdapter, SourceId } from '../sources/types.js';
+import { Scheduler } from '../supervisor/scheduler.js';
 import { TaskSupervisor } from '../supervisor/tasks.js';
 import { ApplicationService } from '../applications/service.js';
 import { SubmissionEngine } from '../applications/submission.js';
@@ -60,7 +61,7 @@ export function buildServer({
   startedAt,
   assets = null,
   logger = nullLogger,
-  adapters = createAdapters(),
+  adapters,
   vaultDir,
   secrets,
 }: ServerOptions): FastifyInstance {
@@ -68,9 +69,11 @@ export function buildServer({
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
   const sessions = new SessionStore(db);
   const mcpClients = new McpClientStore(db);
+  const practiceOrigin = (): string | null => (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
+  const sources = adapters ?? createAdapters(undefined, { practiceOrigin });
   const tasks = new TaskSupervisor(db, logger);
   const interrupted = tasks.recoverInterrupted();
-  if (interrupted > 0) logger.warn('tasks.interrupted', { count: interrupted });
+  if (interrupted.length > 0) logger.warn('tasks.interrupted', { count: interrupted.length });
   const vault = new DocumentVault(db, vaultDir);
   const applications = new ApplicationService(
     db,
@@ -81,8 +84,8 @@ export function buildServer({
       const src = db.prepare("SELECT board, source_job_id FROM job_sources WHERE job_id = ? AND source = 'greenhouse' LIMIT 1").get(jobId) as
         | { board: string; source_job_id: string }
         | undefined;
-      if (!src || !adapters.greenhouse.applicationQuestions) return null;
-      return adapters.greenhouse.applicationQuestions(src.board, src.source_job_id);
+      if (!src || !sources.greenhouse.applicationQuestions) return null;
+      return sources.greenhouse.applicationQuestions(src.board, src.source_job_id);
     },
     logger,
     (applyUrl) => submissions.methodFor(applyUrl),
@@ -91,10 +94,19 @@ export function buildServer({
   const interviews = new InterviewService(db, applications);
   const recovered = applications.recoverInterruptedSubmissions();
   if (recovered > 0) logger.warn('submissions.interrupted', { count: recovered });
-  const discovery = new Discovery(db, adapters, tasks, () => {
+  const discovery = new Discovery(db, sources, tasks, () => {
     const expired = applications.expireForClosedJobs();
     if (expired > 0) logger.info('applications.expired', { count: expired });
   });
+  // Discovery is idempotent, so an interrupted fetch is simply run again (at most three attempts).
+  // Submissions are never in this list: they are recovered as unconfirmed, never resumed.
+  for (const t of interrupted) {
+    const boardId = t.kind.startsWith('discover:') ? t.kind.slice('discover:'.length) : null;
+    if (boardId && t.attempt < 3 && discovery.getBoard(boardId)) discovery.discover(boardId, 'recovery', 'career-strike', t.attempt + 1);
+  }
+  const scheduler = new Scheduler(db, discovery, logger);
+  scheduler.start();
+  app.addHook('onClose', async () => scheduler.stop());
   const backfilled = backfillRequirements(db);
   if (backfilled > 0) logger.info('jobs.requirements-backfilled', { count: backfilled });
   app.decorateRequest('principal', null);
@@ -271,6 +283,17 @@ export function buildServer({
 
   registerApplicationRoutes(app, { applications, vault, submissions });
   registerInterviewRoutes(app, { interviews });
+
+  app.get('/api/activity', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    const recent = tasks.list(50);
+    return {
+      running: recent.filter((t) => t.live),
+      recent,
+      schedules: scheduler.status(),
+      boards: discovery.listBoards().map((b) => ({ id: b.id, source: b.source, board: b.board, health: b.health, consecutiveFailures: b.consecutiveFailures, nextAttemptAt: b.nextAttemptAt, lastError: b.lastError })),
+    };
+  });
   registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications });
 
   app.get('/api/settings', async () => ({ settings: getSettings(db), definitions: describeSettings() }));

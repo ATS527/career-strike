@@ -279,7 +279,7 @@ export const JobQuery = z
     remote: z.enum(['remote', 'hybrid', 'onsite', 'unknown']).optional(),
     // 'any' ignores the candidate's decisions entirely (used where those decisions must not be inferable).
     disposition: z.enum(['none', 'shortlisted', 'excluded', 'not_excluded', 'any']).default('not_excluded'),
-    source: z.enum(['greenhouse', 'lever', 'ashby', 'manual']).optional(),
+    source: z.enum(['greenhouse', 'lever', 'ashby', 'manual', 'practice']).optional(),
     includeExcludedEmployers: flag,
     includeDuplicates: flag,
     sort: z.enum(['newest', 'recently_verified', 'employer', 'title', 'best_fit']).default('newest'),

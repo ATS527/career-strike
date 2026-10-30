@@ -190,6 +190,8 @@ export interface Task {
   startedAt: string | null;
   endedAt: string | null;
   heartbeatAt: string | null;
+  attempt: number;
+  live: boolean;
   progress: Record<string, unknown> | null;
   result: Record<string, unknown> | null;
   error: string | null;
@@ -197,7 +199,7 @@ export interface Task {
 
 export interface SourceBoard {
   id: string;
-  source: 'greenhouse' | 'lever' | 'ashby';
+  source: 'greenhouse' | 'lever' | 'ashby' | 'practice';
   board: string;
   boardUrl: string;
   addedAt: string;

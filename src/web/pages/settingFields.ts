@@ -74,7 +74,8 @@ export function sameValue(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function groupOf(def: SettingDefinition): 'search' | 'candidate' | 'identity' {
+export function groupOf(def: SettingDefinition): 'search' | 'candidate' | 'identity' | 'monitoring' {
   if (def.key.startsWith('identity.')) return 'identity';
+  if (def.key.startsWith('monitoring.')) return 'monitoring';
   return def.key.startsWith('candidate.') ? 'candidate' : 'search';
 }

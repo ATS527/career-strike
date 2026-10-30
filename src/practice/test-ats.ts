@@ -21,6 +21,32 @@ const Submission = z
   })
   .strict();
 
+const PRACTICE_POSTINGS = [
+  {
+    id: 'practice-1',
+    title: 'Practice Platform Engineer',
+    employer: 'Practice Employer (not real)',
+    location: 'Remote',
+    remote: 'remote',
+    description: [
+      { type: 'paragraph', text: 'A practice posting served from this computer.' },
+      { type: 'heading', text: 'Requirements' },
+      { type: 'item', text: 'TypeScript and Kubernetes' },
+    ],
+  },
+  {
+    id: 'practice-2',
+    title: 'Practice Data Analyst',
+    employer: 'Practice Employer (not real)',
+    location: 'Remote',
+    remote: 'remote',
+    description: [
+      { type: 'heading', text: 'Requirements' },
+      { type: 'item', text: 'SQL and Python' },
+    ],
+  },
+];
+
 export interface Receipt {
   receiptId: string;
   idempotencyKey: string;
@@ -75,6 +101,15 @@ export async function startPracticeAts(port = 0): Promise<PracticeAts> {
     }
     if (fault === 'slow') await new Promise((r) => setTimeout(r, slowMs));
     return reply.code(201).send({ receipt });
+  });
+
+  // A practice job board, so discovery can be tried (and tested) with no internet connection.
+  app.get<{ Params: { board: string } }>('/boards/:board', async (req, reply) => {
+    if (req.params.board !== 'demo') return reply.code(404).send({ error: 'NOT_FOUND' });
+    if (fault === 'server-error') return reply.code(503).send({ error: 'UNAVAILABLE' });
+    if (fault === 'reject') return reply.code(429).send({ error: 'SLOW_DOWN' });
+    if (fault === 'slow') await new Promise((r) => setTimeout(r, slowMs));
+    return { postings: PRACTICE_POSTINGS };
   });
 
   app.get<{ Params: { key: string } }>('/applications/by-key/:key', async (req, reply) => {

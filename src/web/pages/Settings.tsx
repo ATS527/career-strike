@@ -10,6 +10,7 @@ const GROUPS = [
   { id: 'search', title: 'What you are looking for' },
   { id: 'candidate', title: 'About you' },
   { id: 'identity', title: 'Contact details for applications' },
+  { id: 'monitoring', title: 'Background monitoring' },
 ] as const;
 
 export function Settings() {

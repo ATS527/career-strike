@@ -208,7 +208,7 @@ describe('discovery tasks', () => {
        VALUES ('task_old', 'discover:x', 'discover:x', 'test', 'test', '{}', 'RUNNING', '2026-10-01', '2026-10-01', 999999)`,
     ).run();
     const tasks = new TaskSupervisor(d);
-    expect(tasks.recoverInterrupted()).toBe(1);
+    expect(tasks.recoverInterrupted().map((t) => t.id)).toEqual(['task_old']);
     expect(tasks.get('task_old')).toMatchObject({ state: 'INTERRUPTED', error: expect.stringContaining('stopped before') });
   });
 

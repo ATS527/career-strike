@@ -109,14 +109,15 @@ export class SubmissionEngine {
       { kind: `submit:${applicationId}`, dedupeKey: `submit:${applicationId}`, trigger: 'approved-submission', client: actor, params: { applicationId } },
       async (ctx) => {
         ctx.progress({ step: 'sending' });
-        const outcome = await this.deliver(endpoint, begun.idempotencyKey, body);
-        this.applications.finishAttempt(begun.attemptId, outcome);
-        return { outcome: outcome.state };
+        // A send that is interrupted may already have arrived: it is recorded as unconfirmed.
+        const outcome = await this.deliver(endpoint, begun.idempotencyKey, body, ctx.signal);
+        this.applications.finishAttempt(begun.attemptId, ctx.signal.aborted ? { state: 'UNCONFIRMED', error: 'sending was cancelled; it may or may not have arrived' } : outcome);
+        return { outcome: ctx.signal.aborted ? 'UNCONFIRMED' : outcome.state };
       },
     );
   }
 
-  private async deliver(endpoint: string, idempotencyKey: string, body: unknown) {
+  private async deliver(endpoint: string, idempotencyKey: string, body: unknown, cancel?: AbortSignal) {
     let res: Response;
     try {
       res = await this.fetchImpl(endpoint, {
@@ -124,7 +125,7 @@ export class SubmissionEngine {
         headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey },
         body: JSON.stringify(body),
         redirect: 'manual',
-        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+        signal: cancel ? AbortSignal.any([cancel, AbortSignal.timeout(DELIVERY_TIMEOUT_MS)]) : AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
       });
     } catch (err) {
       // No response: the endpoint may or may not have received it.

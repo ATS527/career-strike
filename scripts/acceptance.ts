@@ -20,7 +20,7 @@ interface FileResult {
 interface PlaywrightSuite {
   file?: string;
   title: string;
-  specs?: { title: string; ok: boolean }[];
+  specs?: { title: string; ok: boolean; tests?: { status?: string }[] }[];
   suites?: PlaywrightSuite[];
 }
 
@@ -32,13 +32,19 @@ function playwrightResults(suites: PlaywrightSuite[]): FileResult[] {
     for (const spec of suite.specs ?? []) {
       if (!f) continue;
       const entry = byFile.get(f) ?? { name: path.resolve('test/e2e', f), status: 'passed', assertionResults: [] };
-      entry.assertionResults.push({ fullName: spec.title, status: spec.ok ? 'passed' : 'failed' });
-      if (!spec.ok) entry.status = 'failed';
+      // A skipped test proved nothing: it never counts as evidence.
+      const skipped = (spec.tests ?? []).every((t) => t.status === 'skipped');
+      entry.assertionResults.push({ fullName: spec.title, status: skipped ? 'skipped' : spec.ok ? 'passed' : 'failed' });
       byFile.set(f, entry);
     }
     for (const child of suite.suites ?? []) visit(child, f);
   };
   for (const s of suites) visit(s, undefined);
+  // A file is evidence only if something in it really ran and passed, and nothing failed.
+  for (const entry of byFile.values()) {
+    const statuses = entry.assertionResults.map((a) => a.status);
+    entry.status = statuses.includes('failed') ? 'failed' : statuses.includes('passed') ? 'passed' : 'skipped';
+  }
   return [...byFile.values()];
 }
 

@@ -17,6 +17,9 @@ export interface Task {
   endedAt: string | null;
   heartbeatAt: string | null;
   cancelRequested: boolean;
+  attempt: number;
+  /** True only while this service process is actually executing the task. */
+  live: boolean;
   progress: unknown;
   result: unknown;
   error: string | null;
@@ -47,6 +50,7 @@ interface TaskRow {
   ended_at: string | null;
   heartbeat_at: string | null;
   cancel_requested: number;
+  attempt: number;
   progress_json: string | null;
   result_json: string | null;
   error: string | null;
@@ -54,7 +58,7 @@ interface TaskRow {
 
 const parseJson = (s: string | null): unknown => (s ? JSON.parse(s) : null);
 
-function toTask(row: TaskRow): Task {
+function toTask(row: TaskRow, live = false): Task {
   return {
     id: row.id,
     kind: row.kind,
@@ -67,6 +71,8 @@ function toTask(row: TaskRow): Task {
     endedAt: row.ended_at,
     heartbeatAt: row.heartbeat_at,
     cancelRequested: row.cancel_requested === 1,
+    attempt: row.attempt,
+    live,
     progress: parseJson(row.progress_json),
     result: parseJson(row.result_json),
     error: row.error,
@@ -86,14 +92,14 @@ export class TaskSupervisor {
   ) {}
 
   /** Tasks left QUEUED/RUNNING by a previous process did not finish; say so instead of pretending. */
-  recoverInterrupted(): number {
+  recoverInterrupted(): Task[] {
     const at = new Date().toISOString();
-    return this.db
-      .prepare(
-        `UPDATE tasks SET state = 'INTERRUPTED', ended_at = ?, error = 'The service stopped before this task finished.'
-         WHERE state IN ('QUEUED', 'RUNNING') AND (owner_pid IS NULL OR owner_pid != ?)`,
-      )
-      .run(at, process.pid).changes;
+    const rows = this.db
+      .prepare("SELECT * FROM tasks WHERE state IN ('QUEUED', 'RUNNING') AND (owner_pid IS NULL OR owner_pid != ?)")
+      .all(process.pid) as TaskRow[];
+    const mark = this.db.prepare("UPDATE tasks SET state = 'INTERRUPTED', ended_at = ?, error = 'The service stopped before this task finished.' WHERE id = ?");
+    this.db.transaction(() => rows.forEach((r) => mark.run(at, r.id)))();
+    return rows.map((r) => toTask({ ...r, state: 'INTERRUPTED' }));
   }
 
   /**
@@ -101,7 +107,7 @@ export class TaskSupervisor {
    * that task is returned. The work runs in the background; the returned task is its record.
    */
   start(
-    spec: { kind: string; dedupeKey: string; trigger: string; client: string; params: unknown },
+    spec: { kind: string; dedupeKey: string; trigger: string; client: string; params: unknown; attempt?: number },
     work: (ctx: TaskContext) => Promise<unknown>,
   ): { task: Task; created: boolean } {
     const id = `task_${randomBytes(9).toString('base64url')}`;
@@ -109,16 +115,16 @@ export class TaskSupervisor {
     try {
       this.db
         .prepare(
-          `INSERT INTO tasks (id, kind, dedupe_key, trigger, client, params_json, state, created_at, owner_pid)
-           VALUES (?, ?, ?, ?, ?, ?, 'QUEUED', ?, ?)`,
+          `INSERT INTO tasks (id, kind, dedupe_key, trigger, client, params_json, state, created_at, owner_pid, attempt)
+           VALUES (?, ?, ?, ?, ?, ?, 'QUEUED', ?, ?, ?)`,
         )
-        .run(id, spec.kind, spec.dedupeKey, spec.trigger, spec.client, JSON.stringify(spec.params), at, process.pid);
+        .run(id, spec.kind, spec.dedupeKey, spec.trigger, spec.client, JSON.stringify(spec.params), at, process.pid, spec.attempt ?? 1);
     } catch (err) {
       if ((err as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
         const existing = this.db
           .prepare("SELECT * FROM tasks WHERE dedupe_key = ? AND state IN ('QUEUED', 'RUNNING')")
           .get(spec.dedupeKey) as TaskRow | undefined;
-        if (existing) return { task: toTask(existing), created: false };
+        if (existing) return { task: toTask(existing, this.running.has(existing.id)), created: false };
       }
       throw err;
     }
@@ -174,7 +180,7 @@ export class TaskSupervisor {
 
   get(id: string): Task | null {
     const row = this.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as TaskRow | undefined;
-    return row ? toTask(row) : null;
+    return row ? toTask(row, this.running.has(row.id)) : null;
   }
 
   list(limit = 50, kind?: string): Task[] {
@@ -183,7 +189,7 @@ export class TaskSupervisor {
         ? this.db.prepare('SELECT * FROM tasks WHERE kind = ? ORDER BY created_at DESC LIMIT ?').all(kind, limit)
         : this.db.prepare('SELECT * FROM tasks ORDER BY created_at DESC LIMIT ?').all(limit)
     ) as TaskRow[];
-    return rows.map(toTask);
+    return rows.map((r) => toTask(r, this.running.has(r.id)));
   }
 
   /** Wait for in-flight tasks to settle (used on shutdown and in tests). */

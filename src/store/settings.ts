@@ -78,6 +78,14 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     classification: 'SENSITIVE',
     defaultValue: null,
   },
+  'monitoring.discoveryIntervalHours': {
+    label: 'Check job boards automatically',
+    help: 'How often Career Strike re-fetches the boards you monitor while the service is running. Off until you choose.',
+    options: { '0': 'Off', '6': 'Every 6 hours', '12': 'Every 12 hours', '24': 'Once a day' },
+    schema: z.enum(['0', '6', '12', '24']),
+    classification: 'PERSONAL',
+    defaultValue: '0',
+  },
   'identity.fullName': {
     label: 'Full name',
     help: 'As you want it to appear on applications.',

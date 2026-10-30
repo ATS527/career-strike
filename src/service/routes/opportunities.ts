@@ -26,6 +26,7 @@ function invalid(reply: FastifyReply, issues: z.core.$ZodIssue[]): FastifyReply 
 export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; discovery: Discovery; tasks: TaskSupervisor }): void {
   const { db, discovery, tasks } = deps;
   const ctx = () => candidateContext(db);
+  const practiceOrigin = (): string | null => (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
 
   // ---- monitored boards ----
 
@@ -34,11 +35,11 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
   app.post('/api/sources', async (req, reply) => {
     const parsed = AddBoard.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
-    const target = 'url' in parsed.data ? boardFromUrl(parsed.data.url) : parsed.data;
+    const target = 'url' in parsed.data ? boardFromUrl(parsed.data.url, practiceOrigin()) : parsed.data;
     if (!target) {
       return reply.code(400).send({
         error: 'UNRECOGNISED_BOARD_URL',
-        message: 'Paste a Greenhouse, Lever or Ashby careers page link, e.g. https://jobs.lever.co/company',
+        message: 'Paste a Greenhouse, Lever or Ashby careers page link, e.g. https://jobs.lever.co/company (or a practice board link from career-strike practice)',
       });
     }
     try {

@@ -9,12 +9,17 @@ const HOSTS: readonly [RegExp, SourceId][] = [
 ];
 
 /** Recognise a public board URL such as https://jobs.lever.co/acme/123 → { lever, acme }. */
-export function boardFromUrl(raw: string): { source: SourceId; board: string } | null {
+export function boardFromUrl(raw: string, practiceOrigin: string | null = null): { source: SourceId; board: string } | null {
   let url: URL;
   try {
     url = new URL(raw.trim());
   } catch {
     return null;
+  }
+  // The owned practice endpoint: http://127.0.0.1:<port>/boards/<name>, only once registered.
+  if (practiceOrigin && url.origin === practiceOrigin) {
+    const [first, name] = url.pathname.split('/').filter(Boolean);
+    return first === 'boards' && name ? { source: 'practice', board: decodeURIComponent(name) } : null;
   }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
   const match = HOSTS.find(([re]) => re.test(url.hostname));

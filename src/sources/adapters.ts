@@ -279,8 +279,82 @@ function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-export function createAdapters(fetchImpl?: FetchImpl): Readonly<Record<SourceId, SourceAdapter>> {
-  return { greenhouse: greenhouse(fetchImpl), lever: lever(fetchImpl), ashby: ashby(fetchImpl) };
+// ---- Practice board: served by the owned practice endpoint on this computer ----
+
+const PracticeBoard = z.object({
+  postings: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      employer: z.string(),
+      location: nullableString,
+      remote: z.enum(['remote', 'hybrid', 'onsite', 'unknown']),
+      description: z.array(z.object({ type: z.enum(['heading', 'paragraph', 'item']), text: z.string() })),
+    }),
+  ),
+});
+
+/** Only a registered loopback practice endpoint is ever contacted. */
+export function isPracticeOrigin(origin: string | null): origin is string {
+  if (!origin) return false;
+  try {
+    const u = new URL(origin);
+    return u.protocol === 'http:' && u.hostname === '127.0.0.1' && Boolean(u.port) && u.origin === origin;
+  } catch {
+    return false;
+  }
 }
 
-export const SOURCE_IDS: readonly SourceId[] = ['greenhouse', 'lever', 'ashby'];
+function practice(practiceOrigin: () => string | null, fetchImpl: FetchImpl = (u, i) => fetch(u, i)): SourceAdapter {
+  return {
+    id: 'practice',
+    label: 'Practice board',
+    boardUrl: (board) => `${practiceOrigin() ?? 'http://127.0.0.1'}/boards/${encodeURIComponent(board)}`,
+    async list(board, signal) {
+      const origin = practiceOrigin();
+      if (!isPracticeOrigin(origin)) throw new SourceError('not_found', 'The practice endpoint is not running. Start it with career-strike practice.');
+      let res: Response;
+      try {
+        res = await fetchImpl(`${origin}/boards/${encodeURIComponent(assertBoard(board))}`, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20_000)]) : AbortSignal.timeout(20_000),
+        });
+      } catch (err) {
+        if (signal?.aborted) throw err;
+        throw new SourceError('outage', `The practice endpoint did not answer: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      if (res.status === 404) throw new SourceError('not_found', 'The practice endpoint has no such board');
+      if (res.status === 429) throw new SourceError('rate_limited', 'The practice endpoint asked Career Strike to slow down');
+      if (!res.ok) throw new SourceError('outage', `The practice endpoint returned HTTP ${res.status}`);
+      return parse(PracticeBoard, await res.json(), 'The practice endpoint').postings.map((p) => ({
+        source: 'practice' as const,
+        board,
+        sourceJobId: p.id,
+        employer: p.employer,
+        title: p.title,
+        locationText: p.location ?? null,
+        remotePolicy: p.remote,
+        employmentType: 'full_time' as const,
+        department: null,
+        salary: null,
+        description: p.description,
+        applyUrl: `${origin}/applications`,
+        postingUrl: null,
+        publishedAt: null,
+        unresolved: ['Practice posting: not a real employer.'],
+      }));
+    },
+  };
+}
+
+export function createAdapters(fetchImpl?: FetchImpl, opts: { practiceOrigin?: () => string | null } = {}): Readonly<Record<SourceId, SourceAdapter>> {
+  return {
+    greenhouse: greenhouse(fetchImpl),
+    lever: lever(fetchImpl),
+    ashby: ashby(fetchImpl),
+    practice: practice(opts.practiceOrigin ?? (() => null)),
+  };
+}
+
+export const SOURCE_IDS: readonly SourceId[] = ['greenhouse', 'lever', 'ashby', 'practice'];

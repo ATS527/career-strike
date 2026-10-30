@@ -157,6 +157,7 @@ program
     const job = await localRequest(info.port, '/api/practice/jobs', { method: 'POST', body: {}, headers: auth });
     console.log(`Practice endpoint running at ${ats.origin} (nothing sent here leaves this computer).`);
     console.log(`A practice job was added: open the dashboard, prepare an application for “Practice application”, approve it and submit.`);
+    console.log(`To try monitoring offline, add the job board ${ats.origin}/boards/demo under Opportunities → Job boards.`);
     console.log(`Job id: ${(job.body as { jobId: string }).jobId}. Press Ctrl-C to stop the practice endpoint.`);
     const stop = (): void => void ats.close().then(() => process.exit(0));
     process.once('SIGINT', stop);

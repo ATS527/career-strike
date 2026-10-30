@@ -38,6 +38,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   lever: 'Lever',
   ashby: 'Ashby',
   manual: 'Added by you',
+  practice: 'Practice board',
 };
 
 /** What may truthfully be said about a posting's status. */
