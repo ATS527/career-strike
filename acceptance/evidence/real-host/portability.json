@@ -1,0 +1,53 @@
+{
+  "revision": "bb673979e3fe5b5d0bb9d69de4f0ed74021811c7",
+  "at": "2026-10-30T18:34:16.868Z",
+  "writer": "claude-code 2.1.280 (Claude Code)",
+  "reader": "opencode opencode v2.2.0",
+  "passed": true,
+  "checks": [
+    {
+      "name": "candidate granted shortlist access in the dashboard",
+      "passed": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "claude-code shortlisted the job",
+      "passed": true,
+      "detail": "[\"Portablemvvb96uv Role 2\"]"
+    },
+    {
+      "name": "the change is attributed to the writing assistant",
+      "passed": true,
+      "detail": "ai:claude-code"
+    },
+    {
+      "name": "opencode sees the shortlist made through claude-code",
+      "passed": true,
+      "detail": "title only available from cs_list_shortlist"
+    },
+    {
+      "name": "shortlist read reached Career Strike",
+      "passed": true,
+      "detail": "service log"
+    },
+    {
+      "name": "dashboard shows shortlists made through MCP (browser)",
+      "passed": true,
+      "detail": "2 passed (3.2s)"
+    },
+    {
+      "name": "claude-code left without Career Strike",
+      "passed": true,
+      "detail": "claude-code mcp list"
+    },
+    {
+      "name": "opencode left without Career Strike",
+      "passed": true,
+      "detail": "opencode mcp list"
+    }
+  ],
+  "transcript": {
+    "writer": "done\n\n[exit 0]",
+    "reader": "\u001b[0m\n> build · flint-40b-free\n\u001b[0m⚙ \u001b[0mexecute {\"code\":\"const result = await tools[\\\"career-strike\\\"].cs_list_shortlist();\\nreturn result;\"} \n> build · flint-40b-free\nThe tool returned:\n\n- **Portablemvvb96uv Role 2**\n\n[exit 0]"
+  }
+}

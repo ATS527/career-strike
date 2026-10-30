@@ -55,8 +55,13 @@ function main(): number {
   const revision = git('rev-parse', 'HEAD');
   const registry = RegistrySchema.parse(JSON.parse(fs.readFileSync(REGISTRY, 'utf8')));
   const requested = new Set(process.argv.slice(2));
+  // Criteria whose evidence comes from certification scripts (real hosts) are not re-run here.
   const selected = registry.criteria.filter(
-    (c) => c.tests.length > 0 && c.status !== 'NOT_APPLICABLE' && (requested.size === 0 || requested.has(c.id)),
+    (c) =>
+      c.tests.length > 0 &&
+      c.tests.every((t) => kindOfTestFile(t) !== null) &&
+      c.status !== 'NOT_APPLICABLE' &&
+      (requested.size === 0 || requested.has(c.id)),
   );
   const unknown = [...requested].filter((id) => !registry.criteria.some((c) => c.id === id));
   if (unknown.length > 0) {
