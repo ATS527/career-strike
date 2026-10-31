@@ -1,41 +1,76 @@
 {
-  "revision": "2a1e99527535cf5037615db058ecb11eabfab466",
-  "at": "2026-10-31T08:51:22.000Z",
+  "revision": "f9239ad76af66dea845e33ae790ed5a02fa463e9",
+  "at": "2026-10-31T18:08:15.000Z",
   "passed": true,
-  "command": "career-strike verify-market IN --target sarvam-india",
-  "target": {
-    "id": "sarvam-india",
-    "employer": "Sarvam AI",
-    "officialCareersSite": "https://www.sarvam.ai/careers",
-    "source": "ashby",
-    "board": "sarvam",
-    "boardUrl": "https://jobs.ashbyhq.com/sarvam"
-  },
+  "command": "career-strike verify-market IN --target saviynt-india && career-strike verify-market IN --target krafton-india && career-strike verify-market IN --target harvey-india",
+  "note": "sarvam-india was already live-certified in the earlier India run (2026-10-31T08:51:22.000Z, revision 2a1e99527535cf5037615db058ecb11eabfab466) and its board is monitored, so verify-market refuses re-certification of an adopted board; this run certifies the remaining three targets, completing all four curated India items.",
+  "targets": [
+    {
+      "id": "saviynt-india",
+      "employer": "Saviynt",
+      "officialCareersSite": "https://saviynt.com/careers",
+      "source": "lever",
+      "board": "saviynt",
+      "boardUrl": "https://jobs.lever.co/saviynt",
+      "adoptedBoardId": "src_E35G52itgjY5",
+      "certifiedAt": "2026-10-31T18:07:48.102Z"
+    },
+    {
+      "id": "krafton-india",
+      "employer": "KRAFTON INDIA",
+      "officialCareersSite": "https://krafton.in/jobs/",
+      "source": "greenhouse",
+      "board": "kraftonindia",
+      "boardUrl": "https://job-boards.greenhouse.io/kraftonindia",
+      "adoptedBoardId": "src_vVMJbbNxVdwF",
+      "certifiedAt": "2026-10-31T18:07:55.369Z"
+    },
+    {
+      "id": "sarvam-india",
+      "employer": "Sarvam AI",
+      "officialCareersSite": "https://www.sarvam.ai/careers",
+      "source": "ashby",
+      "board": "sarvam",
+      "boardUrl": "https://jobs.ashbyhq.com/sarvam",
+      "adoptedBoardId": "src_yPe_2kegGuwh",
+      "certifiedAt": "2026-10-31T08:51:10.001Z"
+    },
+    {
+      "id": "harvey-india",
+      "employer": "Harvey",
+      "officialCareersSite": "https://www.harvey.ai/company/careers",
+      "source": "ashby",
+      "board": "harvey",
+      "boardUrl": "https://jobs.ashbyhq.com/harvey",
+      "adoptedBoardId": "src_Mez8Dm193eHn",
+      "certifiedAt": "2026-10-31T18:07:58.639Z"
+    }
+  ],
   "checks": [
     {
       "name": "service stopped before the live fetch",
       "passed": true,
-      "detail": "career-strike status reported 'stopped'; the command also refuses a live or hung process"
+      "detail": "career-strike status reported 'stopped' before all three fetches; the command also refuses a live or hung process"
     },
     {
-      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
       "passed": true,
-      "detail": "single complete listing fetched from the Ashby public board; allowlisted host, SSRF guard and rate limits applied"
+      "detail": "three single complete listings fetched in this run (Lever, Greenhouse, Ashby) plus Sarvam AI's Ashby listing from the earlier run; allowlisted hosts, SSRF guard and rate limits applied"
     },
     {
       "name": "explicit India location evidence present",
       "passed": true,
-      "detail": "46 postings retrieved; 37 normalise to explicit IN location evidence"
+      "detail": "Saviynt 66 postings retrieved (22 with explicit IN evidence); KRAFTON INDIA 8 (8); Sarvam AI 46 (37, earlier run); Harvey 381 (11)"
     },
     {
-      "name": "board adopted and monitoring enabled only after verification",
+      "name": "boards adopted and monitoring enabled only after verification",
       "passed": true,
-      "detail": "adopted as board id src_yPe_2kegGuwh with health OK; source-board health record written"
+      "detail": "adopted as src_E35G52itgjY5, src_vVMJbbNxVdwF, src_yPe_2kegGuwh and src_Mez8Dm193eHn, each with health OK; source-board health records written"
     },
     {
       "name": "market status honest for this installation",
       "passed": true,
-      "detail": "IN may be described as DISCOVERY_AVAILABLE for this installation; other markets remain CONFIGURED"
+      "detail": "IN may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
     }
   ]
 }
