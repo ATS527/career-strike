@@ -1,0 +1,71 @@
+{
+  "revision": "df2dd99f58e4e994edb1aa4718d8e91e556a1238",
+  "at": "2026-10-31T13:05:04.701Z",
+  "passed": true,
+  "command": "career-strike verify-market SG --target stripe-singapore && career-strike verify-market SG --target databricks-singapore && career-strike verify-market SG --target coinbase-singapore && career-strike verify-market SG --target twilio-singapore",
+  "targets": [
+    {
+      "id": "stripe-singapore",
+      "employer": "Stripe",
+      "officialCareersSite": "https://stripe.com/jobs",
+      "source": "greenhouse",
+      "board": "stripe",
+      "boardUrl": "https://boards.greenhouse.io/stripe",
+      "adoptedBoardId": "src_iobuUsyfnJNf"
+    },
+    {
+      "id": "databricks-singapore",
+      "employer": "Databricks",
+      "officialCareersSite": "https://www.databricks.com/company/careers",
+      "source": "greenhouse",
+      "board": "databricks",
+      "boardUrl": "https://job-boards.greenhouse.io/databricks",
+      "adoptedBoardId": "src_2Ws-EqyzZey9"
+    },
+    {
+      "id": "coinbase-singapore",
+      "employer": "Coinbase",
+      "officialCareersSite": "https://www.coinbase.com/careers",
+      "source": "greenhouse",
+      "board": "coinbase",
+      "boardUrl": "https://job-boards.greenhouse.io/coinbase",
+      "adoptedBoardId": "src_RhZ14evPbUIJ"
+    },
+    {
+      "id": "twilio-singapore",
+      "employer": "Twilio",
+      "officialCareersSite": "https://www.twilio.com/en-us/company/jobs",
+      "source": "greenhouse",
+      "board": "twilio",
+      "boardUrl": "https://job-boards.greenhouse.io/twilio",
+      "adoptedBoardId": "src_1yNHP7NOHjAO"
+    }
+  ],
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "four single complete listings fetched from the employers' public Greenhouse boards; allowlisted host, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Singapore location evidence present",
+      "passed": true,
+      "detail": "Stripe 746 postings retrieved (47 with explicit SG evidence); Databricks 901 (30); Coinbase 250 (7); Twilio 132 (5)"
+    },
+    {
+      "name": "boards adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as src_iobuUsyfnJNf, src_2Ws-EqyzZey9, src_RhZ14evPbUIJ and src_1yNHP7NOHjAO, each with health OK; source-board health records written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "SG may be described as DISCOVERY_AVAILABLE for this installation; other unverified markets remain CONFIGURED"
+    }
+  ]
+}
