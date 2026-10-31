@@ -25,11 +25,13 @@ tracked with evidence in `acceptance/registry.json`.
 - Naukri, Foundit, LinkedIn, Indeed, JobStreet, JobsDB, Glints, Kalibrr, MyCareersFuture,
   Hiredly, VietnamWorks, TopCV and similar marketplaces are not fetched by Career Strike. Use an
   official link or add a role manually unless a future release records authorised access.
-- India has four curated employer-direct candidates: Saviynt (Lever), KRAFTON INDIA (Greenhouse),
-  Sarvam AI (Ashby) and Harvey (Ashby). Their employer and board identities have been reviewed,
-  but India remains **CONFIGURED** until `career-strike verify-market IN --target <id>` completes
-  a live permitted fetch with an explicitly Indian posting. Only then does the command save and
-  monitor that board and allow the local installation to call India **DISCOVERY_AVAILABLE**.
+- India and Singapore have four curated employer-direct candidates each: Saviynt (Lever),
+  KRAFTON INDIA (Greenhouse), Sarvam AI (Ashby) and Harvey (Ashby) for India; Stripe, Databricks,
+  Coinbase and Twilio (all Greenhouse) for Singapore. Their employer and board identities have
+  been reviewed, but both markets remain **CONFIGURED** until `career-strike verify-market
+  <CC> --target <id>` completes a live permitted fetch with an explicitly located posting. Only
+  then does the command save and monitor that board and allow the local installation to call the
+  market **DISCOVERY_AVAILABLE**.
 - A posting counts as open only if its board listed it within the last 72 hours. Boards are
   checked when you add them, when you press **Fetch now**, and on your chosen schedule.
 - Scheduled checks run only while the service is running; there is no operating-system background

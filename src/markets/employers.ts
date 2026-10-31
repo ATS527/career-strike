@@ -23,11 +23,11 @@ export interface EmployerTarget {
 
 /**
  * Evidence reviewed on 2026-10-31: each target's official careers site and its public board
- * independently show matching Indian roles. Board identifiers are therefore corroborated, not
- * guessed. Links remain on each target record for later review.
+ * independently show matching Indian and Singaporean roles. Board identifiers are therefore
+ * corroborated, not guessed. Links remain on each target record for later review.
  * This is not live-discovery certification: that is earned only by verifyTargetDiscovery().
  */
-export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+export const INDIA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   {
     id: 'saviynt-india',
     employer: 'Saviynt',
@@ -77,6 +77,67 @@ export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
     verifiedAt: '2026-10-31T00:00:00.000Z',
   },
 ];
+
+/**
+ * Singapore evidence reviewed on 2026-10-31: each employer's official careers page was reachable
+ * and its Greenhouse board API returned complete listings with postings located explicitly in
+ * Singapore (Stripe 47, Databricks 30, Coinbase 7, Twilio 5 on that date). Several of these boards
+ * redirect `job-boards.greenhouse.io` to the employer's own careers search; the redirect target is
+ * that employer's site rendering the same board, which corroborates ownership.
+ * This is not live-discovery certification: that is earned only by verifyTargetDiscovery().
+ */
+export const SINGAPORE_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'stripe-singapore',
+    employer: 'Stripe',
+    officialWebsite: 'https://stripe.com',
+    careersUrl: 'https://stripe.com/jobs',
+    source: 'greenhouse',
+    board: 'stripe',
+    boardUrl: 'https://boards.greenhouse.io/stripe',
+    countries: ['SG'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'databricks-singapore',
+    employer: 'Databricks',
+    officialWebsite: 'https://www.databricks.com',
+    careersUrl: 'https://www.databricks.com/company/careers',
+    source: 'greenhouse',
+    board: 'databricks',
+    boardUrl: 'https://job-boards.greenhouse.io/databricks',
+    countries: ['SG'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'coinbase-singapore',
+    employer: 'Coinbase',
+    officialWebsite: 'https://www.coinbase.com',
+    careersUrl: 'https://www.coinbase.com/careers',
+    source: 'greenhouse',
+    board: 'coinbase',
+    boardUrl: 'https://job-boards.greenhouse.io/coinbase',
+    countries: ['SG'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'twilio-singapore',
+    employer: 'Twilio',
+    officialWebsite: 'https://www.twilio.com',
+    careersUrl: 'https://www.twilio.com/en-us/company/jobs',
+    source: 'greenhouse',
+    board: 'twilio',
+    boardUrl: 'https://job-boards.greenhouse.io/twilio',
+    countries: ['SG'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+];
+
+export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [...INDIA_EMPLOYER_TARGETS, ...SINGAPORE_EMPLOYER_TARGETS];
 
 export function employerTargetsFor(country: CountryCode): EmployerTarget[] {
   return EMPLOYER_TARGETS.filter((target) => target.countries.includes(country));

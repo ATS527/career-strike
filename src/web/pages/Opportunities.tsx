@@ -8,6 +8,7 @@ import { ErrorPanel, Loading } from './states';
 import { useResource } from '../useResource';
 import { COUNTRY_CODES, COUNTRY_REGISTRY } from '../../markets/countries';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../markets/india-sources';
+import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../markets/singapore-sources';
 
 const PAGE = 50;
 const MAX_COMPARE = 4;
@@ -193,7 +194,24 @@ export function Opportunities() {
         </details>
       </form>
 
-      {params.get('country') === 'IN' && <IndiaOfficialSearches query={query} />}
+      {params.get('country') === 'IN' && (
+        <OfficialSearches
+          id="india-official-searches"
+          market="India"
+          sources={INDIA_SOURCE_ASSESSMENTS}
+          urlFor={officialIndiaSearchUrl}
+          query={query}
+        />
+      )}
+      {params.get('country') === 'SG' && (
+        <OfficialSearches
+          id="singapore-official-searches"
+          market="Singapore"
+          sources={SINGAPORE_SOURCE_ASSESSMENTS}
+          urlFor={officialSingaporeSearchUrl}
+          query={query}
+        />
+      )}
 
       {compare.length > 0 && (
         <div className="compare-bar" role="region" aria-label="Comparison">
@@ -263,20 +281,29 @@ function CountryFocusViews({ countries }: { countries: string[] }) {
   );
 }
 
-function IndiaOfficialSearches({ query }: { query: string }) {
+/** Official-site launchers are user-driven discovery; they never claim a market has live sources. */
+function OfficialSearches<M extends { id: string; name: string; capability: string }>({
+  id, market, sources, urlFor, query,
+}: {
+  id: string;
+  market: string;
+  sources: readonly M[];
+  urlFor: (source: M, query: string) => string;
+  query: string;
+}) {
   return (
-    <section className="external-discovery" aria-labelledby="india-official-searches">
+    <section className="external-discovery" aria-labelledby={id}>
       <div>
-        <p className="eyebrow">India · user-driven discovery</p>
-        <h2 id="india-official-searches">Search official job sites</h2>
+        <p className="eyebrow">{market} · user-driven discovery</p>
+        <h2 id={id}>Search official job sites</h2>
         <p>
           These links open each provider’s own site. Career Strike does not retrieve, store or claim the listings as verified. After checking the employer’s official posting, <Link href="/opportunities/new">add it here</Link> to track it locally.
         </p>
       </div>
       <ul className="external-discovery__list">
-        {INDIA_SOURCE_ASSESSMENTS.map((source) => (
+        {sources.map((source) => (
           <li key={source.id}>
-            <a href={officialIndiaSearchUrl(source, query)} target="_blank" rel="noopener noreferrer">
+            <a href={urlFor(source, query)} target="_blank" rel="noopener noreferrer">
               {source.name} <span aria-hidden="true">↗</span>
             </a>
             <span>{source.capability === 'USER_DRIVEN_DISCOVERY' ? 'Search on the official site' : source.capability === 'RESTRICTED' ? 'Official site only — no automation' : 'No automatic retrieval'}</span>

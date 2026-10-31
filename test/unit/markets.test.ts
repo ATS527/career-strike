@@ -6,6 +6,7 @@ import { EMPLOYER_TARGETS, verifyTargetDiscovery } from '../../src/markets/emplo
 import { employerTargetRecord } from '../../src/markets/employers.js';
 import { marketReadiness } from '../../src/markets/readiness.js';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../src/markets/india-sources.js';
+import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../src/markets/singapore-sources.js';
 import type { SourceAdapter } from '../../src/sources/types.js';
 import path from 'node:path';
 import { openDb } from '../../src/store/db.js';
@@ -19,6 +20,7 @@ describe('configured markets', () => {
     expect(COUNTRY_REGISTRY.VN.currencies).toEqual(['VND']);
     expect(EMPLOYER_TARGETS.map((target) => `${target.source}/${target.board}`)).toEqual([
       'lever/saviynt', 'greenhouse/kraftonindia', 'ashby/sarvam', 'ashby/harvey',
+      'greenhouse/stripe', 'greenhouse/databricks', 'greenhouse/coinbase', 'greenhouse/twilio',
     ]);
   });
 
@@ -45,6 +47,17 @@ describe('configured markets', () => {
     expect(officialIndiaSearchUrl(linkedin, 'iOS Swift')).toContain('location=India');
     expect(officialIndiaSearchUrl(indeed, 'iOS Swift')).toContain('q=iOS+Swift');
     expect(officialIndiaSearchUrl(indeed, 'iOS Swift')).toContain('l=India');
+  });
+
+  it('does not turn Singaporean marketplaces into automatic integrations', () => {
+    expect(SINGAPORE_SOURCE_ASSESSMENTS.every((source) => source.automatedRetrieval === false)).toBe(true);
+    expect(SINGAPORE_SOURCE_ASSESSMENTS.find((source) => source.id === 'mycareersfuture')?.capability).toBe('USER_DRIVEN_DISCOVERY');
+    const linkedin = SINGAPORE_SOURCE_ASSESSMENTS.find((source) => source.id === 'linkedin-jobs')!;
+    const indeed = SINGAPORE_SOURCE_ASSESSMENTS.find((source) => source.id === 'indeed-singapore')!;
+    expect(officialSingaporeSearchUrl(linkedin, 'iOS Swift')).toContain('keywords=iOS+Swift');
+    expect(officialSingaporeSearchUrl(linkedin, 'iOS Swift')).toContain('location=Singapore');
+    expect(officialSingaporeSearchUrl(indeed, 'iOS Swift')).toContain('q=iOS+Swift');
+    expect(officialSingaporeSearchUrl(indeed, 'iOS Swift')).toContain('l=Singapore');
   });
 
   it('requires an actual permitted response with explicit India evidence before certifying discovery', async () => {
@@ -77,8 +90,11 @@ describe('configured markets', () => {
     expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
     expect(india.targets.map((t) => t.id)).toEqual(['saviynt-india', 'krafton-india', 'sarvam-india', 'harvey-india']);
     expect(india.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
-    // Markets without curated targets stay configured with no claimed signals.
-    expect(before.find((m) => m.code === 'SG')!.targets).toEqual([]);
+    // Markets whose curated targets have not been adopted locally claim no signals either.
+    const singapore = before.find((m) => m.code === 'SG')!;
+    expect(singapore.discoveryAvailable).toBe(false);
+    expect(singapore.targets.map((t) => t.id)).toEqual(['stripe-singapore', 'databricks-singapore', 'coinbase-singapore', 'twilio-singapore']);
+    expect(singapore.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
 
     // A healthy adopted board — as verify-market or a monitored fetch would record — is the only
     // local evidence that turns discovery availability on for one market.
