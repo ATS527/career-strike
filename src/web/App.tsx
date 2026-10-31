@@ -107,6 +107,10 @@ export function App() {
       <main id="main" tabIndex={-1} key={generation}>
         {renderPage(path)}
       </main>
+      <footer className="site-foot">
+        <p className="eyebrow">Career Strike</p>
+        <p className="muted">Local-first and private by design — your data never leaves this computer.</p>
+      </footer>
     </div>
   );
 }
