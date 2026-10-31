@@ -96,4 +96,33 @@ describe('local service', () => {
     const { paths } = await start();
     await expect(startService(paths, { port: 0 })).rejects.toBeInstanceOf(AlreadyRunningError);
   });
+
+  it('serves data export, backup status, and diagnostics', async () => {
+    const { s } = await start();
+
+    // Export
+    const exp = await localRequest(s.info.port, '/api/data/export', { headers: auth(s) });
+    expect(exp.status).toBe(200);
+    expect(exp.headers['content-disposition']).toMatch(/attachment; filename="career-strike-export-.*\.json"/);
+    expect(exp.body).toMatchObject({ format: 'career-strike-export', formatVersion: 1 });
+
+    // Backups
+    const bkp = await localRequest(s.info.port, '/api/data/backups', { headers: auth(s) });
+    expect(bkp.status).toBe(200);
+    expect(bkp.body).toMatchObject({ count: 0, latest: null, backups: [] });
+
+    // Diagnostics
+    const diag = await localRequest(s.info.port, '/api/diagnostics', { headers: auth(s) });
+    expect(diag.status).toBe(200);
+    expect((diag.body as { checks: unknown[] }).checks.length).toBeGreaterThan(0);
+
+    // Delete confirmation required
+    const badDelete = await localRequest(s.info.port, '/api/data/delete', {
+      method: 'POST',
+      headers: auth(s),
+      body: { confirm: 'wrong' },
+    });
+    expect(badDelete.status).toBe(400);
+    expect(badDelete.body).toMatchObject({ error: 'CONFIRMATION_REQUIRED' });
+  });
 });

@@ -4,6 +4,7 @@ import { useHashFocus } from '../router';
 import { useResource } from '../useResource';
 import { type Draft, type FieldKind, fieldKind, fromDraft, groupOf, sameValue, toDraft } from './settingFields';
 import { AiAssistants, AiRequests } from './AiAssistants';
+import { DataAndPrivacy } from './DataAndPrivacy';
 import { ErrorPanel, Loading } from './states';
 
 const GROUPS = [
@@ -39,6 +40,7 @@ export function Settings() {
         ))}
       {settings.state === 'ready' && <AiRequests />}
       {settings.state === 'ready' && <AiAssistants />}
+      {settings.state === 'ready' && <DataAndPrivacy />}
     </>
   );
 }

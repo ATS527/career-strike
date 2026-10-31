@@ -14,9 +14,17 @@ function metrics(sources: { source: string; submitted: number; responded: number
     bySource: sources.map((s) => ({ source: s.source, found: 20, closedOrStale: rate(0, 20), shortlisted: 0, submitted: s.submitted, responded: rate(s.responded, s.submitted), interviewed: rate(0, s.submitted) })),
     daysToFirstResponse: { median: null, n: 0 },
     submittedPerWeek: [],
+    campaignSummaries: [],
     recurringGaps: [],
   };
 }
+
+describe('campaignSummaries', () => {
+  it('structure includes weekly summary fields', () => {
+    const m = metrics([]);
+    expect(m.campaignSummaries).toEqual([]);
+  });
+});
 
 describe('observations', () => {
   it('refuses to compare below the minimum sample and says how many there are', () => {

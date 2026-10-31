@@ -20,6 +20,10 @@ test.describe('insights', () => {
     await expect(page.getByTestId('observations')).toContainText('Too few submitted applications');
     await expect(page.getByTestId('totals')).toContainText('no data (n=0)');
 
+    const campaignSummary = page.getByTestId('campaign-summary');
+    await expect(campaignSummary).toBeVisible();
+    await expect(campaignSummary.getByRole('row')).toHaveCount(9); // header + 8 weeks
+
     const proposals = page.getByTestId('proposals');
     await expect(proposals).toContainText('Check your job boards automatically once a day');
     expect((await cs.settings())['monitoring.discoveryIntervalHours']).toBe('0');

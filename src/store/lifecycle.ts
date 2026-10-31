@@ -6,7 +6,7 @@ import { type AppPaths, findGitRoot } from '../core/paths.js';
 import { VERSION } from '../core/version.js';
 import type { SecretStore } from '../vault/secrets.js';
 import { CLASSIFICATION } from './classification.js';
-import { inspectDb, latestKnownVersion, openDb, schemaVersion } from './db.js';
+import { type Db, inspectDb, latestKnownVersion, openDb, schemaVersion } from './db.js';
 
 // Export, backup, restore and delete of everything Career Strike stores for the candidate.
 // None of these talk to the network; all of them write owner-only files.
@@ -233,4 +233,134 @@ export async function deleteAllData(paths: AppPaths, secrets: SecretStore): Prom
   const leftInPlace = fs.existsSync(paths.home) ? fs.readdirSync(paths.home) : [];
   if (fs.existsSync(paths.home) && leftInPlace.length === 0) fs.rmdirSync(paths.home);
   return { removed, leftInPlace, secretsRemoved };
+}
+
+// ---- rollback and backup queries ----
+
+export interface BackupItem {
+  name: string;
+  kind: 'pre-upgrade' | 'pre-restore' | 'pre-rollback' | 'manual';
+  createdAt: string;
+  bytes: number;
+  schemaVersion?: number;
+}
+
+export function listBackups(paths: AppPaths): { count: number; latest: BackupItem | null; backups: BackupItem[] } {
+  const dir = path.join(paths.home, 'backups');
+  if (!fs.existsSync(dir)) return { count: 0, latest: null, backups: [] };
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const backups: BackupItem[] = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    try {
+      const stat = fs.statSync(full);
+      const isDir = entry.isDirectory();
+      if (isDir) {
+        if (entry.name.startsWith('pre-restore-')) {
+          backups.push({ name: entry.name, kind: 'pre-restore', createdAt: stat.mtime.toISOString(), bytes: stat.size });
+        } else if (entry.name.startsWith('pre-rollback-')) {
+          backups.push({ name: entry.name, kind: 'pre-rollback', createdAt: stat.mtime.toISOString(), bytes: stat.size });
+        } else {
+          backups.push({ name: entry.name, kind: 'manual', createdAt: stat.mtime.toISOString(), bytes: stat.size });
+        }
+      } else if (entry.isFile()) {
+        const m = /^career-strike-v(\d+)-.*\.db$/.exec(entry.name);
+        if (m) {
+          backups.push({
+            name: entry.name,
+            kind: 'pre-upgrade',
+            createdAt: stat.mtime.toISOString(),
+            bytes: stat.size,
+            schemaVersion: Number(m[1]),
+          });
+        } else {
+          backups.push({ name: entry.name, kind: 'manual', createdAt: stat.mtime.toISOString(), bytes: stat.size });
+        }
+      }
+    } catch {
+      // Ignore unreadable entries
+    }
+  }
+  backups.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+  return { count: backups.length, latest: backups[0] ?? null, backups };
+}
+
+export function rollback(paths: AppPaths, options: { targetFile?: string } = {}): { restoredFrom: string; schemaVersion: number; previous: string | null } {
+  const backupsDir = path.join(paths.home, 'backups');
+  let backupFile: string;
+  if (options.targetFile) {
+    backupFile = path.resolve(options.targetFile);
+    if (!fs.existsSync(backupFile)) throw new LifecycleError(`Backup file not found: ${backupFile}`);
+  } else {
+    if (!fs.existsSync(backupsDir)) throw new LifecycleError(`No pre-upgrade backup found in ${backupsDir}.`);
+    const preUpgrades = listBackups(paths).backups.filter((b) => b.kind === 'pre-upgrade');
+    if (preUpgrades.length === 0) throw new LifecycleError(`No pre-upgrade backup found in ${backupsDir}.`);
+    backupFile = path.join(backupsDir, preUpgrades[0]!.name);
+  }
+
+  const probe = new Database(backupFile, { readonly: true, fileMustExist: true });
+  let version: number;
+  try {
+    version = schemaVersion(probe);
+  } finally {
+    probe.close();
+  }
+
+  let previous: string | null = null;
+  if (fs.existsSync(paths.db)) {
+    previous = path.join(paths.home, 'backups', `pre-rollback-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+    fs.mkdirSync(previous, { recursive: true, mode: 0o700 });
+    for (const name of ['career-strike.db', 'career-strike.db-wal', 'career-strike.db-shm']) {
+      const file = path.join(paths.home, name);
+      if (fs.existsSync(file)) fs.renameSync(file, path.join(previous, name));
+    }
+  }
+
+  fs.copyFileSync(backupFile, paths.db);
+  if (process.platform !== 'win32') fs.chmodSync(paths.db, 0o600);
+  return { restoredFrom: backupFile, schemaVersion: version, previous };
+}
+
+export function buildExportPayload(db: Db, paths: AppPaths): Record<string, unknown> {
+  const omitted: string[] = ['Login sessions (dashboard_sessions)'];
+  const tables: Record<string, unknown[]> = {};
+  let docs: { id: string; filename: string; mime?: string; size_bytes?: number }[] = [];
+  db.transaction(() => {
+    for (const [table, columns] of Object.entries(CLASSIFICATION)) {
+      if (NOT_EXPORTED.has(table)) continue;
+      const keep = Object.entries(columns).filter(([, c]) => c.class !== 'SECRET').map(([name]) => name);
+      const secret = Object.entries(columns).filter(([, c]) => c.class === 'SECRET').map(([name]) => `${table}.${name}`);
+      omitted.push(...secret.map((s) => `Credential column ${s}`));
+      tables[table] = db.prepare(`SELECT ${keep.map((k) => `"${k}"`).join(', ')} FROM "${table}"`).all();
+    }
+    docs = db.prepare('SELECT id, filename, mime, size_bytes FROM documents ORDER BY created_at').all() as {
+      id: string;
+      filename: string;
+      mime?: string;
+      size_bytes?: number;
+    }[];
+  })();
+
+  const documents = docs.map((d) => {
+    const file = path.join(paths.vault, 'documents', d.id);
+    const exists = fs.existsSync(file);
+    return {
+      id: d.id,
+      filename: d.filename,
+      mime: d.mime ?? 'application/octet-stream',
+      sizeBytes: d.size_bytes ?? 0,
+      dataBase64: exists ? fs.readFileSync(file).toString('base64') : null,
+    };
+  });
+
+  return {
+    format: 'career-strike-export',
+    formatVersion: 1,
+    exportedAt: new Date().toISOString(),
+    appVersion: VERSION,
+    schemaVersion: schemaVersion(db),
+    tables,
+    documents,
+    omitted,
+  };
 }

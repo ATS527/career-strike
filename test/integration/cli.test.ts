@@ -124,4 +124,17 @@ describe('career-strike CLI', () => {
     expect(res.status).toBe(1);
     expect(res.stderr).toContain('Refusing to store career data inside the git working tree');
   });
+
+  it('rollback restores a pre-upgrade database copy and requires stopped service', () => {
+    const home = path.join(tempDir(), 'data');
+    runCli(home, ['init']);
+    const backupsDir = path.join(home, 'backups');
+    fs.mkdirSync(backupsDir, { recursive: true });
+    const backupFile = path.join(backupsDir, 'career-strike-v1-2026-10-30T10-00-00-000Z.db');
+    fs.copyFileSync(path.join(home, 'career-strike.db'), backupFile);
+
+    const rollbackRes = runCli(home, ['rollback']);
+    expect(rollbackRes.status, rollbackRes.stderr).toBe(0);
+    expect(rollbackRes.stdout).toMatch(/Restored pre-upgrade backup from .* \(schema v\d+\)\./);
+  });
 });

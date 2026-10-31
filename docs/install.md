@@ -51,6 +51,7 @@ start, and a job board to monitor). Each item links to the page where you do it.
 | `career-strike export <folder>` | Write all your data and documents to a new folder, readable without Career Strike. |
 | `career-strike backup <folder>` | Copy the database and documents for `restore`. |
 | `career-strike restore <folder>` | Replace current data with a verified backup (current data is kept aside first). |
+| `career-strike rollback` | Restore the database backup saved before an upgrade (current data is kept aside first). |
 | `career-strike delete-data --confirm "delete my career data"` | Permanently delete all Career Strike data on this computer. |
 | `career-strike uninstall` | Remove Career Strike from AI assistants and remove the program. Your data is kept. |
 
@@ -95,7 +96,8 @@ Automatic checks run only while the service is running.
 
 Install the new package the same way. On first start, the database is upgraded in place; a copy
 of the previous database is saved in `backups/` inside the data directory first. A database from
-a newer version is never downgraded.
+a newer version is never downgraded. To restore the pre-upgrade copy, stop the service and run
+`career-strike rollback`.
 
 ## Backup, export and deletion
 

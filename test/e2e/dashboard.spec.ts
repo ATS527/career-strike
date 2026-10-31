@@ -177,6 +177,37 @@ test.describe('settings', () => {
     await field.getByRole('button', { name: 'Discard changes' }).click();
     await expect(page.getByLabel('Country of residence')).toHaveValue('');
   });
+
+  test('data and privacy section provides export, backup status, diagnostics, and deletion with confirmation', async ({ page, cs }) => {
+    await signIn(page, cs);
+    await page.goto(`${cs.origin}/settings#data-privacy`);
+    await expect(page.getByRole('heading', { name: 'Data & privacy' })).toBeVisible();
+
+    // Export link
+    const download = page.getByTestId('download-export');
+    await expect(download).toHaveAttribute('href', '/api/data/export');
+
+    // Backup status
+    await expect(page.getByTestId('backup-status')).toBeVisible();
+
+    // Installation diagnostics
+    const diag = page.getByTestId('installation-diagnostics');
+    await expect(diag).toBeVisible();
+    await expect(diag.getByRole('row')).toHaveCount(7); // header + 6 checks
+
+    // Data deletion with typed confirmation
+    await page.getByTestId('start-delete-button').click();
+    const confirmInput = page.getByTestId('delete-confirm-input');
+    await expect(confirmInput).toBeVisible();
+    const deleteButton = page.getByTestId('confirm-delete-button');
+    await expect(deleteButton).toBeDisabled();
+
+    await confirmInput.fill('wrong phrase');
+    await expect(deleteButton).toBeDisabled();
+
+    await confirmInput.fill('delete my career data');
+    await expect(deleteButton).toBeEnabled();
+  });
 });
 
 test.describe('outages', () => {

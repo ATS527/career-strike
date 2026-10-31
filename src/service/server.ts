@@ -1,11 +1,14 @@
+import path from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import { Discovery } from '../career/discovery.js';
 import { candidateContext } from '../career/context.js';
 import { backfillRequirements, JobQuery, jobCounts, listJobs } from '../career/jobs.js';
 import { nextActions } from '../career/next-actions.js';
 import { type Logger, nullLogger } from '../core/log.js';
+import { type AppPaths, appPaths } from '../core/paths.js';
 import { type Db, schemaVersion } from '../store/db.js';
 import { describeSettings, getSettings, SettingError, setSetting } from '../store/settings.js';
+import { buildExportPayload, deleteAllData, listBackups } from '../store/lifecycle.js';
 import { createAdapters } from '../sources/adapters.js';
 import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { Scheduler } from '../supervisor/scheduler.js';
@@ -17,6 +20,7 @@ import { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
 import { McpClientStore, type Scope } from '../mcp/clients.js';
 import { registerApplicationRoutes } from './routes/applications.js';
+import { runDoctorChecks } from './diagnostics.js';
 import { InterviewService } from '../interview/service.js';
 import { computeMetrics, MIN_SAMPLE, observations } from '../learning/metrics.js';
 import { ProposalError, StrategyProposals } from '../learning/proposals.js';
@@ -39,6 +43,7 @@ export interface ServerOptions {
   /** Private vault directory for candidate documents. */
   vaultDir: string;
   secrets: SecretStore;
+  paths?: AppPaths;
 }
 
 /** Who is calling: the local CLI (admin bearer), a connected AI assistant (scoped bearer) or the dashboard. */
@@ -67,7 +72,9 @@ export function buildServer({
   adapters,
   vaultDir,
   secrets,
+  paths,
 }: ServerOptions): FastifyInstance {
+  const currentPaths = paths ?? appPaths(path.dirname(vaultDir));
   // forceCloseConnections: open dashboard tabs hold keep-alive sockets that would otherwise block shutdown.
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
   const sessions = new SessionStore(db);
@@ -345,6 +352,41 @@ export function buildServer({
       }
       throw err;
     }
+  });
+
+  // ---- data lifecycle & diagnostics ----
+
+  app.get('/api/data/export', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    const payload = buildExportPayload(db, currentPaths);
+    reply.header('content-disposition', `attachment; filename="career-strike-export-${new Date().toISOString().slice(0, 10)}.json"`);
+    reply.type('application/json; charset=utf-8');
+    return payload;
+  });
+
+  app.get('/api/data/backups', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    return listBackups(currentPaths);
+  });
+
+  app.post<{ Body: { confirm?: string } }>('/api/data/delete', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    const confirm = req.body?.confirm;
+    if (confirm !== 'delete my career data') {
+      return reply.code(400).send({ error: 'CONFIRMATION_REQUIRED', message: 'Type exactly: delete my career data' });
+    }
+    db.close();
+    const result = await deleteAllData(currentPaths, secrets);
+    setTimeout(() => process.exit(0), 1000).unref();
+    return { ok: true, removed: result.removed, secretsRemoved: result.secretsRemoved };
+  });
+
+  app.get('/api/diagnostics', async (req, reply) => {
+    if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
+    const address = app.server.address();
+    const port = typeof address === 'object' && address ? address.port : undefined;
+    const checks = await runDoctorChecks(currentPaths, port);
+    return { checks, allOk: checks.every((c) => c.ok) };
   });
 
   app.all('/api/*', async (_req, reply) => reject(reply, 404, 'NOT_FOUND'));

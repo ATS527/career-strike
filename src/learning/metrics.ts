@@ -25,6 +25,15 @@ export interface SourceMetrics {
   interviewed: Rate;
 }
 
+export interface CampaignWeekSummary {
+  weekStart: string;
+  discovered: number;
+  shortlisted: number;
+  submitted: number;
+  responses: number;
+  interviews: number;
+}
+
 export interface Metrics {
   generatedAt: string;
   totals: { found: number; shortlisted: number; submitted: number; responses: number; interviews: number; offers: number; rejections: number };
@@ -33,6 +42,7 @@ export interface Metrics {
   bySource: SourceMetrics[];
   daysToFirstResponse: { median: number | null; n: number };
   submittedPerWeek: { weekStart: string; count: number }[];
+  campaignSummaries: CampaignWeekSummary[];
   recurringGaps: { skill: string; jobs: number }[];
 }
 
@@ -95,6 +105,7 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
   const median = delays.length === 0 ? null : delays.length % 2 ? delays[(delays.length - 1) / 2]! : (delays[delays.length / 2 - 1]! + delays[delays.length / 2]!) / 2;
 
   const weeks: { weekStart: string; count: number }[] = [];
+  const campaignSummaries: CampaignWeekSummary[] = [];
   const startOfWeek = (t: number): number => {
     const d = new Date(t);
     d.setUTCHours(0, 0, 0, 0);
@@ -104,11 +115,39 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
   for (let i = 7; i >= 0; i--) {
     const from = thisWeek - i * 7 * 864e5;
     const to = from + 7 * 864e5;
+    const fromIso = new Date(from).toISOString();
+    const toIso = new Date(to).toISOString();
     const count = db
       .prepare("SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state = 'SUBMITTED_CONFIRMED' AND at >= ? AND at < ?")
       .pluck()
-      .get(new Date(from).toISOString(), new Date(to).toISOString()) as number;
-    weeks.push({ weekStart: new Date(from).toISOString().slice(0, 10), count });
+      .get(fromIso, toIso) as number;
+    weeks.push({ weekStart: fromIso.slice(0, 10), count });
+
+    const discovered = db
+      .prepare('SELECT COUNT(*) FROM jobs WHERE duplicate_of IS NULL AND first_seen_at >= ? AND first_seen_at < ?')
+      .pluck()
+      .get(fromIso, toIso) as number;
+    const shortlisted = db
+      .prepare("SELECT COUNT(*) FROM job_user_state WHERE disposition = 'shortlisted' AND updated_at >= ? AND updated_at < ?")
+      .pluck()
+      .get(fromIso, toIso) as number;
+    const responses = db
+      .prepare("SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state IN ('RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED') AND at >= ? AND at < ?")
+      .pluck()
+      .get(fromIso, toIso) as number;
+    const interviews = db
+      .prepare("SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state = 'INTERVIEW' AND at >= ? AND at < ?")
+      .pluck()
+      .get(fromIso, toIso) as number;
+
+    campaignSummaries.push({
+      weekStart: fromIso.slice(0, 10),
+      discovered,
+      shortlisted,
+      submitted: count,
+      responses,
+      interviews,
+    });
   }
 
   // Required skills missing from the profile, across jobs the candidate cared about.
@@ -138,6 +177,7 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
     bySource,
     daysToFirstResponse: { median, n: delays.length },
     submittedPerWeek: weeks,
+    campaignSummaries,
     recurringGaps: [...gapCounts.entries()].map(([skill, jobs]) => ({ skill, jobs })).sort((a, b) => b.jobs - a.jobs || a.skill.localeCompare(b.skill)).slice(0, 8),
   };
 }

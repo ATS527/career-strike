@@ -131,8 +131,11 @@ function main(): number {
       return { ...c, status: 'FAIL', failureCause: cause, evidence: { revision, command, exitCode: 1, at, kinds: kindsOf(c.tests) } };
     }
     const kinds = kindsOf(c.tests);
+    if (c.requiredEvidence.includes('manual') && c.evidence?.kinds.includes('manual')) {
+      kinds.push('manual');
+    }
     const lacking = c.requiredEvidence.filter((k) => !kinds.includes(k));
-    const evidence = { revision, command, exitCode: 0, at, kinds };
+    const evidence = { revision, command, exitCode: 0, at, kinds, ...(c.evidence?.notes ? { notes: c.evidence.notes } : {}) };
     if (lacking.length > 0) {
       return { ...c, status: 'IN_PROGRESS', failureCause: null, evidence, nextAction: `Needs ${lacking.join(', ')} evidence` };
     }

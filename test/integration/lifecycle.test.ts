@@ -9,7 +9,9 @@ import { type RunningService, startService } from '../../src/service/service.js'
 import { createAdapters } from '../../src/sources/adapters.js';
 import type { NormalizedPosting } from '../../src/sources/types.js';
 import { CLASSIFICATION } from '../../src/store/classification.js';
-import { openDb } from '../../src/store/db.js';
+import { inspectDb, openDb } from '../../src/store/db.js';
+import { buildExportPayload, listBackups, rollback } from '../../src/store/lifecycle.js';
+import { setSetting } from '../../src/store/settings.js';
 import { fakeFetch } from '../fixtures/ats.js';
 import { dashboardSession, tempDir } from '../helpers.js';
 
@@ -204,5 +206,64 @@ describe('delete', () => {
     const { paths } = await populated();
     expect(runCli(paths.home, ['delete-data', '--confirm', 'delete my career data']).status).toBe(0);
     expect(fs.existsSync(paths.home)).toBe(false);
+  });
+});
+
+describe('rollback and backups', () => {
+  it('lists backups by kind and date', async () => {
+    const { paths } = await populated();
+    const backupsDir = path.join(paths.home, 'backups');
+    fs.mkdirSync(backupsDir, { recursive: true });
+    fs.writeFileSync(path.join(backupsDir, 'career-strike-v1-2026-10-30T12-00-00-000Z.db'), 'synthetic-v1');
+    fs.mkdirSync(path.join(backupsDir, 'pre-restore-2026-10-30T14-00-00-000Z'));
+
+    const list = listBackups(paths);
+    expect(list.count).toBe(2);
+    expect(list.backups.find((b) => b.kind === 'pre-upgrade')).toMatchObject({
+      name: 'career-strike-v1-2026-10-30T12-00-00-000Z.db',
+      schemaVersion: 1,
+    });
+    expect(list.backups.find((b) => b.kind === 'pre-restore')).toMatchObject({
+      name: 'pre-restore-2026-10-30T14-00-00-000Z',
+    });
+  });
+
+  it('restores pre-upgrade backup and moves current data aside', async () => {
+    const { paths } = await populated();
+    const backupsDir = path.join(paths.home, 'backups');
+    fs.mkdirSync(backupsDir, { recursive: true });
+
+    // Save a copy as pre-upgrade backup
+    const copy = path.join(backupsDir, 'career-strike-v1-2026-10-30T10-00-00-000Z.db');
+    fs.copyFileSync(paths.db, copy);
+
+    // Modify current db
+    const db = openDb(paths.db);
+    setSetting(db, 'candidate.country', 'US', 'test');
+    db.close();
+
+    const res = rollback(paths);
+    expect(res.restoredFrom).toBe(copy);
+    expect(res.previous).toMatch(/pre-rollback-/);
+    expect(fs.existsSync(res.previous!)).toBe(true);
+
+    // Verify rolled back database
+    const restoredDb = openDb(paths.db);
+    expect(restoredDb.prepare("SELECT value_json FROM settings WHERE key = 'candidate.country'").pluck().get()).toBeUndefined();
+    restoredDb.close();
+  });
+
+  it('produces a full export payload including documents and omitted metadata', async () => {
+    const { paths } = await populated();
+    const db = openDb(paths.db);
+    const payload = buildExportPayload(db, paths);
+    db.close();
+
+    expect(payload.format).toBe('career-strike-export');
+    expect(payload.tables).toHaveProperty('jobs');
+    expect(payload.tables).toHaveProperty('settings');
+    expect(payload.tables).not.toHaveProperty('dashboard_sessions');
+    expect((payload.documents as unknown[]).length).toBeGreaterThan(0);
+    expect(payload.omitted).toContain('Login sessions (dashboard_sessions)');
   });
 });

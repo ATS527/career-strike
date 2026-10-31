@@ -8,6 +8,14 @@ interface Rate {
   n: number;
   rate: number | null;
 }
+interface CampaignWeekSummary {
+  weekStart: string;
+  discovered: number;
+  shortlisted: number;
+  submitted: number;
+  responses: number;
+  interviews: number;
+}
 interface Strategy {
   minSample: number;
   metrics: {
@@ -17,6 +25,7 @@ interface Strategy {
     bySource: { source: string; found: number; closedOrStale: Rate; shortlisted: number; submitted: number; responded: Rate; interviewed: Rate }[];
     daysToFirstResponse: { median: number | null; n: number };
     submittedPerWeek: { weekStart: string; count: number }[];
+    campaignSummaries: CampaignWeekSummary[];
     recurringGaps: { skill: string; jobs: number }[];
   };
   observations: { kind: string; text: string }[];
@@ -170,6 +179,34 @@ export function Insights() {
             </li>
           ))}
         </ul>
+
+        <h3>Weekly campaign summary</h3>
+        <div className="table-scroll" tabIndex={0} role="region" aria-label="Weekly campaign summary">
+          <table className="compare" data-testid="campaign-summary">
+            <thead>
+              <tr>
+                <th scope="col">Week</th>
+                <th scope="col">Discovered</th>
+                <th scope="col">Shortlisted</th>
+                <th scope="col">Submitted</th>
+                <th scope="col">Responses</th>
+                <th scope="col">Interviews</th>
+              </tr>
+            </thead>
+            <tbody>
+              {m.campaignSummaries.map((w) => (
+                <tr key={w.weekStart}>
+                  <th scope="row">Week of {formatDate(w.weekStart)}</th>
+                  <td>{w.discovered}</td>
+                  <td>{w.shortlisted}</td>
+                  <td>{w.submitted}</td>
+                  <td>{w.responses}</td>
+                  <td>{w.interviews}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="settings-group" aria-labelledby="hist-title">

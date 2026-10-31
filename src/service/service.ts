@@ -56,6 +56,7 @@ export async function startService(paths: AppPaths, opts: StartOptions = {}): Pr
     logger,
     vaultDir: paths.vault,
     secrets: opts.secrets ?? defaultSecretStore(paths.home),
+    paths,
     ...(opts.adapters ? { adapters: opts.adapters } : {}),
   });
   try {
