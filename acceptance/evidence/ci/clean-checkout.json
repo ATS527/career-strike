@@ -1,6 +1,6 @@
 {
-  "revision": "57b421ff150fadfed4c4bddaacdb84fa7f23aafe",
-  "at": "2026-10-31T13:30:17.668Z",
+  "revision": "53672ab70f1f8886acd4c275d8948aef2a5a54d2",
+  "at": "2026-10-31T15:05:30.045Z",
   "node": "v24.14.1",
   "platform": "darwin-x64",
   "where": "local fresh git clone (no hosted CI)",
@@ -28,7 +28,7 @@
       "name": "unit and integration tests",
       "command": "npm test",
       "exitCode": 0,
-      "tail": " Test Files  37 passed (37)\n      Tests  244 passed (244)\n   Duration  17.92s (tests 83%, import 12%, transform 5%)"
+      "tail": " Test Files  37 passed (37)\n      Tests  244 passed (244)\n   Duration  18.39s (tests 83%, import 10%, transform 6%, setup 1%)"
     }
   ]
 }
