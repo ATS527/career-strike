@@ -9,6 +9,7 @@ import { useResource } from '../useResource';
 import { COUNTRY_CODES, COUNTRY_REGISTRY } from '../../markets/countries';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../markets/india-sources';
 import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../markets/singapore-sources';
+import { UAE_SOURCE_ASSESSMENTS, officialUaeSearchUrl } from '../../markets/uae-sources';
 
 const PAGE = 50;
 const MAX_COMPARE = 4;
@@ -209,6 +210,15 @@ export function Opportunities() {
           market="Singapore"
           sources={SINGAPORE_SOURCE_ASSESSMENTS}
           urlFor={officialSingaporeSearchUrl}
+          query={query}
+        />
+      )}
+      {params.get('country') === 'AE' && (
+        <OfficialSearches
+          id="uae-official-searches"
+          market="United Arab Emirates"
+          sources={UAE_SOURCE_ASSESSMENTS}
+          urlFor={officialUaeSearchUrl}
           query={query}
         />
       )}

@@ -2,7 +2,7 @@
  * Supported-market metadata. A configured market is not a promise that Career Strike can
  * automatically retrieve jobs there; source capability and successful verification decide that.
  */
-export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN'] as const;
+export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE'] as const;
 export type CountryCode = (typeof COUNTRY_CODES)[number];
 
 export type MarketStatus = 'CONFIGURED' | 'LIMITED_SUPPORT' | 'DISCOVERY_AVAILABLE' | 'PRODUCTION_SUPPORTED' | 'BLOCKED';
@@ -35,6 +35,11 @@ export const COUNTRY_REGISTRY: Readonly<Record<CountryCode, CountryConfig>> = {
   PH: { code: 'PH', name: 'Philippines', currencies: ['PHP'], locales: ['en', 'fil'], defaultCities: ['Manila', 'Cebu', 'Davao'], cityAliases: {}, status: 'CONFIGURED' },
   TH: { code: 'TH', name: 'Thailand', currencies: ['THB'], locales: ['th', 'en'], defaultCities: ['Bangkok', 'Chiang Mai'], cityAliases: {}, status: 'CONFIGURED' },
   VN: { code: 'VN', name: 'Vietnam', currencies: ['VND'], locales: ['vi', 'en'], defaultCities: ['Ho Chi Minh City', 'Hanoi', 'Da Nang'], cityAliases: { 'Hồ Chí Minh City': 'Ho Chi Minh City', 'Saigon': 'Ho Chi Minh City' }, status: 'CONFIGURED' },
+  AE: {
+    code: 'AE', name: 'United Arab Emirates', currencies: ['AED'], locales: ['ar', 'en'],
+    defaultCities: ['Dubai', 'Abu Dhabi', 'Sharjah'],
+    cityAliases: {}, status: 'CONFIGURED',
+  },
 };
 
 export function isCountryCode(value: string): value is CountryCode {

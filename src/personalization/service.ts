@@ -55,6 +55,7 @@ function localeFor(marketJson: string): string {
     if (country === 'SG') return 'en-SG';
     if (country === 'MY') return 'en-MY';
     if (country === 'PH') return 'en-PH';
+    if (country === 'AE') return 'en-AE';
   } catch {
     // Locale is presentation guidance only; an unreadable market value is not evidence.
   }

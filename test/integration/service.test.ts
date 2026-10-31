@@ -133,10 +133,13 @@ describe('local service', () => {
     const body = res.body as {
       markets: { code: string; name: string; configuredStatus: string; discoveryAvailable: boolean; targets: { id: string; monitoringState: string; lastSuccessfulRetrievalAt: string | null }[] }[];
     };
-    expect(body.markets).toHaveLength(8);
+    expect(body.markets).toHaveLength(9);
     const india = body.markets.find((m) => m.code === 'IN')!;
     expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
     expect(india.targets.find((t) => t.id === 'sarvam-india')).toMatchObject({ monitoringState: 'NOT_ADOPTED', lastSuccessfulRetrievalAt: null });
+    const uae = body.markets.find((m) => m.code === 'AE')!;
+    expect(uae).toMatchObject({ name: 'United Arab Emirates', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
+    expect(uae.targets.map((t) => t.id)).toEqual(['bybit-uae', 'deliveroo-uae', 'ziina-uae', 'checkout-uae']);
 
     // Unauthenticated callers get nothing.
     expect((await localRequest(s.info.port, '/api/readiness')).status).toBe(401);

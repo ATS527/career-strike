@@ -17,11 +17,12 @@ tracked with evidence in `acceptance/registry.json`.
 
 - Only public Greenhouse, Lever and Ashby job boards can be monitored. Jobs from anywhere else can
   be added by hand and stay marked as unverified.
-- Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand and Vietnam are
-  configured as search markets for country/location filtering. This is **not** marketplace
-  coverage: none is labelled discovery-available until Career Strike has a permitted source and
-  successful retrieval evidence for that market. The existing employer-direct ATS integrations
-  may return roles in any of those markets when the candidate supplies a valid employer board.
+- Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand, Vietnam and the
+  United Arab Emirates are configured as search markets for country/location filtering. This is
+  **not** marketplace coverage: none is labelled discovery-available until Career Strike has a
+  permitted source and successful retrieval evidence for that market. The existing employer-direct
+  ATS integrations may return roles in any of those markets when the candidate supplies a valid
+  employer board.
 - Naukri, Foundit, LinkedIn, Indeed, JobStreet, JobsDB, Glints, Kalibrr, MyCareersFuture,
   Hiredly, VietnamWorks, TopCV and similar marketplaces are not fetched by Career Strike. Use an
   official link or add a role manually unless a future release records authorised access.
@@ -31,7 +32,8 @@ tracked with evidence in `acceptance/registry.json`.
   Celonis, SumUp — all Greenhouse) and Southeast Asia shares three regional boards (Ninja Van on
   Lever, Agoda and Xendit on Greenhouse) covering Malaysia, Indonesia, the Philippines, Thailand
   and Vietnam. The Philippines also has two dedicated candidates (AvePoint and Mitsogo, both
-  Greenhouse) and Vietnam has two (Amanotes on Lever, Sky Mavis on Ashby). Their employer and
+  Greenhouse), Vietnam has two (Amanotes on Lever, Sky Mavis on Ashby) and the United Arab Emirates
+  has four (Bybit and Deliveroo on Greenhouse, Ziina and Checkout.com on Ashby). Their employer and
   board identities have been reviewed, but a market stays
   **CONFIGURED** for a fresh installation until `career-strike verify-market <CC> --target <id>`
   completes a live permitted fetch with an explicitly located posting. Only then does the command

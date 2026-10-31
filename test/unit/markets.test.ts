@@ -7,6 +7,7 @@ import { employerTargetRecord } from '../../src/markets/employers.js';
 import { marketReadiness } from '../../src/markets/readiness.js';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../src/markets/india-sources.js';
 import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../src/markets/singapore-sources.js';
+import { UAE_SOURCE_ASSESSMENTS, officialUaeSearchUrl } from '../../src/markets/uae-sources.js';
 import type { SourceAdapter } from '../../src/sources/types.js';
 import path from 'node:path';
 import { openDb } from '../../src/store/db.js';
@@ -14,22 +15,26 @@ import { tempDir } from '../helpers.js';
 
 describe('configured markets', () => {
   it('configures the agreed rollout markets without claiming discovery availability', () => {
-    expect(Object.keys(COUNTRY_REGISTRY)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN']);
+    expect(Object.keys(COUNTRY_REGISTRY)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE']);
     expect(Object.values(COUNTRY_REGISTRY).every((country) => country.status === 'CONFIGURED')).toBe(true);
     expect(COUNTRY_REGISTRY.IN.defaultCities).toContain('Bengaluru');
     expect(COUNTRY_REGISTRY.VN.currencies).toEqual(['VND']);
+    expect(COUNTRY_REGISTRY.AE.currencies).toEqual(['AED']);
     expect(EMPLOYER_TARGETS.map((target) => `${target.source}/${target.board}`)).toEqual([
       'lever/saviynt', 'greenhouse/kraftonindia', 'ashby/sarvam', 'ashby/harvey',
       'greenhouse/stripe', 'greenhouse/databricks', 'greenhouse/coinbase', 'greenhouse/twilio',
       'greenhouse/hellofresh', 'greenhouse/doctolib', 'greenhouse/celonis', 'greenhouse/sumup',
       'lever/ninjavan', 'greenhouse/agoda', 'greenhouse/xendit',
       'greenhouse/avepoint', 'greenhouse/mitsogoinc', 'lever/amanotes', 'ashby/skymavis',
+      'greenhouse/bybit', 'greenhouse/deliveroo', 'ashby/ziina', 'ashby/checkout.com',
     ]);
   });
 
   it('normalises only configured, evidence-bearing country and city spellings', () => {
     expect(normaliseLocation('Bangalore, India')).toEqual({ countryCode: 'IN', city: 'Bengaluru', originalText: 'Bangalore, India' });
     expect(normaliseLocation('München, Germany')).toEqual({ countryCode: 'DE', city: 'Munich', originalText: 'München, Germany' });
+    expect(normaliseLocation('Dubai, United Arab Emirates')).toEqual({ countryCode: 'AE', city: 'Dubai', originalText: 'Dubai, United Arab Emirates' });
+    expect(normaliseLocation('Abu Dhabi, UAE; APAC - Remote').countryCode).toBe('AE');
     expect(normaliseLocation('Remote, APAC')).toEqual({ countryCode: null, city: null, originalText: 'Remote, APAC' });
   });
 
@@ -63,6 +68,17 @@ describe('configured markets', () => {
     expect(officialSingaporeSearchUrl(indeed, 'iOS Swift')).toContain('l=Singapore');
   });
 
+  it('does not turn Emirati marketplaces into automatic integrations', () => {
+    expect(UAE_SOURCE_ASSESSMENTS.every((source) => source.automatedRetrieval === false)).toBe(true);
+    expect(UAE_SOURCE_ASSESSMENTS.find((source) => source.id === 'dubaicareers')?.capability).toBe('USER_DRIVEN_DISCOVERY');
+    const linkedin = UAE_SOURCE_ASSESSMENTS.find((source) => source.id === 'linkedin-jobs')!;
+    const indeed = UAE_SOURCE_ASSESSMENTS.find((source) => source.id === 'indeed-uae')!;
+    expect(officialUaeSearchUrl(linkedin, 'iOS Swift')).toContain('keywords=iOS+Swift');
+    expect(officialUaeSearchUrl(linkedin, 'iOS Swift')).toContain('location=United+Arab+Emirates');
+    expect(officialUaeSearchUrl(indeed, 'iOS Swift')).toContain('q=iOS+Swift');
+    expect(officialUaeSearchUrl(indeed, 'iOS Swift')).toContain('l=United+Arab+Emirates');
+  });
+
   it('requires an actual permitted response with explicit India evidence before certifying discovery', async () => {
     const target = EMPLOYER_TARGETS[0]!;
     const adapter: SourceAdapter = {
@@ -88,7 +104,7 @@ describe('configured markets', () => {
   it('reports market readiness from local board health, never from configuration alone', () => {
     const db = openDb(path.join(tempDir('cs-market-readiness-'), 'cs.db'));
     const before = marketReadiness(db);
-    expect(before.map((m) => m.code)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN']);
+    expect(before.map((m) => m.code)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE']);
     const india = before.find((m) => m.code === 'IN')!;
     expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
     expect(india.targets.map((t) => t.id)).toEqual(['saviynt-india', 'krafton-india', 'sarvam-india', 'harvey-india']);
@@ -110,7 +126,12 @@ describe('configured markets', () => {
       .toEqual(['ninjavan-sea', 'agoda-careers', 'xendit-sea', 'avepoint-ph', 'mitsogo-ph']);
     expect(before.find((m) => m.code === 'VN')!.targets.map((t) => t.id))
       .toEqual(['ninjavan-sea', 'agoda-careers', 'amanotes-vn', 'skymavis-vn']);
-    for (const code of ['DE', 'MY', 'ID', 'PH', 'TH', 'VN'] as const) {
+    // The United Arab Emirates has dedicated boards of its own; none is adopted in a fresh
+    // installation, so it claims no local discovery signals either.
+    const uae = before.find((m) => m.code === 'AE')!;
+    expect(uae).toMatchObject({ name: 'United Arab Emirates', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
+    expect(uae.targets.map((t) => t.id)).toEqual(['bybit-uae', 'deliveroo-uae', 'ziina-uae', 'checkout-uae']);
+    for (const code of ['DE', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE'] as const) {
       expect(before.find((m) => m.code === code)!.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
     }
 

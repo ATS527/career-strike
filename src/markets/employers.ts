@@ -317,6 +317,66 @@ export const VIETNAM_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   },
 ];
 
+/**
+ * United Arab Emirates evidence reviewed on 2026-11-01: each employer's official careers page was
+ * reachable and its public board API returned complete listings with postings located explicitly
+ * in the UAE (Bybit 45, Deliveroo 15, Ziina 13, Checkout.com 6 on that date). Ziina's careers site
+ * links its Ashby board directly, Checkout.com's careers site links the same Ashby board, and
+ * Deliveroo's own careers pages render the same Greenhouse job identities and locations shown by
+ * the public board. This is not live-discovery certification: that is earned only by
+ * verifyTargetDiscovery().
+ */
+export const UAE_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'bybit-uae',
+    employer: 'Bybit',
+    officialWebsite: 'https://www.bybit.com',
+    careersUrl: 'https://www.bybit.com/en/promo/global/careers',
+    source: 'greenhouse',
+    board: 'bybit',
+    boardUrl: 'https://job-boards.greenhouse.io/bybit',
+    countries: ['AE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'deliveroo-uae',
+    employer: 'Deliveroo',
+    officialWebsite: 'https://deliveroo.co.uk',
+    careersUrl: 'https://careers.deliveroo.co.uk/',
+    source: 'greenhouse',
+    board: 'deliveroo',
+    boardUrl: 'https://job-boards.greenhouse.io/deliveroo',
+    countries: ['AE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'ziina-uae',
+    employer: 'Ziina',
+    officialWebsite: 'https://ziina.com',
+    careersUrl: 'https://ziina.com/careers',
+    source: 'ashby',
+    board: 'ziina',
+    boardUrl: 'https://jobs.ashbyhq.com/ziina',
+    countries: ['AE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'checkout-uae',
+    employer: 'Checkout.com',
+    officialWebsite: 'https://checkout.com',
+    careersUrl: 'https://checkout.com/careers',
+    source: 'ashby',
+    board: 'checkout.com',
+    boardUrl: 'https://jobs.ashbyhq.com/checkout.com',
+    countries: ['AE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+];
+
 export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   ...INDIA_EMPLOYER_TARGETS,
   ...SINGAPORE_EMPLOYER_TARGETS,
@@ -324,6 +384,7 @@ export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   ...SOUTHEAST_ASIA_EMPLOYER_TARGETS,
   ...PHILIPPINES_EMPLOYER_TARGETS,
   ...VIETNAM_EMPLOYER_TARGETS,
+  ...UAE_EMPLOYER_TARGETS,
 ];
 
 export function employerTargetsFor(country: CountryCode): EmployerTarget[] {
