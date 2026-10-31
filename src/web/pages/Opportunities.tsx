@@ -7,6 +7,7 @@ import { Link, navigate, useSearch } from '../router';
 import { ErrorPanel, Loading } from './states';
 import { useResource } from '../useResource';
 import { COUNTRY_CODES, COUNTRY_REGISTRY } from '../../markets/countries';
+import { GERMANY_SOURCE_ASSESSMENTS, officialGermanySearchUrl } from '../../markets/germany-sources';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../markets/india-sources';
 import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../markets/singapore-sources';
 import { UAE_SOURCE_ASSESSMENTS, officialUaeSearchUrl } from '../../markets/uae-sources';
@@ -199,6 +200,15 @@ export function Opportunities() {
         </details>
       </form>
 
+      {params.get('country') === 'DE' && (
+        <OfficialSearches
+          id="germany-official-searches"
+          market="Germany"
+          sources={GERMANY_SOURCE_ASSESSMENTS}
+          urlFor={officialGermanySearchUrl}
+          query={query}
+        />
+      )}
       {params.get('country') === 'IN' && (
         <OfficialSearches
           id="india-official-searches"

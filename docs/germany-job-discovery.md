@@ -4,6 +4,12 @@ Career Strike uses employer-direct public ATS feeds before it considers a market
 provenance, application links and freshness evidence intact, without bypassing logins, CAPTCHAs
 or platform access controls.
 
+When the Opportunities market filter is set to Germany, the dashboard also provides official-site
+launchers for the reviewed marketplaces. The typed search phrase is passed directly to LinkedIn or
+Indeed only in the new browser tab; Career Strike does not retrieve those results. For other
+providers (such as the Bundesagentur für Arbeit) the launcher opens the official site, where the
+candidate searches directly.
+
 ## Reviewed employer-direct targets
 
 These identities and board slugs were cross-checked on 2026-10-31 against the employer's official

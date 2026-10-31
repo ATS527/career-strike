@@ -5,6 +5,7 @@ import { marketFacts } from '../../src/sources/normalize.js';
 import { EMPLOYER_TARGETS, verifyTargetDiscovery } from '../../src/markets/employers.js';
 import { employerTargetRecord } from '../../src/markets/employers.js';
 import { marketReadiness } from '../../src/markets/readiness.js';
+import { GERMANY_SOURCE_ASSESSMENTS, officialGermanySearchUrl } from '../../src/markets/germany-sources.js';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../src/markets/india-sources.js';
 import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../src/markets/singapore-sources.js';
 import { UAE_SOURCE_ASSESSMENTS, officialUaeSearchUrl } from '../../src/markets/uae-sources.js';
@@ -61,6 +62,17 @@ describe('configured markets', () => {
     expect(capabilityForName('greenhouse')).toBe('AUTHORIZED_EMPLOYER_DIRECT');
     expect(capabilityForName('manual')).toBe('USER_DRIVEN_DISCOVERY');
     expect(capabilityForName('unreviewed-marketplace')).toBe('UNVERIFIED');
+  });
+
+  it('does not turn German marketplaces into automatic integrations', () => {
+    expect(GERMANY_SOURCE_ASSESSMENTS.every((source) => source.automatedRetrieval === false)).toBe(true);
+    expect(GERMANY_SOURCE_ASSESSMENTS.find((source) => source.id === 'bundesagentur')?.capability).toBe('USER_DRIVEN_DISCOVERY');
+    const linkedin = GERMANY_SOURCE_ASSESSMENTS.find((source) => source.id === 'linkedin-jobs')!;
+    const indeed = GERMANY_SOURCE_ASSESSMENTS.find((source) => source.id === 'indeed-germany')!;
+    expect(officialGermanySearchUrl(linkedin, 'iOS Swift')).toContain('keywords=iOS+Swift');
+    expect(officialGermanySearchUrl(linkedin, 'iOS Swift')).toContain('location=Germany');
+    expect(officialGermanySearchUrl(indeed, 'iOS Swift')).toContain('q=iOS+Swift');
+    expect(officialGermanySearchUrl(indeed, 'iOS Swift')).toContain('l=Germany');
   });
 
   it('does not turn Indian marketplaces into automatic integrations', () => {

@@ -71,7 +71,7 @@ const ALIASES: Readonly<Record<string, string[]>> = {
   GB: ['UK', 'U.K.', 'Britain', 'England', 'Scotland', 'Wales', 'Birmingham', 'Bristol', 'Glasgow', 'Leeds', 'Cardiff'],
   AE: ['UAE', 'U.A.E.', 'Dubai', 'Abu Dhabi'],
   IN: ['Bengaluru', 'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Chennai', 'Gurugram', 'Gurgaon', 'Noida', 'Kochi', 'Kolkata'],
-  DE: ['Berlin', 'Munich', 'München', 'Hamburg', 'Frankfurt'],
+  DE: ['Berlin', 'Munich', 'München', 'Hamburg', 'Frankfurt', 'Cologne', 'Köln'],
   NL: ['Holland', 'Amsterdam', 'Rotterdam'],
   FR: ['Paris'],
   ES: ['Madrid', 'Barcelona'],
