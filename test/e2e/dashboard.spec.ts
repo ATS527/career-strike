@@ -123,6 +123,10 @@ test.describe('settings', () => {
     await save('candidate.country');
     await page.getByLabel('Countries you can work in').fill('IN\nAE');
     await save('search.eligibleCountries');
+    await page.getByLabel('Target countries').fill('SG\nAE');
+    await save('search.preferredCountries');
+    await page.getByLabel('Target cities').fill('Bengaluru\nPune');
+    await save('search.preferredCities');
     await page.getByRole('radio', { name: 'Immediately' }).check();
     await save('candidate.joiningAvailability');
     await page.getByLabel('Currency').fill('INR');
@@ -131,14 +135,19 @@ test.describe('settings', () => {
     await save('candidate.salaryExpectation');
     await page.getByLabel('Excluded employers').fill('Synthetic Corp');
     await save('search.excludedEmployers');
+    await page.getByLabel('Work authorization by country').fill('IN=authorised\nDE=needs_sponsorship');
+    await save('candidate.workAuthorizations');
 
     await cs.restart();
     const expected = {
       'search.preferredRoles': ['Synthetic Data Engineer'],
+      'search.preferredCountries': ['SG', 'AE'],
+      'search.preferredCities': ['Bengaluru', 'Pune'],
       'search.remotePreference': 'hybrid_ok',
       'search.employmentTypes': ['full_time', 'contract'],
       'candidate.country': 'IN',
       'search.eligibleCountries': ['IN', 'AE'],
+      'candidate.workAuthorizations': { IN: 'authorised', DE: 'needs_sponsorship' },
       'candidate.joiningAvailability': 'immediate',
       'candidate.salaryExpectation': { currency: 'INR', minimum: 2400000, interval: 'year' },
       'search.excludedEmployers': ['Synthetic Corp'],
