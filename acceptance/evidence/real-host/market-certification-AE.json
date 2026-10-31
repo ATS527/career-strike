@@ -1,0 +1,75 @@
+{
+  "revision": "2a273d45e8368a78205d2bf9b3637bb0adf25ed8",
+  "at": "2026-10-31T18:38:05.000Z",
+  "passed": true,
+  "command": "career-strike verify-market AE --target bybit-uae && career-strike verify-market AE --target deliveroo-uae && career-strike verify-market AE --target ziina-uae && career-strike verify-market AE --target checkout-uae",
+  "targets": [
+    {
+      "id": "bybit-uae",
+      "employer": "Bybit",
+      "officialCareersSite": "https://www.bybit.com/en/promo/global/careers",
+      "source": "greenhouse",
+      "board": "bybit",
+      "boardUrl": "https://job-boards.greenhouse.io/bybit",
+      "adoptedBoardId": "src_nDpQo7jPlNDk",
+      "certifiedAt": "2026-10-31T18:37:55.490Z"
+    },
+    {
+      "id": "deliveroo-uae",
+      "employer": "Deliveroo",
+      "officialCareersSite": "https://careers.deliveroo.co.uk/",
+      "source": "greenhouse",
+      "board": "deliveroo",
+      "boardUrl": "https://job-boards.greenhouse.io/deliveroo",
+      "adoptedBoardId": "src_VBHKP1AkAsFe",
+      "certifiedAt": "2026-10-31T18:37:58.860Z"
+    },
+    {
+      "id": "ziina-uae",
+      "employer": "Ziina",
+      "officialCareersSite": "https://ziina.com/careers",
+      "source": "ashby",
+      "board": "ziina",
+      "boardUrl": "https://jobs.ashbyhq.com/ziina",
+      "adoptedBoardId": "src_u3cSa5udO2nt",
+      "certifiedAt": "2026-10-31T18:38:02.471Z"
+    },
+    {
+      "id": "checkout-uae",
+      "employer": "Checkout.com",
+      "officialCareersSite": "https://checkout.com/careers",
+      "source": "ashby",
+      "board": "checkout.com",
+      "boardUrl": "https://jobs.ashbyhq.com/checkout.com",
+      "adoptedBoardId": "src_t0U6qz8RAKO6",
+      "certifiedAt": "2026-10-31T18:38:04.696Z"
+    }
+  ],
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "four single complete listings fetched in this run (Greenhouse for Bybit and Deliveroo, Ashby for Ziina and Checkout.com); allowlisted hosts, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit United Arab Emirates location evidence present",
+      "passed": true,
+      "detail": "Bybit 153 postings retrieved (23 with explicit AE evidence under the deterministic parser; the review-day count of 45 also includes multi-country listings such as 'Abu Dhabi, UAE; Kuala Lumpur, Malaysia' that normalise to the first matching configured market); Deliveroo 202 (15); Ziina 13 (13); Checkout.com 169 (6)"
+    },
+    {
+      "name": "boards adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as src_nDpQo7jPlNDk, src_VBHKP1AkAsFe, src_u3cSa5udO2nt and src_t0U6qz8RAKO6, each with health OK; source-board health records written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "AE may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
+    }
+  ]
+}
