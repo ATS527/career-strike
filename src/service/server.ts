@@ -28,6 +28,7 @@ import { ProposalError, StrategyProposals } from '../learning/proposals.js';
 import { registerInterviewRoutes } from './routes/interviews.js';
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
+import { registerReadinessRoutes } from './routes/readiness.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
 import { clearedSessionCookie, readCookie, SESSION_COOKIE, sessionCookie, SessionStore } from './sessions.js';
 import { DASHBOARD_CSP, type StaticAsset } from './static.js';
@@ -303,6 +304,8 @@ export function buildServer({
   });
 
   registerOpportunityRoutes(app, { db, discovery, tasks, vault });
+
+  registerReadinessRoutes(app, { db });
 
   registerApplicationRoutes(app, { applications, vault, submissions, personalization });
   registerInterviewRoutes(app, { interviews });

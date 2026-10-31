@@ -4,6 +4,7 @@ import { capabilityForName } from '../../src/sources/capabilities.js';
 import { marketFacts } from '../../src/sources/normalize.js';
 import { EMPLOYER_TARGETS, verifyTargetDiscovery } from '../../src/markets/employers.js';
 import { employerTargetRecord } from '../../src/markets/employers.js';
+import { marketReadiness } from '../../src/markets/readiness.js';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../src/markets/india-sources.js';
 import type { SourceAdapter } from '../../src/sources/types.js';
 import path from 'node:path';
@@ -66,5 +67,30 @@ describe('configured markets', () => {
     expect(employerTargetRecord(db, EMPLOYER_TARGETS[0]!)).toMatchObject({
       monitoringState: 'NOT_ADOPTED', lastSuccessfulRetrievalAt: null, lastVerificationAt: '2026-10-31T00:00:00.000Z',
     });
+  });
+
+  it('reports market readiness from local board health, never from configuration alone', () => {
+    const db = openDb(path.join(tempDir('cs-market-readiness-'), 'cs.db'));
+    const before = marketReadiness(db);
+    expect(before.map((m) => m.code)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN']);
+    const india = before.find((m) => m.code === 'IN')!;
+    expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
+    expect(india.targets.map((t) => t.id)).toEqual(['saviynt-india', 'krafton-india', 'sarvam-india', 'harvey-india']);
+    expect(india.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
+    // Markets without curated targets stay configured with no claimed signals.
+    expect(before.find((m) => m.code === 'SG')!.targets).toEqual([]);
+
+    // A healthy adopted board — as verify-market or a monitored fetch would record — is the only
+    // local evidence that turns discovery availability on for one market.
+    db.prepare(
+      "INSERT INTO source_boards (id, source, board, added_at, health, last_success_at) VALUES ('b1', 'ashby', 'sarvam', '2026-10-31T12:00:00.000Z', 'OK', '2026-10-31T12:00:00.000Z')",
+    ).run();
+    const after = marketReadiness(db).find((m) => m.code === 'IN')!;
+    expect(after.discoveryAvailable).toBe(true);
+    expect(after.targets.find((t) => t.id === 'sarvam-india')).toMatchObject({
+      monitoringState: 'HEALTHY', lastSuccessfulRetrievalAt: '2026-10-31T12:00:00.000Z',
+    });
+    expect(after.targets.find((t) => t.id === 'saviynt-india')!.monitoringState).toBe('NOT_ADOPTED');
+    expect(marketReadiness(db).find((m) => m.code === 'DE')!.discoveryAvailable).toBe(false);
   });
 });

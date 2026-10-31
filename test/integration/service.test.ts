@@ -125,4 +125,20 @@ describe('local service', () => {
     expect(badDelete.status).toBe(400);
     expect(badDelete.body).toMatchObject({ error: 'CONFIRMATION_REQUIRED' });
   });
+
+  it('reports market readiness and target signals without claiming unverified discovery', async () => {
+    const { s } = await start();
+    const res = await localRequest(s.info.port, '/api/readiness', { headers: auth(s) });
+    expect(res.status).toBe(200);
+    const body = res.body as {
+      markets: { code: string; name: string; configuredStatus: string; discoveryAvailable: boolean; targets: { id: string; monitoringState: string; lastSuccessfulRetrievalAt: string | null }[] }[];
+    };
+    expect(body.markets).toHaveLength(8);
+    const india = body.markets.find((m) => m.code === 'IN')!;
+    expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
+    expect(india.targets.find((t) => t.id === 'sarvam-india')).toMatchObject({ monitoringState: 'NOT_ADOPTED', lastSuccessfulRetrievalAt: null });
+
+    // Unauthenticated callers get nothing.
+    expect((await localRequest(s.info.port, '/api/readiness')).status).toBe(401);
+  });
 });
