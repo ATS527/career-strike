@@ -311,8 +311,46 @@ export interface ApplicationPayload {
   identity: { fullName: string | null; email: string | null; phone: string | null; links: string[] };
   fields: PayloadField[];
   coverLetter: string | null;
+  personalization?: {
+    profileFingerprint: string;
+    snapshotId: string;
+    variants: { id: string; kind: 'resume' | 'cover_letter'; contentHash: string }[];
+  } | null;
   attachments: { documentId: string; kind: string; filename: string; sha256: string }[];
   notAnswered: string[];
+}
+
+export interface ProfileEvidence {
+  id: string;
+  kind: 'project' | 'achievement' | 'portfolio' | 'employment_detail';
+  value: Record<string, unknown>;
+  source: 'user' | 'document';
+  confirmed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonalizationVariant {
+  id: string;
+  kind: 'resume' | 'cover_letter';
+  format: 'source_text';
+  locale: string;
+  content: string;
+  contentHash: string;
+  profileFingerprint: string;
+  status: 'DRAFT' | 'CANDIDATE_EDITED' | 'APPROVED' | 'SUPERSEDED';
+  basedOnVariantId: string | null;
+  createdAt: string;
+  evidence: { requirement: string; classification: string; evidenceRefs: string[]; explanation: string }[];
+}
+
+export interface PersonalizationView {
+  applicationId: string;
+  snapshot: { id: string; completeness: 'FULL' | 'INCOMPLETE' | 'MISSING'; createdAt: string } | null;
+  variants: PersonalizationVariant[];
+  requirements: { requirement: string; classification: string; evidenceRefs: string[]; explanation: string }[];
+  stale: boolean;
+  warnings: string[];
 }
 
 export interface ApplicationView {

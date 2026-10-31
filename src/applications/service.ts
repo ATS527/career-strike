@@ -8,7 +8,7 @@ import { getSettings } from '../store/settings.js';
 import type { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
 import { buildDraft, factGuard, type FormQuestion, type GuardWarning, type Identity } from './drafts.js';
-import { ApplicationPayload, disclosures, identityHash, missingRequired, payloadHash } from './payload.js';
+import { ApplicationPayload, disclosures, identityHash, missingRequired, payloadHash, type PersonalizationBinding } from './payload.js';
 import { allowedTransitions, type ApplicationState, canTransition, TransitionError } from './states.js';
 
 export const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -27,7 +27,8 @@ export class ApplicationError extends Error {
       | 'INVALID_CHANGE'
       | 'APPROVAL_INVALID'
       | 'NOT_AUTOMATABLE'
-      | 'DUPLICATE',
+      | 'DUPLICATE'
+      | 'STALE_DOCUMENTS',
     message: string,
     readonly details: unknown = null,
   ) {
@@ -139,6 +140,8 @@ export class ApplicationService {
     private readonly logger: Logger = nullLogger,
     /** Which delivery method a job's application link allows; only the owned practice endpoint is automatable. */
     private readonly methodFor: (applyUrl: string | null) => 'manual' | 'test-ats' = () => 'manual',
+    /** Document personalization is optional, but a bound package must remain current before approval. */
+    private readonly personalizationCurrent: (applicationId: string, binding: PersonalizationBinding) => boolean = () => true,
   ) {}
 
   // ---- reading ----
@@ -317,6 +320,33 @@ export class ApplicationService {
     })();
   }
 
+  /** Bind reviewed, immutable document variants to the exact application payload. */
+  setPersonalization(id: string, binding: PersonalizationBinding, coverLetter: string | null, actor: string, reason: string): void {
+    const app = this.requireRow(id);
+    if (!['DRAFTED', 'NEEDS_INFORMATION', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED'].includes(app.state)) {
+      throw new ApplicationError('NOT_EDITABLE', `An application in state ${app.state} can no longer be edited.`);
+    }
+    const { payload: current, hash: currentHash } = this.version(id, app.current_version);
+    const next: ApplicationPayload = structuredClone(current);
+    next.personalization = binding;
+    const field = next.fields.find((f) => f.key === 'cover_letter_text');
+    // A tailored letter is reviewable even if the employer did not request one, but it must not
+    // enter the submission payload unless that employer's form has a cover-letter field.
+    next.coverLetter = field ? coverLetter : null;
+    if (field) Object.assign(field, { value: coverLetter, source: coverLetter ? 'draft' : 'empty' });
+    const parsed = ApplicationPayload.safeParse(next);
+    if (!parsed.success) throw new ApplicationError('INVALID_CHANGE', 'The document package is invalid.', parsed.error.issues);
+    if (payloadHash(parsed.data) === currentHash) return;
+    const version = app.current_version + 1;
+    const at = new Date().toISOString();
+    this.db.transaction(() => {
+      this.insertVersion(id, version, parsed.data, actor, reason, at);
+      this.db.prepare('UPDATE applications SET current_version = ?, updated_at = ? WHERE id = ?').run(version, at, id);
+      this.invalidateApprovals(id, `Version ${version} changed the reviewed document package`, 'INVALIDATED');
+      if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED') this.transition(id, app.state, 'DRAFTED', actor, 'Document package changed; needs a fresh review', at);
+    })();
+  }
+
   // ---- review ----
 
   markReady(id: string, actor: string): void {
@@ -325,6 +355,9 @@ export class ApplicationService {
     const missing = missingRequired(payload);
     if (missing.length) throw new ApplicationError('INCOMPLETE', `Fill in the required items first: ${missing.join(', ')}.`, { missing });
     if (!payload.destination.url) throw new ApplicationError('INCOMPLETE', 'This job has no official application link to send you to.');
+    if (payload.personalization && !this.personalizationCurrent(id, payload.personalization)) {
+      throw new ApplicationError('STALE_DOCUMENTS', 'Your tailored documents are stale. Generate and review a new package before continuing.');
+    }
     this.db.transaction(() => this.transition(id, app.state, 'READY_FOR_REVIEW', actor, 'Ready for your review', new Date().toISOString()))();
   }
 
@@ -360,6 +393,9 @@ export class ApplicationService {
     if (!canTransition(view.state, 'APPROVED')) throw new TransitionError(view.state, 'APPROVED');
     if (reviewed.version !== view.version || reviewed.payloadHash !== view.payloadHash) {
       throw new ApplicationError('STALE_REVIEW', 'The application changed after you reviewed it. Review the current version.');
+    }
+    if (view.payload.personalization && !this.personalizationCurrent(id, view.payload.personalization)) {
+      throw new ApplicationError('STALE_DOCUMENTS', 'Your tailored documents changed or became stale. Generate and review them again.');
     }
     if (view.warnings.length > 0 && !reviewed.acknowledgeWarnings) {
       throw new ApplicationError('WARNINGS_NOT_ACKNOWLEDGED', 'Confirm the flagged statements are accurate before approving.', view.warnings);

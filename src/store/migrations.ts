@@ -432,4 +432,66 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX jobs_market_json ON jobs (market_json);
     `,
   },
+  {
+    version: 15,
+    name: 'application_personalization',
+    sql: `
+      -- Candidate-authored or document-derived evidence that is reviewed separately from core
+      -- profile facts. Nothing in this table is eligible for a generated claim until confirmed.
+      CREATE TABLE profile_evidence (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL CHECK (kind IN ('project', 'achievement', 'portfolio', 'employment_detail')),
+        value_json TEXT NOT NULL,
+        source TEXT NOT NULL CHECK (source IN ('user', 'document')),
+        source_ref TEXT,
+        confirmed INTEGER NOT NULL DEFAULT 0 CHECK (confirmed IN (0, 1)),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX profile_evidence_kind ON profile_evidence (kind, confirmed);
+
+      -- The exact public job-description representation used for a document package. A hash lets
+      -- us detect updates without treating a first-seen date as a job-description version.
+      CREATE TABLE job_description_snapshots (
+        id TEXT PRIMARY KEY,
+        job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+        description_hash TEXT NOT NULL,
+        completeness TEXT NOT NULL CHECK (completeness IN ('FULL', 'INCOMPLETE', 'MISSING')),
+        requirements_json TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX job_description_snapshots_job ON job_description_snapshots (job_id, created_at);
+
+      -- Variants are immutable: editing or regenerating makes a new row and supersedes the old
+      -- one. Source text comes first; exportable DOCX/PDF files are an explicitly later phase.
+      CREATE TABLE document_variants (
+        id TEXT PRIMARY KEY,
+        application_id TEXT NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+        snapshot_id TEXT NOT NULL REFERENCES job_description_snapshots(id),
+        kind TEXT NOT NULL CHECK (kind IN ('resume', 'cover_letter')),
+        format TEXT NOT NULL CHECK (format IN ('source_text')),
+        locale TEXT NOT NULL,
+        content TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        profile_fingerprint TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('DRAFT', 'CANDIDATE_EDITED', 'APPROVED', 'SUPERSEDED')),
+        based_on_variant_id TEXT REFERENCES document_variants(id),
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX document_variants_application ON document_variants (application_id, kind, created_at);
+
+      -- Each non-boilerplate proposed claim retains the fact/evidence reference that supports it.
+      CREATE TABLE document_variant_evidence (
+        variant_id TEXT NOT NULL REFERENCES document_variants(id) ON DELETE CASCADE,
+        claim_index INTEGER NOT NULL,
+        claim_text TEXT NOT NULL,
+        evidence_ref TEXT NOT NULL,
+        classification TEXT NOT NULL CHECK (classification IN (
+          'STRONG_MATCH', 'PARTIAL_MATCH', 'TRANSFERABLE_EXPERIENCE',
+          'MISSING', 'UNVERIFIED', 'NOT_APPLICABLE'
+        )),
+        PRIMARY KEY (variant_id, claim_index, evidence_ref)
+      );
+    `,
+  },
 ];

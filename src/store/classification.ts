@@ -64,6 +64,7 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
   schedule_slots: all('INTERNAL', ['schedule', 'slot', 'claimed_at', 'claimed_by', 'result']),
 
   profile_facts: { ...all('INTERNAL', ['id', 'kind', 'source', 'approved', 'created_at', 'updated_at']), value_json: c('SENSITIVE'), source_ref: c('SENSITIVE') },
+  profile_evidence: { ...all('INTERNAL', ['id', 'kind', 'source', 'confirmed', 'created_at', 'updated_at']), value_json: c('SENSITIVE'), source_ref: c('SENSITIVE') },
   documents: {
     ...all('INTERNAL', ['id', 'kind', 'mime', 'size_bytes', 'created_at']),
     // A filename often contains the candidate's name; the hash identifies a private file.
@@ -76,6 +77,18 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
     payload_json: c('SENSITIVE', [...PROFILE, ...IDENTITY, 'documents.filename', 'jobs.description_json']),
     payload_hash: c('SENSITIVE', ['application_versions.payload_json']),
     reason: c('PERSONAL'),
+  },
+  job_description_snapshots: {
+    ...all('INTERNAL', ['id', 'job_id', 'description_hash', 'completeness', 'created_at']),
+    requirements_json: c('SENSITIVE', ['jobs.description_json']),
+  },
+  document_variants: {
+    ...all('INTERNAL', ['id', 'application_id', 'snapshot_id', 'kind', 'format', 'locale', 'status', 'created_at']),
+    ...all('SENSITIVE', ['content', 'content_hash', 'profile_fingerprint', 'based_on_variant_id']),
+  },
+  document_variant_evidence: {
+    ...all('INTERNAL', ['variant_id', 'claim_index', 'classification']),
+    ...all('SENSITIVE', ['claim_text', 'evidence_ref']),
   },
   application_events: {
     ...all('INTERNAL', ['id', 'application_id', 'actor', 'at']),

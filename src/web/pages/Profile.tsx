@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type FactKind, type ProfileFact, type StoredDocument, type ValidationIssue } from '../api';
+import { api, ApiError, type FactKind, type ProfileEvidence, type ProfileFact, type StoredDocument, type ValidationIssue } from '../api';
 import { formatDate } from '../format';
 import { uploadDocument } from './ApplicationPage';
 import { ErrorPanel, Loading } from './states';
@@ -86,11 +86,14 @@ const SECTIONS: { kind: FactKind; title: string; intro: string; fields: FieldSpe
 
 export function Profile() {
   const [facts, setFacts] = useState<ProfileFact[] | null>(null);
+  const [evidence, setEvidence] = useState<ProfileEvidence[] | null>(null);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setFacts((await api<{ facts: ProfileFact[] }>('/api/profile')).facts);
+      const profile = await api<{ facts: ProfileFact[]; evidence: ProfileEvidence[] }>('/api/profile');
+      setFacts(profile.facts);
+      setEvidence(profile.evidence);
       setError(false);
     } catch {
       setError(true);
@@ -116,7 +119,60 @@ export function Profile() {
           <FactSection key={section.kind} section={section} facts={facts.filter((f) => f.kind === section.kind)} onChange={() => void load()} />
         ))}
       {facts && <Documents />}
+      {facts && evidence && <EvidenceSection evidence={evidence} roles={facts.filter((f) => f.kind === 'role')} onChange={() => void load()} />}
     </>
+  );
+}
+
+function EvidenceSection({ evidence, roles, onChange }: { evidence: ProfileEvidence[]; roles: ProfileFact[]; onChange: () => void }) {
+  const [kind, setKind] = useState<ProfileEvidence['kind']>('project');
+  const [name, setName] = useState('');
+  const [detail, setDetail] = useState('');
+  const [skills, setSkills] = useState('');
+  const [url, setUrl] = useState('');
+  const [roleFactId, setRoleFactId] = useState('');
+  const [status, setStatus] = useState<string | null>(null);
+  const submit = async (event: FormEvent): Promise<void> => {
+    event.preventDefault();
+    const value = kind === 'project'
+      ? { name, summary: detail, skills: skills.split(',').map((s) => s.trim()).filter(Boolean), url: url || null }
+      : kind === 'achievement'
+        ? { text: detail, roleFactId: roleFactId || null }
+        : kind === 'portfolio'
+          ? { label: name, url }
+          : { roleFactId, summary: detail };
+    try {
+      await api('/api/profile/evidence', { method: 'POST', body: { kind, value } });
+      setName(''); setDetail(''); setSkills(''); setUrl(''); setRoleFactId('');
+      setStatus('Saved as confirmed evidence.');
+      onChange();
+    } catch (err) {
+      const message = err instanceof ApiError ? ((err.body as { issues?: ValidationIssue[] } | null)?.issues?.[0]?.message ?? 'Check the fields and try again.') : 'Could not save evidence.';
+      setStatus(message);
+    }
+  };
+  const describe = (item: ProfileEvidence): string => {
+    if (item.kind === 'project') return `${String(item.value.name)} — ${String(item.value.summary)}`;
+    if (item.kind === 'achievement') return String(item.value.text);
+    if (item.kind === 'portfolio') return `${String(item.value.label)} — ${String(item.value.url)}`;
+    return String(item.value.summary);
+  };
+  return (
+    <section className="settings-group" aria-labelledby="evidence-title">
+      <h2 id="evidence-title">Projects and evidence</h2>
+      <p className="help">Add only work, achievements, and links you can stand behind. Tailored documents use confirmed evidence, never inferred claims.</p>
+      {evidence.length > 0 && <ul className="fact-list">{evidence.map((item) => <li key={item.id}><span>{describe(item)}</span><button type="button" className="quiet" onClick={async () => { await api(`/api/profile/evidence/${item.id}`, { method: 'DELETE' }); onChange(); }}>Remove<span className="visually-hidden"> evidence</span></button></li>)}</ul>}
+      <form className="fact-form" onSubmit={(event) => void submit(event)}>
+        <div className="record__part"><label htmlFor="evidence-kind">Type</label><select id="evidence-kind" value={kind} onChange={(event) => setKind(event.target.value as ProfileEvidence['kind'])}><option value="project">Project</option><option value="achievement">Achievement</option><option value="portfolio">Portfolio or GitHub link</option><option value="employment_detail">Employment detail</option></select></div>
+        {(kind === 'project' || kind === 'portfolio') && <div className="record__part"><label htmlFor="evidence-name">{kind === 'project' ? 'Project name' : 'Label'}</label><input id="evidence-name" value={name} onChange={(event) => setName(event.target.value)} /></div>}
+        {(kind === 'project' || kind === 'achievement' || kind === 'employment_detail') && <div className="record__part"><label htmlFor="evidence-detail">{kind === 'achievement' ? 'Verified achievement' : 'Description'}</label><textarea id="evidence-detail" rows={3} value={detail} onChange={(event) => setDetail(event.target.value)} /></div>}
+        {kind === 'project' && <div className="record__part"><label htmlFor="evidence-skills">Skills used</label><input id="evidence-skills" value={skills} onChange={(event) => setSkills(event.target.value)} placeholder="TypeScript, Kubernetes" /></div>}
+        {(kind === 'project' || kind === 'portfolio') && <div className="record__part"><label htmlFor="evidence-url">Link {kind === 'project' ? '(optional)' : ''}</label><input id="evidence-url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://…" /></div>}
+        {(kind === 'achievement' || kind === 'employment_detail') && <div className="record__part"><label htmlFor="evidence-role">Related role {kind === 'achievement' ? '(optional)' : ''}</label><select id="evidence-role" value={roleFactId} onChange={(event) => setRoleFactId(event.target.value)}><option value="">—</option>{roles.map((role) => <option key={role.id} value={role.id}>{String(role.value.title)}</option>)}</select></div>}
+        <div className="fact-form__submit"><button type="submit">Add confirmed evidence</button></div>
+      </form>
+      <p role="status" aria-live="polite" className="save-status">{status}</p>
+    </section>
   );
 }
 

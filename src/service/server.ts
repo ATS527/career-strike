@@ -14,6 +14,7 @@ import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { Scheduler } from '../supervisor/scheduler.js';
 import { TaskSupervisor } from '../supervisor/tasks.js';
 import { ApplicationService } from '../applications/service.js';
+import { PersonalizationService } from '../personalization/service.js';
 import { SubmissionEngine } from '../applications/submission.js';
 import { Disclosures } from '../vault/disclosures.js';
 import { DocumentVault } from '../vault/documents.js';
@@ -86,6 +87,7 @@ export function buildServer({
   if (interrupted.length > 0) logger.warn('tasks.interrupted', { count: interrupted.length });
   const vault = new DocumentVault(db, vaultDir);
   const disclosures = new Disclosures(db);
+  const personalization = new PersonalizationService(db);
   const applications = new ApplicationService(
     db,
     secrets,
@@ -100,6 +102,7 @@ export function buildServer({
     },
     logger,
     (applyUrl) => submissions.methodFor(applyUrl),
+    (applicationId, binding) => personalization.bindingCurrent(applicationId, binding),
   );
   const submissions = new SubmissionEngine(db, applications, vault, tasks);
   const interviews = new InterviewService(db, applications);
@@ -301,7 +304,7 @@ export function buildServer({
 
   registerOpportunityRoutes(app, { db, discovery, tasks, vault });
 
-  registerApplicationRoutes(app, { applications, vault, submissions });
+  registerApplicationRoutes(app, { applications, vault, submissions, personalization });
   registerInterviewRoutes(app, { interviews });
 
   const proposals = new StrategyProposals(db);

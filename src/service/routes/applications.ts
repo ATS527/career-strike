@@ -4,6 +4,7 @@ import { ApplicationError, type ApplicationService } from '../../applications/se
 import type { SubmissionEngine } from '../../applications/submission.js';
 import { TransitionError } from '../../applications/states.js';
 import { ACCEPTED_DOCUMENT_TYPES, DocumentError, type DocumentVault, MAX_DOCUMENT_BYTES } from '../../vault/documents.js';
+import { PersonalizationError, type PersonalizationService } from '../../personalization/service.js';
 
 const ERROR_STATUS: Record<ApplicationError['code'], number> = {
   JOB_NOT_FOUND: 404,
@@ -18,6 +19,7 @@ const ERROR_STATUS: Record<ApplicationError['code'], number> = {
   APPROVAL_INVALID: 409,
   NOT_AUTOMATABLE: 409,
   DUPLICATE: 409,
+  STALE_DOCUMENTS: 409,
 };
 
 const Create = z.object({ jobId: z.string().min(1).max(100) }).strict();
@@ -50,6 +52,7 @@ const OutcomeBody = z
   })
   .strict();
 const FollowUpBody = z.object({ dueAt: isoDate, note: z.string().trim().min(1, 'Say what to follow up on').max(500) }).strict();
+const VariantEdit = z.object({ content: z.string().trim().min(1).max(20_000) }).strict();
 
 function actorOf(req: FastifyRequest): string {
   return req.principal?.kind === 'dashboard' ? 'dashboard' : 'local-client';
@@ -59,14 +62,15 @@ function fail(reply: FastifyReply, err: unknown): FastifyReply {
   if (err instanceof ApplicationError) return reply.code(ERROR_STATUS[err.code]).send({ error: err.code, message: err.message, details: err.details });
   if (err instanceof TransitionError) return reply.code(409).send({ error: 'INVALID_TRANSITION', message: err.message });
   if (err instanceof DocumentError) return reply.code(err.code === 'TOO_LARGE' ? 413 : 400).send({ error: err.code, message: err.message });
+  if (err instanceof PersonalizationError) return reply.code(err.code === 'NOT_FOUND' ? 404 : 400).send({ error: err.code, message: err.message });
   throw err;
 }
 
 export function registerApplicationRoutes(
   app: FastifyInstance,
-  deps: { applications: ApplicationService; vault: DocumentVault; submissions: SubmissionEngine },
+  deps: { applications: ApplicationService; vault: DocumentVault; submissions: SubmissionEngine; personalization: PersonalizationService },
 ): void {
-  const { applications, vault, submissions } = deps;
+  const { applications, vault, submissions, personalization } = deps;
 
   // ---- documents (SENSITIVE; never exposes vault paths) ----
 
@@ -122,6 +126,35 @@ export function registerApplicationRoutes(
   app.get<{ Params: { id: string } }>('/api/applications/:id', async (req, reply) => {
     const view = await applications.get(req.params.id);
     return view ? { application: view } : reply.code(404).send({ error: 'NOT_FOUND' });
+  });
+
+  // Local, deterministic document preparation. These routes are unavailable to MCP clients by
+  // the server's principal policy; only the candidate's dashboard or local CLI can use them.
+  app.get<{ Params: { id: string } }>('/api/applications/:id/personalization', async (req, reply) => {
+    const application = await applications.get(req.params.id);
+    return application ? { personalization: personalization.view(req.params.id) } : reply.code(404).send({ error: 'NOT_FOUND' });
+  });
+
+  app.post<{ Params: { id: string } }>('/api/applications/:id/personalize', async (req, reply) => {
+    try {
+      const generated = personalization.generate(req.params.id);
+      applications.setPersonalization(req.params.id, generated.binding, generated.coverLetter, actorOf(req), 'Generated a tailored local document package');
+      return { application: await applications.get(req.params.id), personalization: personalization.view(req.params.id) };
+    } catch (err) {
+      return fail(reply, err);
+    }
+  });
+
+  app.put<{ Params: { id: string; variantId: string } }>('/api/applications/:id/personalization/:variantId', async (req, reply) => {
+    const parsed = VariantEdit.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
+    try {
+      const edited = personalization.edit(req.params.id, req.params.variantId, parsed.data.content);
+      applications.setPersonalization(req.params.id, edited.binding, edited.coverLetter, actorOf(req), 'Edited a tailored document package');
+      return { application: await applications.get(req.params.id), personalization: personalization.view(req.params.id) };
+    } catch (err) {
+      return fail(reply, err);
+    }
   });
 
   app.put<{ Params: { id: string } }>('/api/applications/:id', async (req, reply) => {

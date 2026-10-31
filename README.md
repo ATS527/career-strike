@@ -18,6 +18,8 @@ step-by-step first search, country preferences, trusted job discovery, applicati
   Career Strike can evaluate fit against the profile facts you add.
 - **Keeps an honest application pipeline.** Track drafts, applications ready for review,
   applications you have approved, submissions you confirm, follow-ups, interviews, and offers.
+- **Prepares evidence-backed drafts.** For a prepared application, create local tailored résumé
+  and cover-letter source text from confirmed profile facts, then review every claim yourself.
 - **Keeps you in charge.** You review the exact application package and approve it before any
   action. Real applications are submitted by you on the employer's site; Career Strike never
   sends an application or messages a recruiter for you.
@@ -97,6 +99,10 @@ Open a shortlisted job and choose **Prepare an application**. Fill in anything m
 the package in **Applications**. Approval signs that exact version; changing it cancels the
 approval. When it is ready, open the employer's site, submit it yourself, then confirm the result
 in Career Strike so your pipeline stays accurate.
+
+Use **Prepare tailored documents** inside an editable application when you want a job-specific
+draft. The [document-personalization guide](docs/document-personalization.md) explains what is
+evidence-backed, what must still be checked, and the current export limitations.
 
 ### 7. Keep momentum
 
@@ -178,6 +184,7 @@ rules.
 
 - [Installing, updating, backup, export, and troubleshooting](docs/install.md)
 - [Practical job-hunt guide](docs/job-hunt-guide.md)
+- [Tailored résumé and cover-letter drafts](docs/document-personalization.md)
 - [Privacy and security model](docs/privacy.md)
 - [Known limitations](docs/limitations.md)
 

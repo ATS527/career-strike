@@ -34,6 +34,19 @@ export const Attachment = z
   })
   .strict();
 
+/** Immutable, reviewed source-text variants associated with this exact application package. */
+export const PersonalizationBinding = z
+  .object({
+    profileFingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+    snapshotId: z.string(),
+    variants: z
+      .array(z.object({ id: z.string(), kind: z.enum(['resume', 'cover_letter']), contentHash: z.string().regex(/^[0-9a-f]{64}$/) }).strict())
+      .min(1)
+      .max(2),
+  })
+  .strict();
+export type PersonalizationBinding = z.infer<typeof PersonalizationBinding>;
+
 export const ApplicationPayload = z
   .object({
     job: z.object({ id: z.string(), canonicalKey: z.string(), employer: z.string(), title: z.string() }).strict(),
@@ -43,6 +56,8 @@ export const ApplicationPayload = z
       .strict(),
     fields: z.array(Field).max(100),
     coverLetter: z.string().max(20_000).nullable(),
+    // Optional preserves the canonical payload hash of application versions created before v15.
+    personalization: PersonalizationBinding.nullable().optional(),
     attachments: z.array(Attachment).max(10),
     /** Questions the employer asks that Career Strike never answers (e.g. voluntary demographics). */
     notAnswered: z.array(z.string()).max(50),

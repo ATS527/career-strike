@@ -80,7 +80,10 @@ function rawUpload(s: RunningService, bytes: Buffer, mime: string, filename: str
 type View = {
   id: string; state: string; version: number; payloadHash: string; missingRequired: string[]; disclosures: string[]; warnings: { message: string }[];
   approval: { valid: boolean; reason: string; approval: { state: string } | null };
-  payload: { identity: Record<string, unknown>; fields: { key: string; value: string | null; source: string }[]; coverLetter: string | null; notAnswered: string[]; attachments: { filename: string; sha256: string }[] };
+  payload: {
+    identity: Record<string, unknown>; fields: { key: string; value: string | null; source: string }[]; coverLetter: string | null; notAnswered: string[]; attachments: { filename: string; sha256: string }[];
+    personalization: { profileFingerprint: string; snapshotId: string; variants: { id: string; kind: string; contentHash: string }[] } | null;
+  };
   versions: { version: number; reason: string }[];
 };
 
@@ -132,6 +135,30 @@ describe('applications', () => {
     expect(app.missingRequired).toEqual(['Do you need visa sponsorship?']);
     expect(app.warnings).toEqual([]);
     expect((await ctx.call('POST', '/api/applications', { jobId: ctx.jobId })).status).toBe(409);
+  });
+
+  it('keeps a generated document package local, evidence-backed, job-bound, and stale when the profile changes', async () => {
+    const ctx = await setup();
+    let app = await draft(ctx);
+    const generated = await ctx.call('POST', `/api/applications/${app.id}/personalize`);
+    expect(generated.status).toBe(200);
+    app = (generated.body as { application: View }).application;
+    expect(app.payload.personalization?.variants.map((v) => v.kind).sort()).toEqual(['cover_letter', 'resume']);
+    expect(app.payload.coverLetter).toContain('Platform Engineer');
+
+    const review = await ctx.call('GET', `/api/applications/${app.id}/personalization`);
+    const personalization = (review.body as { personalization: { variants: { kind: string; evidence: { requirement: string; evidenceRefs: string[] }[] }[]; stale: boolean } }).personalization;
+    expect(personalization.stale).toBe(false);
+    expect(personalization.variants).toHaveLength(2);
+    expect(personalization.variants.find((v) => v.kind === 'resume')?.evidence.find((e) => e.requirement === 'TypeScript')?.evidenceRefs[0]).toMatch(/^fact_/);
+
+    // Required form fields are answered first, then changing confirmed profile evidence makes the
+    // package stale and prevents review until it is regenerated.
+    await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { fields: [{ key: 'q_visa', value: 'No' }] } });
+    await ctx.call('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'Kubernetes', years: 2 } });
+    const stale = await ctx.call('POST', `/api/applications/${app.id}/ready`);
+    expect(stale.status).toBe(409);
+    expect((stale.body as { error: string }).error).toBe('STALE_DOCUMENTS');
   });
 
   it('cannot be marked ready while required answers are missing', async () => {

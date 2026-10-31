@@ -4,6 +4,7 @@ import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { candidateContext } from '../../career/context.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
 import { addFact, approveFact, deleteFact, listFacts, NewFact, suggestSkills, updateFact } from '../../career/profile.js';
+import { addEvidence, deleteEvidence, listEvidence, NewEvidence, updateEvidence } from '../../career/evidence.js';
 import type { Db } from '../../store/db.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
@@ -113,7 +114,7 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
 
   // ---- candidate profile (SENSITIVE) ----
 
-  app.get('/api/profile', async () => ({ facts: listFacts(db) }));
+  app.get('/api/profile', async () => ({ facts: listFacts(db), evidence: listEvidence(db) }));
 
   app.post('/api/profile/facts', async (req, reply) => {
     const parsed = NewFact.safeParse(req.body);
@@ -155,6 +156,27 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
 
   app.delete<{ Params: { id: string } }>('/api/profile/facts/:id', async (req, reply) => {
     if (!deleteFact(db, req.params.id, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return { ok: true };
+  });
+
+  // Evidence is kept with the same canonical candidate profile, but deliberately separate from
+  // short profile facts because it can contain longer project and achievement text.
+  app.post('/api/profile/evidence', async (req, reply) => {
+    const parsed = NewEvidence.safeParse(req.body);
+    if (!parsed.success) return invalid(reply, parsed.error.issues);
+    return reply.code(201).send({ evidence: addEvidence(db, parsed.data, actorOf(req)) });
+  });
+
+  app.put<{ Params: { id: string } }>('/api/profile/evidence/:id', async (req, reply) => {
+    const body = req.body as { value?: unknown } | null;
+    const result = updateEvidence(db, req.params.id, body?.value, actorOf(req));
+    if (result === 'not_found') return reply.code(404).send({ error: 'NOT_FOUND' });
+    if (result instanceof z.ZodError) return invalid(reply, result.issues);
+    return { evidence: result };
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/profile/evidence/:id', async (req, reply) => {
+    if (!deleteEvidence(db, req.params.id, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
     return { ok: true };
   });
 }

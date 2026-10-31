@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type Interview, type PayloadField, type StoredDocument } from '../api';
+import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type Interview, type PayloadField, type PersonalizationView, type StoredDocument } from '../api';
 import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
 import { ExternalLink, Link, navigate } from '../router';
 import { ErrorPanel, Loading } from './states';
@@ -90,6 +90,7 @@ export function ApplicationPage({ id }: { id: string }) {
           ) : (
             <p className="muted">This application can no longer be edited.</p>
           )}
+          <PersonalizationPanel application={view} editable={editable} onChanged={() => void load()} />
         </div>
         <aside className="package" aria-labelledby="package-title">
           <h2 id="package-title">Exactly what would be sent</h2>
@@ -101,6 +102,77 @@ export function ApplicationPage({ id }: { id: string }) {
         </aside>
       </div>
     </article>
+  );
+}
+
+function PersonalizationPanel({ application, editable, onChanged }: { application: ApplicationView; editable: boolean; onChanged: () => void }) {
+  const [data, setData] = useState<PersonalizationView | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    try {
+      const result = await api<{ personalization: PersonalizationView }>(`/api/applications/${application.id}/personalization`);
+      setData(result.personalization);
+      setError(null);
+    } catch {
+      setError('Could not load tailored documents.');
+    }
+  }, [application.id]);
+  useEffect(() => void load(), [load, application.version]);
+
+  const generate = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      await api(`/api/applications/${application.id}/personalize`, { method: 'POST' });
+      await load();
+      onChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? (err.body as { message?: string } | null)?.message ?? 'Could not prepare documents.' : 'Could not prepare documents.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="settings-group" aria-labelledby="tailored-documents-title">
+      <h2 id="tailored-documents-title">Tailored documents</h2>
+      <p className="help">Generated locally from confirmed profile facts and this job’s saved description. Review every claim before approval.</p>
+      {error && <p className="banner banner--attention">{error}</p>}
+      {data?.warnings.map((warning) => <p className="banner banner--attention" key={warning}>{warning}</p>)}
+      {editable && <button type="button" className="button button--secondary" disabled={busy} onClick={() => void generate()}>{data?.variants.length ? 'Regenerate tailored documents' : 'Prepare tailored documents'}</button>}
+      {data?.requirements.length ? (
+        <details>
+          <summary>Job requirements and evidence</summary>
+          <ul className="fact-list">
+            {data.requirements.map((item) => <li key={item.requirement}><strong>{item.requirement}</strong> — {item.classification.replaceAll('_', ' ').toLowerCase()}: {item.explanation}</li>)}
+          </ul>
+        </details>
+      ) : null}
+      {data?.variants.map((variant) => <DocumentVariantEditor key={variant.id} applicationId={application.id} variant={variant} editable={editable} onChanged={async () => { await load(); onChanged(); }} />)}
+    </section>
+  );
+}
+
+function DocumentVariantEditor({ applicationId, variant, editable, onChanged }: { applicationId: string; variant: PersonalizationView['variants'][number]; editable: boolean; onChanged: () => Promise<void> }) {
+  const [content, setContent] = useState(variant.content);
+  const [busy, setBusy] = useState(false);
+  const changed = content !== variant.content;
+  const save = async (): Promise<void> => {
+    setBusy(true);
+    try {
+      await api(`/api/applications/${applicationId}/personalization/${variant.id}`, { method: 'PUT', body: { content } });
+      await onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="field">
+      <label className="field__label" htmlFor={`variant-${variant.id}`}>{variant.kind === 'resume' ? 'Tailored résumé source' : 'Tailored cover letter'} <span className="muted">({variant.status.replaceAll('_', ' ').toLowerCase()})</span></label>
+      <textarea id={`variant-${variant.id}`} rows={variant.kind === 'resume' ? 18 : 12} value={content} readOnly={!editable} onChange={(event) => setContent(event.target.value)} />
+      {variant.evidence.length > 0 && <p className="help">Evidence: {variant.evidence.map((item) => `${item.requirement} (${item.classification.replaceAll('_', ' ').toLowerCase()})`).join(', ')}.</p>}
+      {editable && changed && <button type="button" className="button button--secondary" disabled={busy} onClick={() => void save()}>Save document edit</button>}
+    </div>
   );
 }
 

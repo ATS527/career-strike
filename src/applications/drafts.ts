@@ -139,6 +139,7 @@ export function buildDraft(input: DraftInput, method: 'manual' | 'assisted' | 't
       fields,
       // No cover-letter field on the employer's form means no cover letter is sent.
       coverLetter: coverField ? coverField.value : null,
+      personalization: null,
       attachments: input.resume ? [{ documentId: input.resume.id, kind: 'resume', filename: input.resume.filename, sha256: input.resume.sha256 }] : [],
       notAnswered: questions.filter((q) => q.voluntary).map((q) => q.label),
     },
