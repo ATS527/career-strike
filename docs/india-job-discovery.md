@@ -22,9 +22,12 @@ live integrations until `verify-market` has successfully retrieved an explicitly
 | Sarvam AI | [Careers](https://www.sarvam.ai/careers) | [Ashby](https://jobs.ashbyhq.com/sarvam) | `sarvam-india` |
 | Harvey | [Careers](https://www.harvey.ai/company/careers) | [Ashby](https://jobs.ashbyhq.com/harvey) | `harvey-india` |
 
+On the review date the public board APIs returned complete listings with India-located
+postings for all four employers (Saviynt 22, KRAFTON INDIA 8, Sarvam AI 37, Harvey 11).
+
 Use a networked local installation to certify exactly one target:
 
-    career-strike verify-market IN --target sarvam-india
+    career-strike verify-market IN --target saviynt-india
 
 The command calls the existing guarded public ATS adapter. It saves jobs and begins monitoring only
 after the source returns a complete listing with at least one explicit India location. A timeout,

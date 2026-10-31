@@ -22,9 +22,10 @@ export interface EmployerTarget {
 }
 
 /**
- * Evidence reviewed on 2026-10-31: each target's official careers site and its public board
- * independently show matching Indian and Singaporean roles. Board identifiers are therefore
- * corroborated, not guessed. Links remain on each target record for later review.
+ * India evidence reviewed on 2026-10-31: each employer's official careers page was reachable and
+ * its public board API returned complete listings with postings located explicitly in India
+ * (Saviynt 22, KRAFTON INDIA 8, Sarvam AI 37, Harvey 11 on that date). Board identifiers are
+ * therefore corroborated, not guessed. Links remain on each target record for later review.
  * This is not live-discovery certification: that is earned only by verifyTargetDiscovery().
  */
 export const INDIA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
