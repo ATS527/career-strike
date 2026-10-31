@@ -1,41 +1,75 @@
 {
-  "revision": "b6a13470326e63550cc05e5023f96f81267137d2",
-  "at": "2026-10-31T13:25:09.431Z",
+  "revision": "a6687af112d46bf920f843e8f04a9821745f2864",
+  "at": "2026-10-31T21:45:49.745Z",
   "passed": true,
-  "command": "career-strike verify-market DE --target hellofresh-de",
-  "target": {
-    "id": "hellofresh-de",
-    "employer": "HelloFresh",
-    "officialCareersSite": "https://careers.hellofresh.com/global/en",
-    "source": "greenhouse",
-    "board": "hellofresh",
-    "boardUrl": "https://job-boards.greenhouse.io/hellofresh"
-  },
+  "command": "career-strike verify-market DE --target doctolib-de && career-strike verify-market DE --target celonis-de && career-strike verify-market DE --target sumup-de",
+  "targets": [
+    {
+      "id": "hellofresh-de",
+      "employer": "HelloFresh",
+      "officialCareersSite": "https://careers.hellofresh.com/global/en",
+      "source": "greenhouse",
+      "board": "hellofresh",
+      "boardUrl": "https://job-boards.greenhouse.io/hellofresh",
+      "adoptedBoardId": "src_cTSUAhjFIXoc",
+      "certifiedAt": "2026-10-31T13:25:09.431Z"
+    },
+    {
+      "id": "doctolib-de",
+      "employer": "Doctolib",
+      "officialCareersSite": "https://careers.doctolib.com",
+      "source": "greenhouse",
+      "board": "doctolib",
+      "boardUrl": "https://job-boards.greenhouse.io/doctolib",
+      "adoptedBoardId": "src_71pRdBZHwR2y",
+      "certifiedAt": "2026-10-31T21:44:57.154Z"
+    },
+    {
+      "id": "celonis-de",
+      "employer": "Celonis",
+      "officialCareersSite": "https://careers.celonis.com",
+      "source": "greenhouse",
+      "board": "celonis",
+      "boardUrl": "https://job-boards.greenhouse.io/celonis",
+      "adoptedBoardId": "src_pK-XXKljlTGX",
+      "certifiedAt": "2026-10-31T21:45:04.408Z"
+    },
+    {
+      "id": "sumup-de",
+      "employer": "SumUp",
+      "officialCareersSite": "https://www.sumup.com/careers/",
+      "source": "greenhouse",
+      "board": "sumup",
+      "boardUrl": "https://job-boards.greenhouse.io/sumup",
+      "adoptedBoardId": "src_LRVplCo6NgWX",
+      "certifiedAt": "2026-10-31T21:45:14.569Z"
+    }
+  ],
   "checks": [
     {
       "name": "service stopped before the live fetch",
       "passed": true,
-      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+      "detail": "career-strike status reported 'stopped' before every fetch (HelloFresh in the 2026-10-31 run, Doctolib, Celonis and SumUp in this run); the command also refuses a live or hung process"
     },
     {
-      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
       "passed": true,
-      "detail": "single complete listing fetched from the Greenhouse public board; allowlisted host, SSRF guard and rate limits applied"
+      "detail": "three single complete listings fetched in this run and one in the earlier HelloFresh run, each from the Greenhouse public board; allowlisted host, SSRF guard and rate limits applied"
     },
     {
       "name": "explicit Germany location evidence present",
       "passed": true,
-      "detail": "394 postings retrieved; 90 normalise to explicit DE location evidence"
+      "detail": "HelloFresh 394 postings retrieved (90 with explicit DE evidence), Doctolib 153 (65), Celonis 236 (56), SumUp 358 (49)"
     },
     {
-      "name": "board adopted and monitoring enabled only after verification",
+      "name": "boards adopted and monitoring enabled only after verification",
       "passed": true,
-      "detail": "adopted as board id src_cTSUAhjFIXoc with health OK; source-board health record written"
+      "detail": "adopted as src_cTSUAhjFIXoc, src_71pRdBZHwR2y, src_pK-XXKljlTGX and src_LRVplCo6NgWX, each with health OK; source-board health records written"
     },
     {
       "name": "market status honest for this installation",
       "passed": true,
-      "detail": "DE may be described as DISCOVERY_AVAILABLE for this installation; doctolib-de, celonis-de and sumup-de remain curated but not adopted"
+      "detail": "DE may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
     }
   ]
 }
