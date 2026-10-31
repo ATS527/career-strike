@@ -1,0 +1,41 @@
+{
+  "revision": "b6a13470326e63550cc05e5023f96f81267137d2",
+  "at": "2026-10-31T13:24:55.792Z",
+  "passed": true,
+  "command": "career-strike verify-market MY --target ninjavan-sea",
+  "target": {
+    "id": "ninjavan-sea",
+    "employer": "Ninja Van",
+    "officialCareersSite": "https://www.ninjavan.co/en-sg/company/careers",
+    "source": "lever",
+    "board": "ninjavan",
+    "boardUrl": "https://jobs.lever.co/ninjavan"
+  },
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped'; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "single complete listing fetched from the Lever public board; allowlisted host, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Malaysia location evidence present",
+      "passed": true,
+      "detail": "144 postings retrieved; 84 normalise to explicit MY location evidence"
+    },
+    {
+      "name": "board adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as board id src_lcnMHxFFgy_X with health OK; source-board health record written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "MY may be described as DISCOVERY_AVAILABLE for this installation; the same monitored feed carries explicit postings for ID, PH, TH and VN as reviewed"
+    }
+  ]
+}

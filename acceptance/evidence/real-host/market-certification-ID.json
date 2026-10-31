@@ -1,0 +1,41 @@
+{
+  "revision": "b6a13470326e63550cc05e5023f96f81267137d2",
+  "at": "2026-10-31T13:25:07.644Z",
+  "passed": true,
+  "command": "career-strike verify-market ID --target xendit-sea",
+  "target": {
+    "id": "xendit-sea",
+    "employer": "Xendit",
+    "officialCareersSite": "https://www.xendit.co/careers/",
+    "source": "greenhouse",
+    "board": "xendit",
+    "boardUrl": "https://job-boards.greenhouse.io/xendit"
+  },
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "single complete listing fetched from the Greenhouse public board; allowlisted host, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Indonesia location evidence present",
+      "passed": true,
+      "detail": "18 postings retrieved; 2 normalise to explicit ID location evidence (Jakarta)"
+    },
+    {
+      "name": "board adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as board id src_njwzrYOwJb3N with health OK; source-board health record written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "ID may be described as DISCOVERY_AVAILABLE for this installation; unverified markets remain CONFIGURED"
+    }
+  ]
+}

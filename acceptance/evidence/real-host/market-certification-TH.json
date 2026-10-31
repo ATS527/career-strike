@@ -1,0 +1,41 @@
+{
+  "revision": "b6a13470326e63550cc05e5023f96f81267137d2",
+  "at": "2026-10-31T13:25:04.733Z",
+  "passed": true,
+  "command": "career-strike verify-market TH --target agoda-careers",
+  "target": {
+    "id": "agoda-careers",
+    "employer": "Agoda",
+    "officialCareersSite": "https://careersatagoda.com/",
+    "source": "greenhouse",
+    "board": "agoda",
+    "boardUrl": "https://job-boards.greenhouse.io/agoda"
+  },
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "single complete listing fetched from the Greenhouse public board; allowlisted host, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Thailand location evidence present",
+      "passed": true,
+      "detail": "310 postings retrieved; 200 normalise to explicit TH location evidence"
+    },
+    {
+      "name": "board adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as board id src_0YDnokf7RQ2w with health OK; source-board health record written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "TH may be described as DISCOVERY_AVAILABLE for this installation; the same monitored feed carries explicit postings for MY, PH and VN as reviewed"
+    }
+  ]
+}
