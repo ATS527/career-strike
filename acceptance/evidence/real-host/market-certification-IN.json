@@ -1,0 +1,41 @@
+{
+  "revision": "2a1e99527535cf5037615db058ecb11eabfab466",
+  "at": "2026-10-31T08:51:22.000Z",
+  "passed": true,
+  "command": "career-strike verify-market IN --target sarvam-india",
+  "target": {
+    "id": "sarvam-india",
+    "employer": "Sarvam AI",
+    "officialCareersSite": "https://www.sarvam.ai/careers",
+    "source": "ashby",
+    "board": "sarvam",
+    "boardUrl": "https://jobs.ashbyhq.com/sarvam"
+  },
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped'; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "single complete listing fetched from the Ashby public board; allowlisted host, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit India location evidence present",
+      "passed": true,
+      "detail": "46 postings retrieved; 37 normalise to explicit IN location evidence"
+    },
+    {
+      "name": "board adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as board id src_yPe_2kegGuwh with health OK; source-board health record written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "IN may be described as DISCOVERY_AVAILABLE for this installation; other markets remain CONFIGURED"
+    }
+  ]
+}
