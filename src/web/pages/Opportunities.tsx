@@ -10,6 +10,10 @@ import { COUNTRY_CODES, COUNTRY_REGISTRY } from '../../markets/countries';
 import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../markets/india-sources';
 import { SINGAPORE_SOURCE_ASSESSMENTS, officialSingaporeSearchUrl } from '../../markets/singapore-sources';
 import { UAE_SOURCE_ASSESSMENTS, officialUaeSearchUrl } from '../../markets/uae-sources';
+import { JAPAN_SOURCE_ASSESSMENTS, officialJapanSearchUrl } from '../../markets/japan-sources';
+import { UK_SOURCE_ASSESSMENTS, officialUkSearchUrl } from '../../markets/uk-sources';
+import { AUSTRALIA_SOURCE_ASSESSMENTS, officialAustraliaSearchUrl } from '../../markets/australia-sources';
+import { CANADA_SOURCE_ASSESSMENTS, officialCanadaSearchUrl } from '../../markets/canada-sources';
 
 const PAGE = 50;
 const MAX_COMPARE = 4;
@@ -219,6 +223,42 @@ export function Opportunities() {
           market="United Arab Emirates"
           sources={UAE_SOURCE_ASSESSMENTS}
           urlFor={officialUaeSearchUrl}
+          query={query}
+        />
+      )}
+      {params.get('country') === 'JP' && (
+        <OfficialSearches
+          id="japan-official-searches"
+          market="Japan"
+          sources={JAPAN_SOURCE_ASSESSMENTS}
+          urlFor={officialJapanSearchUrl}
+          query={query}
+        />
+      )}
+      {params.get('country') === 'GB' && (
+        <OfficialSearches
+          id="uk-official-searches"
+          market="United Kingdom"
+          sources={UK_SOURCE_ASSESSMENTS}
+          urlFor={officialUkSearchUrl}
+          query={query}
+        />
+      )}
+      {params.get('country') === 'AU' && (
+        <OfficialSearches
+          id="australia-official-searches"
+          market="Australia"
+          sources={AUSTRALIA_SOURCE_ASSESSMENTS}
+          urlFor={officialAustraliaSearchUrl}
+          query={query}
+        />
+      )}
+      {params.get('country') === 'CA' && (
+        <OfficialSearches
+          id="canada-official-searches"
+          market="Canada"
+          sources={CANADA_SOURCE_ASSESSMENTS}
+          urlFor={officialCanadaSearchUrl}
           query={query}
         />
       )}

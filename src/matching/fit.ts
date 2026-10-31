@@ -68,7 +68,7 @@ export interface FitSettings {
 const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
 const ALIASES: Readonly<Record<string, string[]>> = {
   US: ['USA', 'U.S.', 'U.S.A.', 'United States of America', 'America'],
-  GB: ['UK', 'U.K.', 'Britain', 'England', 'Scotland', 'Wales'],
+  GB: ['UK', 'U.K.', 'Britain', 'England', 'Scotland', 'Wales', 'Birmingham', 'Bristol', 'Glasgow', 'Leeds', 'Cardiff'],
   AE: ['UAE', 'U.A.E.', 'Dubai', 'Abu Dhabi'],
   IN: ['Bengaluru', 'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Chennai', 'Gurugram', 'Gurgaon', 'Noida', 'Kochi', 'Kolkata'],
   DE: ['Berlin', 'Munich', 'München', 'Hamburg', 'Frankfurt'],
@@ -76,10 +76,10 @@ const ALIASES: Readonly<Record<string, string[]>> = {
   FR: ['Paris'],
   ES: ['Madrid', 'Barcelona'],
   IE: ['Dublin'],
-  CA: ['Toronto', 'Vancouver', 'Montreal', 'Montréal'],
-  AU: ['Sydney', 'Melbourne'],
+  CA: ['Toronto', 'Vancouver', 'Montreal', 'Montréal', 'Ottawa', 'Calgary'],
+  AU: ['Sydney', 'Melbourne', 'Brisbane', 'Adelaide', 'Canberra'],
   SG: ['Singapore'],
-  JP: ['Tokyo'],
+  JP: ['Tokyo', 'Osaka', 'Yokohama', 'Nagoya'],
   CH: ['Zurich', 'Zürich', 'Geneva'],
   SE: ['Stockholm'],
   PL: ['Warsaw', 'Kraków', 'Krakow'],

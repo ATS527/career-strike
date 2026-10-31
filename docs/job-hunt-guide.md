@@ -79,14 +79,20 @@ networked local installation with an explicit India posting. Singapore works the
 four reviewed employer-direct boards; see the
 [Singapore discovery guide](singapore-job-discovery.md). The United Arab Emirates works the same
 way with four reviewed employer-direct boards; see the
-[UAE discovery guide](uae-job-discovery.md). Germany and the other Southeast Asian
+[UAE discovery guide](uae-job-discovery.md). Japan, the United Kingdom, Australia and Canada also
+work that way with four reviewed employer-direct boards each; see the
+[Japan discovery guide](japan-job-discovery.md), the
+[UK discovery guide](uk-job-discovery.md), the
+[Australia discovery guide](australia-job-discovery.md) and the
+[Canada discovery guide](canada-job-discovery.md). Germany and the other Southeast Asian
 markets have reviewed employer-direct targets too; see the
 [Germany discovery guide](germany-job-discovery.md) and the
 [Southeast Asia discovery guide](southeast-asia-job-discovery.md).
 
-Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand, Vietnam and the
-United Arab Emirates can be selected as markets today. A configured market is not the same as
-automated coverage. See [known limitations](limitations.md#job-sources) before relying on a source.
+Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand, Vietnam, the
+United Arab Emirates, Japan, the United Kingdom, Australia and Canada can be selected as markets
+today. A configured market is not the same as automated coverage. See
+[known limitations](limitations.md#job-sources) before relying on a source.
 
 ### Use a five-minute capture rule
 

@@ -377,6 +377,243 @@ export const UAE_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   },
 ];
 
+/**
+ * Japan evidence reviewed on 2026-11-01: each employer's official careers site was reachable and
+ * its public board API returned complete listings with postings located explicitly in Japan
+ * (OpenAI 29, Anthropic 16, New Relic 12, Figma 3 — each "Tokyo, Japan" on that date). New Relic's
+ * and Figma's careers pages link their Greenhouse boards directly, Anthropic's careers page lists
+ * the same Greenhouse postings, and OpenAI's careers site links its Ashby board. This is not
+ * live-discovery certification: that is earned only by verifyTargetDiscovery().
+ */
+export const JAPAN_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'openai-jp',
+    employer: 'OpenAI',
+    officialWebsite: 'https://openai.com',
+    careersUrl: 'https://openai.com/careers',
+    source: 'ashby',
+    board: 'openai',
+    boardUrl: 'https://jobs.ashbyhq.com/openai',
+    countries: ['JP'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'anthropic-jp',
+    employer: 'Anthropic',
+    officialWebsite: 'https://www.anthropic.com',
+    careersUrl: 'https://www.anthropic.com/careers',
+    source: 'greenhouse',
+    board: 'anthropic',
+    boardUrl: 'https://job-boards.greenhouse.io/anthropic',
+    countries: ['JP'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'newrelic-jp',
+    employer: 'New Relic',
+    officialWebsite: 'https://newrelic.com',
+    careersUrl: 'https://newrelic.com/careers',
+    source: 'greenhouse',
+    board: 'newrelic',
+    boardUrl: 'https://job-boards.greenhouse.io/newrelic',
+    countries: ['JP'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'figma-jp',
+    employer: 'Figma',
+    officialWebsite: 'https://www.figma.com',
+    careersUrl: 'https://www.figma.com/careers/',
+    source: 'greenhouse',
+    board: 'figma',
+    boardUrl: 'https://job-boards.greenhouse.io/figma',
+    countries: ['JP'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+];
+
+/**
+ * United Kingdom evidence reviewed on 2026-11-01: each employer's official careers site was
+ * reachable and its public board API returned complete listings with postings located explicitly
+ * in the UK (Monzo 51, Wayve 49, ElevenLabs 27, Synthesia 12 on that date). Monzo's careers page
+ * links its Greenhouse board directly and Synthesia's careers page links its Ashby board; Wayve's
+ * and ElevenLabs' careers sites embed their Ashby boards. UK locations on these boards read as
+ * "London", "London, United Kingdom" or "Cardiff, London or Remote (UK)". This is not
+ * live-discovery certification: that is earned only by verifyTargetDiscovery().
+ */
+export const UNITED_KINGDOM_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'monzo-gb',
+    employer: 'Monzo',
+    officialWebsite: 'https://monzo.com',
+    careersUrl: 'https://monzo.com/careers',
+    source: 'greenhouse',
+    board: 'monzo',
+    boardUrl: 'https://job-boards.greenhouse.io/monzo',
+    countries: ['GB'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'wayve-gb',
+    employer: 'Wayve',
+    officialWebsite: 'https://wayve.ai',
+    careersUrl: 'https://wayve.ai/careers/',
+    source: 'ashby',
+    board: 'wayve',
+    boardUrl: 'https://jobs.ashbyhq.com/wayve',
+    countries: ['GB'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'elevenlabs-gb',
+    employer: 'ElevenLabs',
+    officialWebsite: 'https://elevenlabs.io',
+    careersUrl: 'https://elevenlabs.io/careers',
+    source: 'ashby',
+    board: 'elevenlabs',
+    boardUrl: 'https://jobs.ashbyhq.com/elevenlabs',
+    countries: ['GB'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'synthesia-gb',
+    employer: 'Synthesia',
+    officialWebsite: 'https://www.synthesia.io',
+    careersUrl: 'https://www.synthesia.io/careers',
+    source: 'ashby',
+    board: 'synthesia',
+    boardUrl: 'https://jobs.ashbyhq.com/synthesia',
+    countries: ['GB'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+];
+
+/**
+ * Australia evidence reviewed on 2026-11-01: each employer's official careers site was reachable
+ * and its public board API returned complete listings with postings located explicitly in
+ * Australia (Culture Amp 14 — Sydney and Melbourne, Mable 12, Deputy 6, Immutable 4 — Sydney on
+ * that date). Culture Amp's and Immutable's careers pages link their boards directly, and Mable's
+ * own careers page links its Lever board at jobs.lever.co/mable. This is not live-discovery
+ * certification: that is earned only by verifyTargetDiscovery().
+ */
+export const AUSTRALIA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'cultureamp-au',
+    employer: 'Culture Amp',
+    officialWebsite: 'https://www.cultureamp.com',
+    careersUrl: 'https://www.cultureamp.com/company/careers',
+    source: 'greenhouse',
+    board: 'cultureamp',
+    boardUrl: 'https://job-boards.greenhouse.io/cultureamp',
+    countries: ['AU'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'mable-au',
+    employer: 'Mable',
+    officialWebsite: 'https://mable.com.au',
+    careersUrl: 'https://mable.com.au/about-us/careers-at-mable/',
+    source: 'lever',
+    board: 'mable',
+    boardUrl: 'https://jobs.lever.co/mable',
+    countries: ['AU'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'deputy-au',
+    employer: 'Deputy',
+    officialWebsite: 'https://www.deputy.com',
+    careersUrl: 'https://www.deputy.com/careers',
+    source: 'lever',
+    board: 'deputy',
+    boardUrl: 'https://jobs.lever.co/deputy',
+    countries: ['AU'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'immutable-au',
+    employer: 'Immutable',
+    officialWebsite: 'https://www.immutable.com',
+    careersUrl: 'https://www.immutable.com/careers',
+    source: 'lever',
+    board: 'immutable',
+    boardUrl: 'https://jobs.lever.co/immutable',
+    countries: ['AU'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+];
+
+/**
+ * Canada evidence reviewed on 2026-11-01: each employer's official careers site was reachable and
+ * links its Ashby board, and each board API returned complete listings with postings located
+ * explicitly in Canada (1Password 62 — "Remote (United States | Canada)" and "Toronto, ON",
+ * Wealthsimple 41 — "Remote (Canada)" and "Toronto Headquarters", Jane 24 — "Canada", Trulioo 18
+ * — "Vancouver, BC" on that date). This is not live-discovery certification: that is earned only
+ * by verifyTargetDiscovery().
+ */
+export const CANADA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: '1password-ca',
+    employer: '1Password',
+    officialWebsite: 'https://1password.com',
+    careersUrl: 'https://1password.com/careers',
+    source: 'ashby',
+    board: '1password',
+    boardUrl: 'https://jobs.ashbyhq.com/1password',
+    countries: ['CA'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'wealthsimple-ca',
+    employer: 'Wealthsimple',
+    officialWebsite: 'https://www.wealthsimple.com',
+    careersUrl: 'https://www.wealthsimple.com/en-ca/careers',
+    source: 'ashby',
+    board: 'wealthsimple',
+    boardUrl: 'https://jobs.ashbyhq.com/wealthsimple',
+    countries: ['CA'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'jane-ca',
+    employer: 'Jane',
+    officialWebsite: 'https://jane.app',
+    careersUrl: 'https://jane.app/careers',
+    source: 'ashby',
+    board: 'jane',
+    boardUrl: 'https://jobs.ashbyhq.com/jane',
+    countries: ['CA'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+  {
+    id: 'trulioo-ca',
+    employer: 'Trulioo',
+    officialWebsite: 'https://www.trulioo.com',
+    careersUrl: 'https://www.trulioo.com/company/careers',
+    source: 'ashby',
+    board: 'trulioo',
+    boardUrl: 'https://jobs.ashbyhq.com/trulioo',
+    countries: ['CA'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-11-01T00:00:00.000Z',
+  },
+];
+
 export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   ...INDIA_EMPLOYER_TARGETS,
   ...SINGAPORE_EMPLOYER_TARGETS,
@@ -385,6 +622,10 @@ export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   ...PHILIPPINES_EMPLOYER_TARGETS,
   ...VIETNAM_EMPLOYER_TARGETS,
   ...UAE_EMPLOYER_TARGETS,
+  ...JAPAN_EMPLOYER_TARGETS,
+  ...UNITED_KINGDOM_EMPLOYER_TARGETS,
+  ...AUSTRALIA_EMPLOYER_TARGETS,
+  ...CANADA_EMPLOYER_TARGETS,
 ];
 
 export function employerTargetsFor(country: CountryCode): EmployerTarget[] {

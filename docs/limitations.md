@@ -17,8 +17,9 @@ tracked with evidence in `acceptance/registry.json`.
 
 - Only public Greenhouse, Lever and Ashby job boards can be monitored. Jobs from anywhere else can
   be added by hand and stay marked as unverified.
-- Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand, Vietnam and the
-  United Arab Emirates are configured as search markets for country/location filtering. This is
+- Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand, Vietnam, the
+  United Arab Emirates, Japan, the United Kingdom, Australia and Canada are configured as search
+  markets for country/location filtering. This is
   **not** marketplace coverage: none is labelled discovery-available until Career Strike has a
   permitted source and successful retrieval evidence for that market. The existing employer-direct
   ATS integrations may return roles in any of those markets when the candidate supplies a valid
@@ -33,7 +34,11 @@ tracked with evidence in `acceptance/registry.json`.
   Lever, Agoda and Xendit on Greenhouse) covering Malaysia, Indonesia, the Philippines, Thailand
   and Vietnam. The Philippines also has two dedicated candidates (AvePoint and Mitsogo, both
   Greenhouse), Vietnam has two (Amanotes on Lever, Sky Mavis on Ashby) and the United Arab Emirates
-  has four (Bybit and Deliveroo on Greenhouse, Ziina and Checkout.com on Ashby). Their employer and
+  has four (Bybit and Deliveroo on Greenhouse, Ziina and Checkout.com on Ashby). Japan has four
+  (OpenAI on Ashby, Anthropic, New Relic and Figma on Greenhouse), the United Kingdom has four
+  (Monzo on Greenhouse, Wayve, ElevenLabs and Synthesia on Ashby), Australia has four (Culture Amp
+  on Greenhouse, Mable, Deputy and Immutable on Lever) and Canada has four (1Password,
+  Wealthsimple, Jane and Trulioo, all Ashby). Their employer and
   board identities have been reviewed, but a market stays
   **CONFIGURED** for a fresh installation until `career-strike verify-market <CC> --target <id>`
   completes a live permitted fetch with an explicitly located posting. Only then does the command

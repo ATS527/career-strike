@@ -2,7 +2,7 @@
  * Supported-market metadata. A configured market is not a promise that Career Strike can
  * automatically retrieve jobs there; source capability and successful verification decide that.
  */
-export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE'] as const;
+export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA'] as const;
 export type CountryCode = (typeof COUNTRY_CODES)[number];
 
 export type MarketStatus = 'CONFIGURED' | 'LIMITED_SUPPORT' | 'DISCOVERY_AVAILABLE' | 'PRODUCTION_SUPPORTED' | 'BLOCKED';
@@ -39,6 +39,26 @@ export const COUNTRY_REGISTRY: Readonly<Record<CountryCode, CountryConfig>> = {
     code: 'AE', name: 'United Arab Emirates', currencies: ['AED'], locales: ['ar', 'en'],
     defaultCities: ['Dubai', 'Abu Dhabi', 'Sharjah'],
     cityAliases: {}, status: 'CONFIGURED',
+  },
+  JP: {
+    code: 'JP', name: 'Japan', currencies: ['JPY'], locales: ['ja', 'en'],
+    defaultCities: ['Tokyo', 'Osaka', 'Nagoya', 'Yokohama', 'Fukuoka'],
+    cityAliases: {}, status: 'CONFIGURED',
+  },
+  GB: {
+    code: 'GB', name: 'United Kingdom', currencies: ['GBP'], locales: ['en'],
+    defaultCities: ['London', 'Manchester', 'Edinburgh', 'Birmingham', 'Glasgow', 'Bristol', 'Leeds', 'Cardiff'],
+    cityAliases: {}, status: 'CONFIGURED',
+  },
+  AU: {
+    code: 'AU', name: 'Australia', currencies: ['AUD'], locales: ['en'],
+    defaultCities: ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra'],
+    cityAliases: {}, status: 'CONFIGURED',
+  },
+  CA: {
+    code: 'CA', name: 'Canada', currencies: ['CAD'], locales: ['en', 'fr'],
+    defaultCities: ['Toronto', 'Vancouver', 'Montreal', 'Ottawa', 'Calgary'],
+    cityAliases: { Montréal: 'Montreal' }, status: 'CONFIGURED',
   },
 };
 

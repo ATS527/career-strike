@@ -133,7 +133,7 @@ describe('local service', () => {
     const body = res.body as {
       markets: { code: string; name: string; configuredStatus: string; discoveryAvailable: boolean; targets: { id: string; monitoringState: string; lastSuccessfulRetrievalAt: string | null }[] }[];
     };
-    expect(body.markets).toHaveLength(9);
+    expect(body.markets).toHaveLength(13);
     const india = body.markets.find((m) => m.code === 'IN')!;
     expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
     expect(india.targets.find((t) => t.id === 'sarvam-india')).toMatchObject({ monitoringState: 'NOT_ADOPTED', lastSuccessfulRetrievalAt: null });
