@@ -45,7 +45,7 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
   jobs: {
     ...all('PUBLIC', [
       'id', 'canonical_key', 'duplicate_key', 'duplicate_of', 'employer', 'title', 'location_text', 'remote_policy', 'employment_type',
-      'department', 'salary_json', 'description_json', 'description_text', 'apply_url', 'posting_url', 'published_at', 'status', 'unresolved_json',
+      'department', 'salary_json', 'description_json', 'description_text', 'apply_url', 'posting_url', 'published_at', 'status', 'unresolved_json', 'market_json',
     ]),
     ...all('INTERNAL', ['first_seen_at', 'last_seen_at', 'last_verified_at', 'closed_at', 'requirements_version']),
     requirements_json: c('PUBLIC', ['jobs.description_json']),

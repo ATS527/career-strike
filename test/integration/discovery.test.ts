@@ -97,6 +97,20 @@ describe('board sync', () => {
     expect(listJobs(d, query({ q: 'synthetic labs' }), { excludedEmployers: [] }).jobs).toHaveLength(2);
   });
 
+  it('filters by configured country from explicit country or configured-city evidence', () => {
+    const d = db();
+    syncBoard(d, 'greenhouse', 'synthetic', [
+      posting('in', { title: 'India role', locationText: 'Bangalore, India' }),
+      posting('de', { title: 'Germany role', locationText: 'Berlin, Germany' }),
+      posting('remote', { title: 'Remote role', locationText: 'Remote' }),
+    ]);
+    expect(listJobs(d, query({ country: 'IN' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['India role']);
+    expect(listJobs(d, query({ country: 'DE' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['Germany role']);
+    expect(listJobs(d, query({ country: 'SG' }), { excludedEmployers: [] }).jobs).toEqual([]);
+    expect(listJobs(d, query({ country: 'IN', city: 'Bengaluru' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['India role']);
+    expect(listJobs(d, query({ country: 'IN', city: 'Pune' }), { excludedEmployers: [] }).jobs).toEqual([]);
+  });
+
   it('dispositions persist, excluded jobs and employers are hidden unless asked for', () => {
     const d = db();
     syncBoard(d, 'greenhouse', 'synthetic', [posting('1'), posting('2', { employer: 'Avoided Corp' })]);

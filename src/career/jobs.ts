@@ -2,8 +2,10 @@ import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import type { Db } from '../store/db.js';
 import { blocksToText, textToBlocks } from '../sources/html.js';
-import { safeHttpUrl, unresolvedFacts } from '../sources/normalize.js';
-import type { NormalizedPosting, PublishedSalary, RemotePolicy, TextBlock } from '../sources/types.js';
+import { marketFacts, safeHttpUrl, unresolvedFacts } from '../sources/normalize.js';
+import type { MarketFacts, NormalizedPosting, PublishedSalary, RemotePolicy, TextBlock } from '../sources/types.js';
+import { isCountryCode } from '../markets/countries.js';
+import { capabilityForName, type SourceCapability } from '../sources/capabilities.js';
 import { evaluateFit, type Fit, type FitSettings, type Tier } from '../matching/fit.js';
 import { extractRequirements, type PostingRequirements, REQUIREMENTS_VERSION } from '../matching/requirements.js';
 import type { CandidateProfile } from './profile.js';
@@ -32,6 +34,8 @@ export interface JobSummary {
   duplicateOf: string | null;
   disposition: Disposition;
   employerExcluded: boolean;
+  market: MarketFacts;
+  sourceCapabilities: SourceCapability[];
   /** Present when a candidate context was supplied. SENSITIVE: derived from the profile. */
   fit?: FitSummary;
 }
@@ -58,7 +62,7 @@ export interface JobDetail extends JobSummary {
   postingUrl: string | null;
   closedAt: string | null;
   unresolved: string[];
-  sourceRecords: { source: string; board: string; sourceJobId: string; url: string | null; fetchedAt: string }[];
+  sourceRecords: { source: string; board: string; sourceJobId: string; url: string | null; fetchedAt: string; capability: SourceCapability }[];
   duplicates: { id: string; title: string; employer: string; sources: string[] }[];
   requirements: PostingRequirements;
   fitDetail?: Fit;
@@ -104,15 +108,15 @@ export function syncBoard(db: Db, source: string, board: string, postings: Norma
   const insertJob = db.prepare(`
     INSERT INTO jobs (id, canonical_key, duplicate_key, employer, title, location_text, remote_policy, employment_type,
       department, salary_json, description_json, description_text, apply_url, posting_url, published_at, status,
-      first_seen_at, last_seen_at, last_verified_at, unresolved_json, requirements_json, requirements_version)
+      first_seen_at, last_seen_at, last_verified_at, unresolved_json, requirements_json, requirements_version, market_json)
     VALUES (@id, @canonical, @dup, @employer, @title, @location, @remote, @employment, @department, @salary, @descJson,
-      @descText, @apply, @posting, @published, 'OPEN', @at, @at, @at, @unresolved, @reqJson, @reqVersion)`);
+      @descText, @apply, @posting, @published, 'OPEN', @at, @at, @at, @unresolved, @reqJson, @reqVersion, @market)`);
   const updateJob = db.prepare(`
     UPDATE jobs SET duplicate_key = @dup, employer = @employer, title = @title, location_text = @location,
       remote_policy = @remote, employment_type = @employment, department = @department, salary_json = @salary,
       description_json = @descJson, description_text = @descText, apply_url = @apply, posting_url = @posting,
       published_at = @published, status = 'OPEN', closed_at = NULL, last_seen_at = @at, last_verified_at = @at,
-      unresolved_json = @unresolved, requirements_json = @reqJson, requirements_version = @reqVersion
+      unresolved_json = @unresolved, requirements_json = @reqJson, requirements_version = @reqVersion, market_json = @market
     WHERE id = @id`);
   const touchJob = db.prepare("UPDATE jobs SET status = 'OPEN', closed_at = NULL, last_seen_at = ?, last_verified_at = ? WHERE id = ?");
   const insertSource = db.prepare(
@@ -146,6 +150,7 @@ export function syncBoard(db: Db, source: string, board: string, postings: Norma
         unresolved: JSON.stringify(p.unresolved),
         reqJson: JSON.stringify(extractRequirements(p.title, p.description)),
         reqVersion: REQUIREMENTS_VERSION,
+        market: JSON.stringify(p.market ?? marketFacts(p.locationText, p.remotePolicy)),
         at,
       };
       const existing = findSource.get(source, board, p.sourceJobId) as { job_id: string; content_hash: string } | undefined;
@@ -238,8 +243,8 @@ export function addManualJob(db: Db, input: z.infer<typeof ManualJobInput>, now 
     db.prepare(
       `INSERT INTO jobs (id, canonical_key, duplicate_key, employer, title, location_text, remote_policy, employment_type,
         description_json, description_text, apply_url, posting_url, status, first_seen_at, last_seen_at, unresolved_json,
-        requirements_json, requirements_version)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'unknown', ?, ?, ?, ?, 'UNVERIFIED', ?, ?, ?, ?, ?)`,
+        requirements_json, requirements_version, market_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'unknown', ?, ?, ?, ?, 'UNVERIFIED', ?, ?, ?, ?, ?, ?)`,
     ).run(
       id,
       `manual:${id}`,
@@ -257,6 +262,7 @@ export function addManualJob(db: Db, input: z.infer<typeof ManualJobInput>, now 
       JSON.stringify(unresolved),
       JSON.stringify(extractRequirements(input.title, description)),
       REQUIREMENTS_VERSION,
+      JSON.stringify(marketFacts(location, input.remotePolicy)),
     );
     db.prepare(
       'INSERT INTO job_sources (job_id, source, board, source_job_id, source_url, fetched_at, content_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -277,6 +283,8 @@ export const JobQuery = z
     q: z.string().trim().max(200).optional(),
     status: z.enum(['active', 'OPEN', 'STALE', 'CLOSED', 'UNVERIFIED', 'all']).default('active'),
     remote: z.enum(['remote', 'hybrid', 'onsite', 'unknown']).optional(),
+    country: z.string().trim().toUpperCase().refine(isCountryCode, 'Use a configured country code').optional(),
+    city: z.string().trim().min(1).max(100).optional(),
     // 'any' ignores the candidate's decisions entirely (used where those decisions must not be inferable).
     disposition: z.enum(['none', 'shortlisted', 'excluded', 'not_excluded', 'any']).default('not_excluded'),
     source: z.enum(['greenhouse', 'lever', 'ashby', 'manual', 'practice']).optional(),
@@ -307,11 +315,12 @@ interface JobRow {
   sources: string;
   requirements_json: string | null;
   description_text: string;
+  market_json: string;
 }
 
 const SUMMARY_SELECT = `
   SELECT j.id, j.employer, j.title, j.location_text, j.remote_policy, j.employment_type, j.salary_json, j.status,
-    j.first_seen_at, j.last_verified_at, j.published_at, j.duplicate_of, u.disposition, j.requirements_json, j.description_text,
+    j.first_seen_at, j.last_verified_at, j.published_at, j.duplicate_of, u.disposition, j.requirements_json, j.description_text, j.market_json,
     (SELECT group_concat(DISTINCT s.source) FROM job_sources s WHERE s.job_id = j.id) AS sources
   FROM jobs j LEFT JOIN job_user_state u ON u.job_id = j.id`;
 
@@ -328,6 +337,18 @@ function requirementsOf(row: { requirements_json: string | null }): PostingRequi
   return row.requirements_json ? (JSON.parse(row.requirements_json) as PostingRequirements) : EMPTY_REQUIREMENTS;
 }
 
+function marketOf(row: { market_json: string; location_text: string | null; remote_policy: RemotePolicy }): MarketFacts {
+  try {
+    const parsed = JSON.parse(row.market_json) as Partial<MarketFacts>;
+    if (parsed.location && parsed.remoteEligibility && Array.isArray(parsed.remoteEligibleCountries)) {
+      return parsed as MarketFacts;
+    }
+  } catch {
+    // A malformed legacy value is no stronger evidence than an absent value.
+  }
+  return marketFacts(row.location_text, row.remote_policy);
+}
+
 function fitFor(row: JobRow, status: EffectiveStatus, ctx: CandidateContext): Fit | undefined {
   if (!ctx.profile || !ctx.settings) return undefined;
   return evaluateFit(
@@ -341,6 +362,7 @@ function fitFor(row: JobRow, status: EffectiveStatus, ctx: CandidateContext): Fi
       status,
       descriptionText: row.description_text,
       requirements: requirementsOf(row),
+      market: marketOf(row),
     },
     ctx.profile,
     ctx.settings,
@@ -376,6 +398,8 @@ function toSummary(row: JobRow, excludedEmployers: Set<string>, now: number, ctx
     duplicateOf: row.duplicate_of,
     disposition: row.disposition ?? 'none',
     employerExcluded: excludedEmployers.has(norm(row.employer)),
+    market: marketOf(row),
+    sourceCapabilities: row.sources ? [...new Set(row.sources.split(',').map(capabilityForName))] : [],
     ...(fit ? { fit: summariseFit(fit), fitDetail: fit } : {}),
   };
 }
@@ -445,6 +469,8 @@ export function listJobs(
     const urgentMatch = (j: JobSummary & { fitDetail?: Fit }): number => (j.fitDetail?.immediateStart.asked && j.fitDetail.immediateStart.candidateAvailable ? 0 : 1);
     visible = [...visible].sort((a, b) => TIER_ORDER[a.fit!.tier] - TIER_ORDER[b.fit!.tier] || urgentMatch(a) - urgentMatch(b));
   }
+  if (query.country) visible = visible.filter((j) => j.market.location.countryCode === query.country || j.market.remoteEligibleCountries.includes(query.country!));
+  if (query.city) visible = visible.filter((j) => j.market.location.city !== null && norm(j.market.location.city) === norm(query.city!));
   const page = visible.slice(query.offset, query.offset + query.limit).map(({ fitDetail: _omit, ...j }) => j);
   return { total: visible.length, jobs: page, fitAvailable };
 }
@@ -472,7 +498,7 @@ export function getJob(db: Db, id: string, ctx: CandidateContext, now = Date.now
       source_url: string | null;
       fetched_at: string;
     }[]
-  ).map((s) => ({ source: s.source, board: s.board, sourceJobId: s.source_job_id, url: s.source_url, fetchedAt: s.fetched_at }));
+  ).map((s) => ({ source: s.source, board: s.board, sourceJobId: s.source_job_id, url: s.source_url, fetchedAt: s.fetched_at, capability: capabilityForName(s.source) }));
   const duplicates = (
     db
       .prepare(

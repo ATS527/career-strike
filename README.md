@@ -7,6 +7,9 @@ for interviews—without putting their career data in a third-party cloud.
 It works completely on its own. Codex, Claude Code, and OpenCode can be connected later as
 optional MCP clients; they are helpers, not a requirement.
 
+New to Career Strike? Follow the [practical job-hunt guide](docs/job-hunt-guide.md) for a
+step-by-step first search, country preferences, trusted job discovery, applications and follow-up.
+
 ## What it does
 
 - **Finds roles you choose to monitor.** Add a public Greenhouse, Lever, or Ashby careers page,
@@ -127,6 +130,24 @@ Disconnect an assistant at any time:
 career-strike disconnect codex
 ```
 
+For Codex, this repository also includes a portable plugin package at
+[`plugins/career-strike`](plugins/career-strike). It bundles the same local MCP server and
+safe job-search workflow. Choose either the direct `career-strike connect codex` route above or
+the plugin route—do not configure both, as that would show duplicate Career Strike tools.
+After installing Career Strike from an npm package, run `career-strike plugin-path` to locate the
+bundled plugin directory.
+
+Other MCP-compatible clients can use the same server without a product-specific integration:
+
+```bash
+career-strike authorize-mcp axym
+# Configure that client to launch: career-strike mcp --client axym
+```
+
+`axym` is only a local client label; Career Strike does not claim Axym compatibility until that
+client has been configured and tested. Revoke its credential at any time with
+`career-strike revoke-mcp axym`, then remove its MCP entry in that client.
+
 ## Useful commands
 
 | Command | Use it for |
@@ -156,6 +177,7 @@ rules.
 ## Documentation
 
 - [Installing, updating, backup, export, and troubleshooting](docs/install.md)
+- [Practical job-hunt guide](docs/job-hunt-guide.md)
 - [Privacy and security model](docs/privacy.md)
 - [Known limitations](docs/limitations.md)
 

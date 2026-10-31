@@ -15,7 +15,15 @@ export const SCOPES = {
 
 export type Scope = keyof typeof SCOPES;
 export const DEFAULT_SCOPES: readonly Scope[] = ['public:read', 'public:write', 'dispositions:write'];
-export const KNOWN_CLIENTS = ['codex', 'claude-code', 'opencode'] as const;
+
+/**
+ * A stable local label for an MCP connection. It is used in an owner-only token file, so it must
+ * never contain a path separator or a platform-specific special name. Known host integrations
+ * use codex, claude-code and opencode; any MCP-compatible client may use another safe label.
+ */
+export function isMcpClientName(value: string): boolean {
+  return /^[a-z][a-z0-9-]{0,63}$/.test(value);
+}
 
 /** An assistant counts as connected if it made a request within this window. */
 export const CONNECTED_WITHIN_MS = 15 * 60 * 1000;

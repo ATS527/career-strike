@@ -62,6 +62,8 @@ describe('packaged install', () => {
     const listing = execFileSync('tar', ['tzf', tgz], { encoding: 'utf8' }).split('\n');
     expect(listing).toContain('package/dist/cli/index.js');
     expect(listing).toContain('package/dist/web/index.html');
+    expect(listing).toContain('package/plugins/career-strike/plugin.json');
+    expect(listing).toContain('package/plugins/career-strike/.codex-plugin/plugin.json');
     expect(listing.filter((f) => /^package\/(src|test|acceptance|scripts)\//.test(f))).toEqual([]);
 
     const prefix = path.join(tempDir('cs-prefix-'), 'prefix');
@@ -82,6 +84,9 @@ describe('packaged install', () => {
     const run = (...args: string[]) => spawnSync(bin, args, { env, encoding: 'utf8', timeout: 60_000 });
 
     expect(run('--version').stdout.trim()).toBe(JSON.parse(fs.readFileSync('package.json', 'utf8')).version);
+    const pluginPath = run('plugin-path');
+    expect(pluginPath.status, pluginPath.stderr).toBe(0);
+    expect(fs.existsSync(path.join(pluginPath.stdout.trim(), 'plugin.json'))).toBe(true);
     expect(run('init').status).toBe(0);
     const doctor = run('doctor');
     expect(doctor.status, doctor.stdout).toBe(0);

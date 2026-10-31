@@ -7,6 +7,7 @@ export type FieldKind =
   | { kind: 'choice'; values: string[] }
   | { kind: 'multi-choice'; values: string[] }
   | { kind: 'lines' }
+  | { kind: 'country-authorizations'; values: string[] }
   | { kind: 'optional-text'; pattern?: string }
   | { kind: 'optional-record'; properties: [string, JsonSchema][] };
 
@@ -17,6 +18,9 @@ export function fieldKind(schema: JsonSchema): FieldKind | null {
   if (schema.type === 'string' && schema.enum) return { kind: 'choice', values: schema.enum };
   if (schema.type === 'array' && schema.items?.enum) return { kind: 'multi-choice', values: schema.items.enum };
   if (schema.type === 'array' && schema.items?.type === 'string') return { kind: 'lines' };
+  if (schema.type === 'object' && typeof schema.additionalProperties === 'object' && schema.additionalProperties.enum) {
+    return { kind: 'country-authorizations', values: schema.additionalProperties.enum };
+  }
   const nonNull = schema.anyOf?.find((s) => s.type !== 'null');
   if (nonNull && schema.anyOf?.some((s) => s.type === 'null')) {
     if (nonNull.type === 'string') return { kind: 'optional-text', pattern: nonNull.pattern };
@@ -33,6 +37,10 @@ export function toDraft(kind: FieldKind, value: unknown): Draft {
       return Array.isArray(value) ? value.map(String) : [];
     case 'lines':
       return Array.isArray(value) ? value.join('\n') : '';
+    case 'country-authorizations':
+      return value && typeof value === 'object'
+        ? Object.entries(value as Record<string, unknown>).map(([country, status]) => `${country}=${String(status)}`).join('\n')
+        : '';
     case 'optional-text':
       return typeof value === 'string' ? value : '';
     case 'optional-record': {
@@ -53,6 +61,17 @@ export function fromDraft(kind: FieldKind, draft: Draft): unknown {
         .split('\n')
         .map((l) => l.trim())
         .filter(Boolean);
+    case 'country-authorizations':
+      return Object.fromEntries(
+        String(draft)
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => {
+            const [country, ...status] = line.split('=');
+            return [country?.trim().toUpperCase() ?? '', status.join('=').trim()];
+          }),
+      );
     case 'optional-text': {
       const text = String(draft).trim();
       return text === '' ? null : text;

@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { Db } from '../store/db.js';
 import { assertBoard } from '../sources/adapters.js';
-import { type SourceAdapter, SourceError, type SourceId } from '../sources/types.js';
+import { type NormalizedPosting, type SourceAdapter, SourceError, type SourceId } from '../sources/types.js';
 import { backoffMs } from '../supervisor/scheduler.js';
 import type { Task, TaskSupervisor } from '../supervisor/tasks.js';
 import { type SyncResult, syncBoard } from './jobs.js';
@@ -54,6 +54,26 @@ export class Discovery {
       throw err;
     }
     return this.getBoard(id)!;
+  }
+
+  /**
+   * Adopt a board only after the caller obtained one complete, permitted listing. This avoids
+   * treating a configured employer target as a live source before it has actually responded.
+   */
+  adoptVerifiedBoard(source: SourceId, board: string, postings: NormalizedPosting[], verifiedAt = new Date()): { board: SourceBoard; result: SyncResult } {
+    const created = this.addBoard(source, board);
+    try {
+      const result = syncBoard(this.db, source, board, postings, verifiedAt);
+      this.db
+        .prepare("UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0, next_attempt_at = NULL WHERE id = ?")
+        .run(verifiedAt.toISOString(), created.id);
+      return { board: this.getBoard(created.id)!, result };
+    } catch (err) {
+      // Do not leave a source looking configured or healthy if persistence of the verified
+      // response failed. Jobs are synced transactionally, so this is safe to remove.
+      this.removeBoard(created.id);
+      throw err;
+    }
   }
 
   /** Stop monitoring a board. Jobs already found are kept; they simply stop being re-verified. */

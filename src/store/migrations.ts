@@ -422,4 +422,14 @@ export const MIGRATIONS: readonly Migration[] = [
       CREATE INDEX disclosures_state ON disclosures (state);
     `,
   },
+  {
+    version: 14,
+    name: 'global_market_foundation',
+    sql: `
+      -- PUBLIC: source-published international location and eligibility evidence. Existing rows
+      -- are deliberately left empty and are interpreted as UNKNOWN, never inferred retroactively.
+      ALTER TABLE jobs ADD COLUMN market_json TEXT NOT NULL DEFAULT '{}';
+      CREATE INDEX jobs_market_json ON jobs (market_json);
+    `,
+  },
 ];

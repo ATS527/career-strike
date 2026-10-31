@@ -9,8 +9,10 @@ import { runningService, startDetached } from '../service/control.js';
 import { localRequest } from '../service/http-client.js';
 import { DEFAULT_PORT } from '../service/service.js';
 import { DISCLOSABLE, DISCLOSABLE_FIELDS } from '../vault/disclosures.js';
+import { isMcpClientName } from './clients.js';
 
 export function tokenFile(paths: AppPaths, client: string): string {
+  if (!isMcpClientName(client)) throw new Error('MCP client names must use lowercase letters, numbers and hyphens, beginning with a letter.');
   return path.join(paths.home, 'mcp', `${client}.token`);
 }
 
@@ -35,7 +37,7 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     try {
       token = fs.readFileSync(tokenFile(paths, client), 'utf8').trim();
     } catch {
-      return failure(`This assistant is not connected to Career Strike. Run: career-strike connect ${client}`);
+      return failure(`This MCP client is not authorized for Career Strike. Run: career-strike authorize-mcp ${client}`);
     }
     let info = await runningService(paths);
     if (!info) {

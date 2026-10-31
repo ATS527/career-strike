@@ -17,6 +17,19 @@ tracked with evidence in `acceptance/registry.json`.
 
 - Only public Greenhouse, Lever and Ashby job boards can be monitored. Jobs from anywhere else can
   be added by hand and stay marked as unverified.
+- Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand and Vietnam are
+  configured as search markets for country/location filtering. This is **not** marketplace
+  coverage: none is labelled discovery-available until Career Strike has a permitted source and
+  successful retrieval evidence for that market. The existing employer-direct ATS integrations
+  may return roles in any of those markets when the candidate supplies a valid employer board.
+- Naukri, Foundit, LinkedIn, Indeed, JobStreet, JobsDB, Glints, Kalibrr, MyCareersFuture,
+  Hiredly, VietnamWorks, TopCV and similar marketplaces are not fetched by Career Strike. Use an
+  official link or add a role manually unless a future release records authorised access.
+- India has four curated employer-direct candidates: Saviynt (Lever), KRAFTON INDIA (Greenhouse),
+  Sarvam AI (Ashby) and Harvey (Ashby). Their employer and board identities have been reviewed,
+  but India remains **CONFIGURED** until `career-strike verify-market IN --target <id>` completes
+  a live permitted fetch with an explicitly Indian posting. Only then does the command save and
+  monitor that board and allow the local installation to call India **DISCOVERY_AVAILABLE**.
 - A posting counts as open only if its board listed it within the last 72 hours. Boards are
   checked when you add them, when you press **Fetch now**, and on your chosen schedule.
 - Scheduled checks run only while the service is running; there is no operating-system background
@@ -37,6 +50,10 @@ tracked with evidence in `acceptance/registry.json`.
   from PDF or Word files; paste their text instead.
 - Insights compare sources only with at least 10 submitted applications per source, and never
   claim a cause. Silence from employers is not treated as feedback.
+- Country and city normalisation is deterministic and limited to configured market aliases. A
+  remote role is not treated as globally eligible unless an authorised source explicitly states
+  that fact. Sponsorship, work authorisation and relocation assistance remain unknown unless a
+  source supplies evidence.
 
 ## Platforms and installation
 
@@ -49,6 +66,9 @@ tracked with evidence in `acceptance/registry.json`.
 - AI assistant support is certified against specific installed versions of Codex, Claude Code
   and OpenCode (recorded in `acceptance/evidence/real-host/`). Other versions may change how they
   store MCP settings.
+- Axym is not a Career Strike dependency or a certified host integration. An Axym deployment may
+  use the generic local MCP route only after its operator confirms that it supports the required
+  stdio configuration and verifies the connection locally.
 - The dashboard is in English only.
 
 ## Backup and restore

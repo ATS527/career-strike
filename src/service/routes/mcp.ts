@@ -4,7 +4,7 @@ import type { ApplicationService } from '../../applications/service.js';
 import { candidateContext } from '../../career/context.js';
 import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { addManualJob, getJob, JobQuery, type JobSummary, jobCounts, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
-import { type McpClientStore, type Scope, SCOPES } from '../../mcp/clients.js';
+import { isMcpClientName, type McpClientStore, type Scope, SCOPES } from '../../mcp/clients.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { Db } from '../../store/db.js';
@@ -26,6 +26,8 @@ function publicJob(j: JobSummary & { postingUrl?: string | null }) {
     lastVerifiedAt: j.lastVerifiedAt,
     publishedAt: j.publishedAt,
     foundOn: j.sources.filter((s) => s !== 'manual'),
+    country: j.market.location.countryCode,
+    sourceCapabilities: j.sourceCapabilities,
   };
 }
 
@@ -270,7 +272,7 @@ export function registerMcpRoutes(
   app.post('/api/mcp-clients', async (req, reply) => {
     // Creating credentials is a local-CLI action (career-strike connect), never an MCP or browser one.
     if (req.principal?.kind !== 'local-client') return reply.code(403).send({ error: 'LOCAL_CLIENT_REQUIRED' });
-    const body = z.object({ name: z.enum(['codex', 'claude-code', 'opencode', 'test']) }).strict().safeParse(req.body);
+    const body = z.object({ name: z.string().refine(isMcpClientName, 'Use lowercase letters, numbers and hyphens; start with a letter.') }).strict().safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
     return reply.code(201).send(clients.create(body.data.name, 'local-client'));
   });

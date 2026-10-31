@@ -10,13 +10,24 @@ import { backup, deleteAllData, exportData, restore, rollback } from '../store/l
 import { defaultSecretStore } from '../vault/secrets.js';
 import { HOSTS, type Host, hostVersion, isRegistered, register, settlesTo, unregister } from '../mcp/hosts.js';
 import { runMcpStdio, tokenFile } from '../mcp/server.js';
+import { isMcpClientName } from '../mcp/clients.js';
 import { dashboardUrl, openInBrowser, processAlive, startDetached, stopService } from '../service/control.js';
 import { runDoctorChecks } from '../service/diagnostics.js';
 import { localRequest } from '../service/http-client.js';
 import { probeHealth, readRuntime } from '../service/runtime.js';
 import { AlreadyRunningError, DEFAULT_PORT, startService, WEB_DIR } from '../service/service.js';
+import { employerTargetsFor, verifyTargetDiscovery } from '../markets/employers.js';
+import { isCountryCode, type CountryCode } from '../markets/countries.js';
+import { createAdapters } from '../sources/adapters.js';
+import { Discovery, DuplicateBoardError } from '../career/discovery.js';
+import { TaskSupervisor } from '../supervisor/tasks.js';
 
 const CLI_ENTRY = fileURLToPath(import.meta.url);
+
+/** Source and packaged builds keep the executable two directories below the package root. */
+function packageRoot(): string {
+  return path.resolve(path.dirname(fs.realpathSync(CLI_ENTRY)), '..', '..');
+}
 
 function parsePort(value: string): number {
   const n = Number(value);
@@ -89,14 +100,32 @@ program
 program
   .command('mcp')
   .description('Run the MCP server over stdio for an AI assistant (launched by the assistant, not by you)')
-  .requiredOption('--client <name>', 'which assistant is connecting: codex, claude-code or opencode')
+  .requiredOption('--client <name>', 'a safe local MCP client label, e.g. codex or axym', parseMcpClientName)
   .action(async (opts: { client: string }) => {
     await runMcpStdio(appPaths(), opts.client, CLI_ENTRY);
   });
 
+function parseMcpClientName(value: string): string {
+  if (!isMcpClientName(value)) throw new InvalidArgumentError('Use lowercase letters, numbers and hyphens; start with a letter (for example codex or axym).');
+  return value;
+}
+
 function parseHost(value: string): Host {
   if (!(HOSTS as readonly string[]).includes(value)) throw new InvalidArgumentError(`Choose one of: ${HOSTS.join(', ')}.`);
   return value as Host;
+}
+
+async function authorizeMcpClient(clientName: string): Promise<{ id: string }> {
+  const paths = appPaths();
+  const info = await startDetached(paths, CLI_ENTRY, DEFAULT_PORT);
+  const res = await localRequest(info.port, '/api/mcp-clients', { method: 'POST', body: { name: clientName }, headers: { authorization: `Bearer ${info.token}` } });
+  if (res.status !== 201) throw new Error(`Could not create MCP credentials (HTTP ${res.status}).`);
+  const { token, client } = res.body as { token: string; client: { id: string } };
+  // The token is never placed in a host configuration or printed to the terminal.
+  const file = tokenFile(paths, clientName);
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(file, token, { mode: 0o600 });
+  return { id: client.id };
 }
 
 program
@@ -106,20 +135,32 @@ program
   .action(async (assistant: Host) => {
     const version = await hostVersion(assistant);
     if (!version) throw new Error(`${assistant} does not appear to be installed (its command was not found).`);
+    const client = await authorizeMcpClient(assistant);
     const paths = appPaths();
-    const info = await startDetached(paths, CLI_ENTRY, DEFAULT_PORT);
-    const res = await localRequest(info.port, '/api/mcp-clients', { method: 'POST', body: { name: assistant }, headers: { authorization: `Bearer ${info.token}` } });
-    if (res.status !== 201) throw new Error(`Could not create credentials (HTTP ${res.status}).`);
-    const { token, client } = res.body as { token: string; client: { id: string } };
-    // The assistant's config only holds the command; the scoped token lives in an owner-only file.
-    const file = tokenFile(paths, assistant);
-    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-    fs.writeFileSync(file, token, { mode: 0o600 });
     const env: Record<string, string> = process.env.CAREER_STRIKE_HOME ? { CAREER_STRIKE_HOME: paths.home } : {};
     await register(assistant, { command: process.execPath, args: [...process.execArgv, CLI_ENTRY, 'mcp', '--client', assistant], env });
     if (!(await settlesTo(assistant, true))) throw new Error(`${assistant} did not list Career Strike after registration; check its MCP configuration.`);
     console.log(`Connected ${assistant} (${version}). It can search and read public postings, add jobs and boards, and shortlist.`);
     console.log(`Grant more access in the dashboard under Settings → AI assistants. Client id: ${client.id}`);
+  });
+
+program
+  .command('authorize-mcp')
+  .description('Authorize any MCP-compatible client without changing that client’s configuration')
+  .argument('<client>', 'a local label, e.g. codex or axym', parseMcpClientName)
+  .action(async (client: string) => {
+    const result = await authorizeMcpClient(client);
+    console.log(`Authorized ${client}. Configure it to run: career-strike mcp --client ${client}`);
+    console.log(`Grant more access in the dashboard under Settings → AI assistants. Client id: ${result.id}`);
+  });
+
+program
+  .command('plugin-path')
+  .description('Print the installed Career Strike plugin directory for Codex plugin setup')
+  .action(() => {
+    const plugin = path.join(packageRoot(), 'plugins', 'career-strike');
+    if (!fs.existsSync(path.join(plugin, 'plugin.json'))) throw new Error('The Career Strike plugin is not included in this installation. Reinstall a package that includes plugins.');
+    console.log(plugin);
   });
 
 program
@@ -143,6 +184,24 @@ program
       process.exitCode = 1;
       console.error(`${assistant} still lists ${'career-strike'}; check its MCP configuration.`);
     }
+  });
+
+program
+  .command('revoke-mcp')
+  .description('Revoke a generic MCP client and remove its local credential')
+  .argument('<client>', 'the local label used with authorize-mcp', parseMcpClientName)
+  .action(async (client: string) => {
+    const paths = appPaths();
+    const info = await startDetached(paths, CLI_ENTRY, DEFAULT_PORT);
+    const list = await localRequest(info.port, '/api/mcp-clients', { headers: { authorization: `Bearer ${info.token}` } });
+    if (list.status !== 200) throw new Error(`Could not list MCP clients (HTTP ${list.status}).`);
+    const matches = (list.body as { clients: { id: string; name: string }[] }).clients.filter((item) => item.name === client);
+    for (const item of matches) {
+      const res = await localRequest(info.port, `/api/mcp-clients/${item.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } });
+      if (res.status !== 200) throw new Error(`Could not revoke MCP credentials (HTTP ${res.status}).`);
+    }
+    fs.rmSync(tokenFile(paths, client), { force: true });
+    console.log(matches.length ? `Revoked ${client}. Remove its Career Strike MCP entry from the client’s configuration.` : `${client} had no active Career Strike credential.`);
   });
 
 program
@@ -191,6 +250,45 @@ program
     const checks = await runDoctorChecks(appPaths());
     for (const c of checks) console.log(`${c.ok ? 'PASS' : 'FAIL'}  ${c.name.padEnd(18)} ${c.detail}`);
     if (checks.some((c) => !c.ok)) process.exitCode = 1;
+  });
+
+function parseCountry(value: string): CountryCode {
+  const country = value.toUpperCase();
+  if (!isCountryCode(country)) throw new InvalidArgumentError('Choose a configured ISO country code, for example IN.');
+  return country;
+}
+
+program
+  .command('verify-market')
+  .description('Verify and adopt a curated employer-direct board only after a permitted live retrieval')
+  .argument('<country>', 'configured ISO country code', parseCountry)
+  .option('--target <id>', 'one curated employer target (required when a market has multiple targets)')
+  .action(async (country: CountryCode, opts: { target?: string }) => {
+    await requireStopped('verify a market');
+    const targets = employerTargetsFor(country);
+    const selected = opts.target ? targets.filter((target) => target.id === opts.target) : targets;
+    if (selected.length === 0) throw new Error(`No approved employer-direct target is available for ${country}.`);
+    if (selected.length > 1) throw new Error(`Choose one target with --target: ${selected.map((target) => target.id).join(', ')}.`);
+    const target = selected[0]!;
+    const paths = appPaths();
+    ensureHome(paths);
+    const db = openDb(paths.db);
+    try {
+      const adapters = createAdapters();
+      const verification = await verifyTargetDiscovery(target, adapters[target.source], country);
+      const discovery = new Discovery(db, adapters, new TaskSupervisor(db));
+      const adopted = discovery.adoptVerifiedBoard(target.source, target.board, verification.postings, new Date(verification.verifiedAt));
+      console.log(`Certified ${country} discovery through ${target.employer} (${target.source}/${target.board}).`);
+      console.log(`Retrieved ${adopted.result.fetched} postings; ${verification.countryPostings.length} have explicit ${country} location evidence.`);
+      console.log(`Monitoring is enabled as ${adopted.board.id}. ${country} may now be described as DISCOVERY_AVAILABLE for this local installation.`);
+    } catch (err) {
+      if (err instanceof DuplicateBoardError) {
+        throw new Error(`The verified target is already monitored; refresh it from the dashboard instead. ${country} is not re-certified by this command.`);
+      }
+      throw err;
+    } finally {
+      db.close();
+    }
   });
 
 async function requireStopped(action: string): Promise<void> {
@@ -248,7 +346,7 @@ program
 
 /** The npm prefix Career Strike was installed into globally, if it was. */
 function globalPrefix(): string | null {
-  const pkgRoot = path.resolve(path.dirname(fs.realpathSync(CLI_ENTRY)), '..', '..');
+  const pkgRoot = packageRoot();
   const nodeModules = path.dirname(pkgRoot);
   if (path.basename(nodeModules) !== 'node_modules' || path.basename(pkgRoot) !== 'career-strike') return null;
   const parent = path.dirname(nodeModules);

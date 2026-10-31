@@ -222,7 +222,7 @@ describe('MCP server', () => {
     const client = await connect(paths);
     const res = await client.callTool({ name: 'cs_status', arguments: {} });
     expect(res.isError).toBe(true);
-    expect(text(res)).toContain('career-strike connect test');
+    expect(text(res)).toContain('career-strike authorize-mcp test');
   });
 });
 

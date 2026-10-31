@@ -34,6 +34,15 @@ export interface CampaignWeekSummary {
   interviews: number;
 }
 
+/** Operational evidence for the discovery part of the improvement cycle. */
+export interface DiscoveryHealth {
+  monitored: number;
+  healthy: number;
+  degraded: number;
+  notFound: number;
+  neverRun: number;
+}
+
 export interface Metrics {
   generatedAt: string;
   totals: { found: number; shortlisted: number; submitted: number; responses: number; interviews: number; offers: number; rejections: number };
@@ -44,6 +53,7 @@ export interface Metrics {
   submittedPerWeek: { weekStart: string; count: number }[];
   campaignSummaries: CampaignWeekSummary[];
   recurringGaps: { skill: string; jobs: number }[];
+  discoveryHealth: DiscoveryHealth;
 }
 
 const rate = (numerator: number, n: number): Rate => ({ numerator, n, rate: n === 0 ? null : numerator / n });
@@ -77,6 +87,15 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
        GROUP BY s.source ORDER BY s.source`,
     )
     .all(new Date(now - 72 * 3600_000).toISOString()) as { source: string; found: number; gone: number; shortlisted: number }[];
+  const boardHealth = db.prepare('SELECT health, COUNT(*) AS count FROM source_boards GROUP BY health').all() as { health: string; count: number }[];
+  const countHealth = (health: string): number => boardHealth.find((row) => row.health === health)?.count ?? 0;
+  const discoveryHealth: DiscoveryHealth = {
+    monitored: boardHealth.reduce((sum, row) => sum + row.count, 0),
+    healthy: countHealth('OK'),
+    degraded: countHealth('DEGRADED'),
+    notFound: countHealth('NOT_FOUND'),
+    neverRun: countHealth('NEVER_RUN'),
+  };
   const bySource: SourceMetrics[] = sources.map((s) => {
     const sub = submittedApps.filter((a) => a.source === s.source);
     return {
@@ -179,6 +198,7 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
     submittedPerWeek: weeks,
     campaignSummaries,
     recurringGaps: [...gapCounts.entries()].map(([skill, jobs]) => ({ skill, jobs })).sort((a, b) => b.jobs - a.jobs || a.skill.localeCompare(b.skill)).slice(0, 8),
+    discoveryHealth,
   };
 }
 
@@ -194,6 +214,24 @@ export interface Observation {
  */
 export function observations(m: Metrics): Observation[] {
   const out: Observation[] = [];
+  if (m.discoveryHealth.monitored === 0) {
+    out.push({
+      kind: 'insufficient',
+      text: 'No employer-direct job boards are monitored yet. Add a public Greenhouse, Lever or Ashby employer board before drawing conclusions about discovery coverage.',
+    });
+  } else if (m.discoveryHealth.degraded + m.discoveryHealth.notFound > 0) {
+    const affected = m.discoveryHealth.degraded + m.discoveryHealth.notFound;
+    out.push({
+      kind: 'insufficient',
+      text: `${affected} monitored job board${affected === 1 ? ' needs' : 's need'} attention (${m.discoveryHealth.degraded} temporarily unavailable, ${m.discoveryHealth.notFound} not found). This does not mean previously found roles are closed.`,
+    });
+  } else if (m.discoveryHealth.neverRun > 0) {
+    const count = m.discoveryHealth.neverRun;
+    out.push({
+      kind: 'insufficient',
+      text: `${count} monitored job board${count === 1 ? ' has' : 's have'} not completed an initial fetch yet, so discovery coverage is still unverified.`,
+    });
+  }
   const comparable = m.bySource.filter((s) => s.responded.n >= MIN_SAMPLE);
   if (comparable.length >= 2) {
     const sorted = [...comparable].sort((a, b) => (b.responded.rate ?? 0) - (a.responded.rate ?? 0));

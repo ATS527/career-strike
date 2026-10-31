@@ -3,6 +3,7 @@ import { nextActions } from '../../src/career/next-actions.js';
 
 const complete = {
   'search.preferredRoles': ['Synthetic Backend Engineer'],
+  'search.preferredCountries': ['IN'],
   'candidate.joiningAvailability': 'immediate',
   'candidate.country': 'IN',
   'search.eligibleCountries': [],
@@ -11,7 +12,7 @@ const complete = {
 describe('next best actions', () => {
   it('asks for missing profile basics, each naming its rule', () => {
     const actions = nextActions({
-      settings: { 'search.preferredRoles': [], 'candidate.joiningAvailability': 'unspecified', 'candidate.country': null, 'search.eligibleCountries': [] },
+      settings: { 'search.preferredRoles': [], 'search.preferredCountries': [], 'candidate.joiningAvailability': 'unspecified', 'candidate.country': null, 'search.eligibleCountries': [] },
     });
     expect(actions.map((a) => a.rule)).toEqual([
       'profile.preferred-roles-missing',

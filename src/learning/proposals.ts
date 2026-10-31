@@ -137,13 +137,13 @@ export class StrategyProposals {
   }
 
   snapshot(m: Metrics): void {
-    this.db.prepare('INSERT OR REPLACE INTO strategy_snapshots (day, metrics_json) VALUES (?, ?)').run(m.generatedAt.slice(0, 10), JSON.stringify({ totals: m.totals, responseRate: m.responseRate }));
+    this.db.prepare('INSERT OR REPLACE INTO strategy_snapshots (day, metrics_json) VALUES (?, ?)').run(m.generatedAt.slice(0, 10), JSON.stringify({ totals: m.totals, responseRate: m.responseRate, discoveryHealth: m.discoveryHealth }));
   }
 
-  history(): { day: string; totals: Metrics['totals']; responseRate: Metrics['responseRate'] }[] {
-    return (this.db.prepare('SELECT * FROM strategy_snapshots ORDER BY day DESC LIMIT 60').all() as { day: string; metrics_json: string }[]).map((r) => ({
-      day: r.day,
-      ...(JSON.parse(r.metrics_json) as { totals: Metrics['totals']; responseRate: Metrics['responseRate'] }),
-    }));
+  history(): { day: string; totals: Metrics['totals']; responseRate: Metrics['responseRate']; discoveryHealth: Metrics['discoveryHealth'] | null }[] {
+    return (this.db.prepare('SELECT * FROM strategy_snapshots ORDER BY day DESC LIMIT 60').all() as { day: string; metrics_json: string }[]).map((r) => {
+      const metrics = JSON.parse(r.metrics_json) as { totals: Metrics['totals']; responseRate: Metrics['responseRate']; discoveryHealth?: Metrics['discoveryHealth'] };
+      return { day: r.day, totals: metrics.totals, responseRate: metrics.responseRate, discoveryHealth: metrics.discoveryHealth ?? null };
+    });
   }
 }

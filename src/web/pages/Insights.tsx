@@ -27,6 +27,7 @@ interface Strategy {
     submittedPerWeek: { weekStart: string; count: number }[];
     campaignSummaries: CampaignWeekSummary[];
     recurringGaps: { skill: string; jobs: number }[];
+    discoveryHealth: { monitored: number; healthy: number; degraded: number; notFound: number; neverRun: number };
   };
   observations: { kind: string; text: string }[];
   proposals: { id: string; title: string; rationale: string; status: 'OPEN' | 'ACCEPTED' | 'DISMISSED'; decidedAt: string | null; action: { type: string } }[];
@@ -159,6 +160,25 @@ export function Insights() {
             </tbody>
           </table>
         </div>
+        <h3>Discovery health</h3>
+        <dl className="facts" data-testid="discovery-health">
+          <div>
+            <dt>Monitored boards</dt>
+            <dd>{m.discoveryHealth.monitored}</dd>
+          </div>
+          <div>
+            <dt>Healthy</dt>
+            <dd>{m.discoveryHealth.healthy}</dd>
+          </div>
+          <div>
+            <dt>Needs attention</dt>
+            <dd>{m.discoveryHealth.degraded + m.discoveryHealth.notFound}</dd>
+          </div>
+          <div>
+            <dt>Not yet fetched</dt>
+            <dd>{m.discoveryHealth.neverRun}</dd>
+          </div>
+        </dl>
         {m.recurringGaps.length > 0 && (
           <>
             <h3>Skills you keep missing</h3>

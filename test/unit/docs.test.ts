@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadDenylist, scanText } from '../../scripts/privacy-scan.js';
 
-const DOCS = ['README.md', 'docs/install.md', 'docs/privacy.md', 'docs/limitations.md'];
+const DOCS = ['README.md', 'docs/install.md', 'docs/job-hunt-guide.md', 'docs/privacy.md', 'docs/limitations.md'];
 const read = (f: string): string => fs.readFileSync(f, 'utf8');
 
 describe('user documentation', () => {

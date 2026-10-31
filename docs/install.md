@@ -3,6 +3,8 @@
 Career Strike runs entirely on your computer: a local service, a browser dashboard, a command-line
 tool, and an optional MCP server for AI assistants. No account or AI assistant is needed.
 
+For a guided first search after installation, use the [practical job-hunt guide](job-hunt-guide.md).
+
 ## Requirements
 
 - Node.js 22.12 or newer (tested on Node 24).
@@ -45,8 +47,12 @@ start, and a job board to monitor). Each item links to the page where you do it.
 | `career-strike serve` | Run the service in the foreground (Ctrl-C to stop). |
 | `career-strike status` | Say whether the service is running (`--json` for scripts). |
 | `career-strike doctor` | Check the installation without changing anything. |
+| `career-strike verify-market IN` | Perform one permitted live fetch of a curated employer-direct board; it adopts and monitors the board only if it contains an explicitly Indian posting. |
 | `career-strike connect <assistant>` | Connect Codex, Claude Code or OpenCode over MCP. |
 | `career-strike disconnect <assistant>` | Remove Career Strike from that assistant and revoke its access. |
+| `career-strike authorize-mcp <client>` | Create a local MCP credential without editing a client’s configuration. |
+| `career-strike revoke-mcp <client>` | Revoke a generic MCP credential and remove its local token. |
+| `career-strike plugin-path` | Print the bundled Codex plugin directory. |
 | `career-strike practice` | Run a practice application endpoint on this computer to try automated submission safely. |
 | `career-strike export <folder>` | Write all your data and documents to a new folder, readable without Career Strike. |
 | `career-strike backup <folder>` | Copy the database and documents for `restore`. |
@@ -75,6 +81,48 @@ and it can never approve or submit an application. To remove it:
 
     career-strike disconnect claude-code
 
+### Codex plugin route
+
+The repository ships a portable Codex plugin under
+[`plugins/career-strike`](../plugins/career-strike). The package includes the same Career Strike
+stdio MCP server and a skill describing its privacy and approval rules. Install the plugin through
+your chosen Codex plugin distribution flow, then authorize its local client once:
+
+    career-strike authorize-mcp codex
+
+The plugin starts `career-strike mcp --client codex`. Do **not** also run
+`career-strike connect codex`; choose the plugin route or the direct CLI route so the agent does
+not receive duplicate tools.
+
+When Career Strike was installed from its npm package, locate this bundled plugin with:
+
+    career-strike plugin-path
+
+### Any compatible MCP client
+
+For a client not built into the `connect` command—such as an Axym deployment that supports local
+stdio MCP—choose a lowercase label and authorize it explicitly:
+
+    career-strike authorize-mcp axym
+
+Configure that client with the following local command. The token remains in Career Strike's
+owner-only data directory; do not put it in the client configuration or an environment variable.
+
+```json
+{
+  "mcpServers": {
+    "career-strike": {
+      "command": "career-strike",
+      "args": ["mcp", "--client", "axym"]
+    }
+  }
+}
+```
+
+This is a generic MCP recipe, not a statement that every product supports MCP or this exact
+configuration format. Test the connected client against `cs_status` before relying on it. To
+withdraw access, run `career-strike revoke-mcp axym` and remove the client-side MCP entry.
+
 ## Trying automated submission safely
 
 Applications to real employers are always submitted by you, on the employer's site. To see how
@@ -91,6 +139,18 @@ Add a Greenhouse, Lever or Ashby careers page under **Opportunities → Job boar
 fetched when you add them and when you press **Fetch now**. To check them automatically, choose an
 interval under **Settings → Background monitoring** (“Check job boards automatically”).
 Automatic checks run only while the service is running.
+
+### Verifying a configured market
+
+Configured countries are not automatically discovery-available. To certify a curated India
+employer-direct path, with the service stopped, run:
+
+    career-strike verify-market IN --target sarvam-india
+
+The command uses the existing allowlisted ATS adapter. It saves neither a board nor any jobs if
+the source cannot be reached, its response is invalid, or no result has explicit India location
+evidence. A successful response is saved as a monitored board and is the only condition under
+which that local installation may describe India as discovery-available.
 
 ## Upgrading
 

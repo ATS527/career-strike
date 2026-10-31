@@ -169,6 +169,13 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
           <textarea id={inputId} rows={4} value={draft as string} onChange={(e) => onChange(e.target.value)} aria-describedby={describedBy} />
         </>
       );
+    case 'country-authorizations':
+      return (
+        <>
+          <label htmlFor={inputId} className="field__label">{def.label}</label>
+          <textarea id={inputId} rows={4} value={draft as string} onChange={(e) => onChange(e.target.value)} aria-describedby={describedBy} placeholder="IN=authorised\nDE=needs_sponsorship" />
+        </>
+      );
     case 'optional-text':
       return (
         <>

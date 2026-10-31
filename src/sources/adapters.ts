@@ -2,7 +2,7 @@ import { decodeHTML } from 'entities';
 import { z } from 'zod';
 import { type FetchImpl, guardedGetJson } from './fetch-guard.js';
 import { htmlToBlocks } from './html.js';
-import { employmentTypeFrom, isoOrNull, publishedSalary, remotePolicyFrom, safeHttpUrl, unresolvedFacts } from './normalize.js';
+import { employmentTypeFrom, isoOrNull, marketFacts, publishedSalary, remotePolicyFrom, safeHttpUrl, unresolvedFacts } from './normalize.js';
 import { type ApplicationQuestion, type NormalizedPosting, type SourceAdapter, SourceError, type SourceId } from './types.js';
 
 // Schemas describe only the fields Career Strike reads; unknown fields are ignored.
@@ -125,6 +125,7 @@ function greenhouse(fetchImpl?: FetchImpl): SourceAdapter {
           applyUrl: safeHttpUrl(j.absolute_url),
           postingUrl: safeHttpUrl(j.absolute_url),
           publishedAt: isoOrNull(j.first_published ?? j.updated_at),
+          market: marketFacts(locationText, remotePolicy),
           unresolved: unresolvedFacts(base),
         };
       });
@@ -185,6 +186,7 @@ function lever(fetchImpl?: FetchImpl): SourceAdapter {
           applyUrl: safeHttpUrl(p.applyUrl) ?? safeHttpUrl(p.hostedUrl),
           postingUrl: safeHttpUrl(p.hostedUrl),
           publishedAt: isoOrNull(p.createdAt),
+          market: marketFacts(locationText, remotePolicy),
           unresolved: [
             ...unresolvedFacts({ remotePolicy, employmentType, salary, locationText }),
             'Employer name is the Lever board name; Lever does not publish a display name.',
@@ -265,6 +267,7 @@ function ashby(fetchImpl?: FetchImpl): SourceAdapter {
             applyUrl: safeHttpUrl(j.applyUrl) ?? safeHttpUrl(j.jobUrl),
             postingUrl: safeHttpUrl(j.jobUrl),
             publishedAt: isoOrNull(j.publishedAt),
+            market: marketFacts(locationText, remotePolicy),
             unresolved: [
               ...unresolvedFacts({ remotePolicy, employmentType, salary, locationText }),
               'Employer name is the Ashby board name; Ashby does not publish a display name.',
@@ -342,6 +345,7 @@ function practice(practiceOrigin: () => string | null, fetchImpl: FetchImpl = (u
         applyUrl: `${origin}/applications`,
         postingUrl: null,
         publishedAt: null,
+        market: marketFacts(p.location ?? null, p.remote),
         unresolved: ['Practice posting: not a real employer.'],
       }));
     },

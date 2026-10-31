@@ -1,13 +1,17 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { api, type Disposition, type JobList, type JobSummary } from '../api';
+import { api, type Disposition, type JobList, type JobSummary, type SettingsResponse } from '../api';
 import { TierChip } from '../components/FitPanel';
 import { DispositionControls, StatusChip } from '../components/jobBits';
 import { EMPLOYMENT_LABEL, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../format';
 import { Link, navigate, useSearch } from '../router';
 import { ErrorPanel, Loading } from './states';
+import { useResource } from '../useResource';
+import { COUNTRY_CODES, COUNTRY_REGISTRY } from '../../markets/countries';
+import { INDIA_SOURCE_ASSESSMENTS, officialIndiaSearchUrl } from '../../markets/india-sources';
 
 const PAGE = 50;
 const MAX_COMPARE = 4;
+const COUNTRY_FILTERS: readonly (readonly [string, string])[] = [['', 'All markets'], ...COUNTRY_CODES.map((code) => [code, COUNTRY_REGISTRY[code].name] as const)];
 
 const FILTERS = {
   status: [
@@ -31,6 +35,7 @@ const FILTERS = {
     ['onsite', 'On-site'],
     ['unknown', 'Not stated'],
   ],
+  country: COUNTRY_FILTERS,
   source: [
     ['', 'Any source'],
     ['greenhouse', 'Greenhouse'],
@@ -59,6 +64,7 @@ type FilterKey = keyof typeof FILTERS;
 
 export function Opportunities() {
   const search = useSearch();
+  const settings = useResource<SettingsResponse>('/api/settings');
   const params = new URLSearchParams(search);
   const [list, setList] = useState<{ state: 'loading' } | { state: 'error' } | { state: 'ready'; data: JobList }>({ state: 'loading' });
   const [limit, setLimit] = useState(PAGE);
@@ -69,6 +75,7 @@ export function Opportunities() {
   const [filtersOpen, setFiltersOpen] = useState(() => window.matchMedia('(min-width: 761px)').matches);
   const activeFilters =
     (Object.keys(FILTERS) as FilterKey[]).filter((k) => params.get(k)).length +
+    (params.get('city') ? 1 : 0) +
     (params.get('includeExcludedEmployers') ? 1 : 0) +
     (params.get('immediateStart') ? 1 : 0);
 
@@ -91,6 +98,7 @@ export function Opportunities() {
 
   const update = (key: string, value: string): void => {
     const p = new URLSearchParams(search);
+    if (key === 'country') p.delete('city');
     if (value) p.set(key, value);
     else p.delete(key);
     setLimit(PAGE);
@@ -126,6 +134,8 @@ export function Opportunities() {
         </div>
       </div>
 
+      {settings.state === 'ready' && <CountryFocusViews countries={configuredCountries(settings.data.settings['search.preferredCountries'])} />}
+
       <form className="filters" role="search" onSubmit={submitSearch} aria-label="Search and filter opportunities">
         <div className="filters__search">
           <label htmlFor="q" className="visually-hidden">
@@ -158,6 +168,15 @@ export function Opportunities() {
               </select>
             </div>
           ))}
+          {params.get('country') && (
+            <div className="filter">
+              <label htmlFor="filter-city" className="filter__label">City</label>
+              <select id="filter-city" value={params.get('city') ?? ''} onChange={(e) => update('city', e.target.value)}>
+                <option value="">All cities</option>
+                {COUNTRY_REGISTRY[params.get('country') as keyof typeof COUNTRY_REGISTRY].defaultCities.map((city) => <option key={city} value={city}>{city}</option>)}
+              </select>
+            </div>
+          )}
           <label className="filter filter--check">
             <input type="checkbox" checked={params.get('immediateStart') === 'true'} onChange={(e) => update('immediateStart', e.target.checked ? 'true' : '')} />
             <span>Asks for an early start</span>
@@ -173,6 +192,8 @@ export function Opportunities() {
         </div>
         </details>
       </form>
+
+      {params.get('country') === 'IN' && <IndiaOfficialSearches query={query} />}
 
       {compare.length > 0 && (
         <div className="compare-bar" role="region" aria-label="Comparison">
@@ -219,8 +240,55 @@ export function Opportunities() {
   );
 }
 
+function configuredCountries(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((code): code is string => typeof code === 'string' && code in COUNTRY_REGISTRY))];
+}
+
+/** Quick links are derived from local preferences; they do not claim a market has live sources. */
+function CountryFocusViews({ countries }: { countries: string[] }) {
+  if (countries.length === 0) return null;
+  return (
+    <nav className="country-focus" aria-label="Your country views">
+      <span className="country-focus__label">Your markets</span>
+      {countries.map((code) => (
+        <Link key={code} href={`/opportunities?country=${encodeURIComponent(code)}&sort=best_fit`} className="country-focus__link">
+          {COUNTRY_REGISTRY[code as keyof typeof COUNTRY_REGISTRY].name} best matches
+        </Link>
+      ))}
+      <Link href="/settings" className="country-focus__link country-focus__link--quiet">
+        Edit markets
+      </Link>
+    </nav>
+  );
+}
+
+function IndiaOfficialSearches({ query }: { query: string }) {
+  return (
+    <section className="external-discovery" aria-labelledby="india-official-searches">
+      <div>
+        <p className="eyebrow">India · user-driven discovery</p>
+        <h2 id="india-official-searches">Search official job sites</h2>
+        <p>
+          These links open each provider’s own site. Career Strike does not retrieve, store or claim the listings as verified. After checking the employer’s official posting, <Link href="/opportunities/new">add it here</Link> to track it locally.
+        </p>
+      </div>
+      <ul className="external-discovery__list">
+        {INDIA_SOURCE_ASSESSMENTS.map((source) => (
+          <li key={source.id}>
+            <a href={officialIndiaSearchUrl(source, query)} target="_blank" rel="noopener noreferrer">
+              {source.name} <span aria-hidden="true">↗</span>
+            </a>
+            <span>{source.capability === 'USER_DRIVEN_DISCOVERY' ? 'Search on the official site' : source.capability === 'RESTRICTED' ? 'Official site only — no automation' : 'No automatic retrieval'}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function filterLabel(key: FilterKey): string {
-  return { status: 'Status', disposition: 'Your decision', remote: 'Arrangement', source: 'Source', tier: 'Fit', sort: 'Sort' }[key];
+  return { status: 'Status', disposition: 'Your decision', remote: 'Arrangement', country: 'Market', source: 'Source', tier: 'Fit', sort: 'Sort' }[key];
 }
 
 function EmptyHint({ filtered }: { filtered: boolean }) {
@@ -255,6 +323,7 @@ function JobRow({
         <p className="job-row__meta">
           <span className="job-row__employer">{job.employer}</span>
           {job.locationText && <span>{job.locationText}</span>}
+          {job.market.location.countryCode && <span>{job.market.location.countryCode}</span>}
           <span>{REMOTE_LABEL[job.remotePolicy]}</span>
           {job.employmentType !== 'unknown' && <span>{EMPLOYMENT_LABEL[job.employmentType]}</span>}
           {salary && <span className="job-row__salary">{salary}</span>}
@@ -270,6 +339,8 @@ function JobRow({
         <p className="job-row__facts">
           <StatusChip status={job.status} lastVerifiedAt={job.lastVerifiedAt} />
           <span className="muted">{job.sources.map((s) => SOURCE_LABEL[s] ?? s).join(', ')}</span>
+          {job.sourceCapabilities.includes('AUTHORIZED_EMPLOYER_DIRECT') && <span className="badge">Employer-direct</span>}
+          {job.sourceCapabilities.includes('USER_DRIVEN_DISCOVERY') && <span className="badge">User-added</span>}
           {job.employerExcluded && <span className="badge">Excluded employer</span>}
         </p>
       </div>

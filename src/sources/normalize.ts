@@ -1,4 +1,5 @@
-import type { EmploymentType, PublishedSalary, RemotePolicy } from './types.js';
+import { normaliseLocation } from '../markets/countries.js';
+import type { EmploymentType, MarketFacts, PublishedSalary, RemotePolicy } from './types.js';
 
 /** Map a source's own workplace label. Anything not explicit stays unknown. */
 export function remotePolicyFrom(label: string | null | undefined): RemotePolicy {
@@ -92,4 +93,20 @@ export function unresolvedFacts(p: {
   if (!p.salary) facts.push('Salary is not published in structured form.');
   if (!p.locationText) facts.push('Location is not stated.');
   return facts;
+}
+
+/**
+ * Create the common international fields from what an existing ATS feed states structurally.
+ * Greenhouse, Lever and Ashby do not establish visa, relocation or remote-country eligibility in
+ * their board-level schemas, so those facts intentionally remain unknown.
+ */
+export function marketFacts(locationText: string | null, remotePolicy: RemotePolicy): MarketFacts {
+  return {
+    location: normaliseLocation(locationText),
+    remoteEligibility: remotePolicy === 'remote' ? 'unknown' : 'not_remote',
+    remoteEligibleCountries: [],
+    visaSponsorship: 'unknown',
+    workAuthorization: 'unknown',
+    relocationAssistance: 'unknown',
+  };
 }

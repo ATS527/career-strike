@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { type Metrics, MIN_SAMPLE, observations } from '../../src/learning/metrics.js';
-import { ProposalAction } from '../../src/learning/proposals.js';
+import { computeMetrics, type Metrics, MIN_SAMPLE, observations } from '../../src/learning/metrics.js';
+import { ProposalAction, StrategyProposals } from '../../src/learning/proposals.js';
+import { openDb } from '../../src/store/db.js';
 
 const rate = (k: number, n: number) => ({ numerator: k, n, rate: n ? k / n : null });
 function metrics(sources: { source: string; submitted: number; responded: number }[]): Metrics {
@@ -16,6 +17,7 @@ function metrics(sources: { source: string; submitted: number; responded: number
     submittedPerWeek: [],
     campaignSummaries: [],
     recurringGaps: [],
+    discoveryHealth: { monitored: 1, healthy: 1, degraded: 0, notFound: 0, neverRun: 0 },
   };
 }
 
@@ -46,6 +48,12 @@ describe('observations', () => {
     const obs = observations(metrics([{ source: 'lever', submitted: 4, responded: 0 }]));
     expect(obs.at(-1)!.text).toContain('Silence is common and is not evidence about your résumé.');
   });
+
+  it('treats discovery failures as a source-health issue, never proof that roles closed', () => {
+    const m = metrics([]);
+    m.discoveryHealth = { monitored: 2, healthy: 1, degraded: 1, notFound: 0, neverRun: 0 };
+    expect(observations(m)[0]!.text).toContain('does not mean previously found roles are closed');
+  });
 });
 
 describe('proposal allowlist', () => {
@@ -60,5 +68,23 @@ describe('proposal allowlist', () => {
     ]) {
       expect(ProposalAction.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
     }
+  });
+});
+
+describe('discovery-health learning loop', () => {
+  it('measures board health from local records and retains it in a daily snapshot', () => {
+    const db = openDb(':memory:');
+    const add = db.prepare("INSERT INTO source_boards (id, source, board, added_at, health) VALUES (?, 'lever', ?, '2026-10-31T00:00:00.000Z', ?)");
+    add.run('src_ok', 'healthy', 'OK');
+    add.run('src_bad', 'retry-later', 'DEGRADED');
+    add.run('src_missing', 'retired', 'NOT_FOUND');
+    const metrics = computeMetrics(db, Date.parse('2026-10-31T12:00:00.000Z'));
+    expect(metrics.discoveryHealth).toEqual({ monitored: 3, healthy: 1, degraded: 1, notFound: 1, neverRun: 0 });
+
+    const proposals = new StrategyProposals(db);
+    proposals.snapshot(metrics);
+    expect(proposals.history()[0]?.discoveryHealth).toEqual(metrics.discoveryHealth);
+    expect(observations(metrics)[0]?.text).toContain('does not mean previously found roles are closed');
+    db.close();
   });
 });

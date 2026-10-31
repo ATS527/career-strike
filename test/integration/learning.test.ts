@@ -60,6 +60,7 @@ type Strategy = {
     bySource: { source: string; responded: { numerator: number; n: number } }[];
     campaignSummaries: { weekStart: string; discovered: number; shortlisted: number; submitted: number; responses: number; interviews: number }[];
     recurringGaps: { skill: string; jobs: number }[];
+    discoveryHealth: { monitored: number; healthy: number; degraded: number; notFound: number; neverRun: number };
   };
   observations: { kind: string; text: string }[];
   proposals: { id: string; rule: string; title: string; status: string }[];
@@ -75,10 +76,11 @@ describe('strategy learning', () => {
     expect(st.metrics.daysToFirstResponse).toMatchObject({ median: 3, n: 7 });
     expect(st.metrics.bySource.find((s) => s.source === 'lever')!.responded).toMatchObject({ numerator: 6, n: 12 });
     expect(st.metrics.recurringGaps).toEqual([{ skill: 'Rust', jobs: 22 }]);
+    expect(st.metrics.discoveryHealth).toEqual({ monitored: 1, healthy: 0, degraded: 0, notFound: 0, neverRun: 1 });
     expect(st.metrics.campaignSummaries.length).toBe(8);
     expect(st.metrics.campaignSummaries.some((w) => w.submitted > 0)).toBe(true);
-    expect(st.observations[0]).toMatchObject({ kind: 'comparison' });
-    expect(st.observations[0]!.text).toContain('(n=12)');
+    const comparison = st.observations.find((observation) => observation.kind === 'comparison')!;
+    expect(comparison.text).toContain('(n=12)');
     expect(st.history).toHaveLength(1);
   });
 

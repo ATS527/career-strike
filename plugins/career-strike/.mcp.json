@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "career-strike": {
+      "command": "career-strike",
+      "args": ["mcp", "--client", "codex"]
+    }
+  }
+}

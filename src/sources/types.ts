@@ -1,6 +1,17 @@
 export type SourceId = 'greenhouse' | 'lever' | 'ashby' | 'practice';
 export type RemotePolicy = 'remote' | 'hybrid' | 'onsite' | 'unknown';
 export type EmploymentType = 'full_time' | 'part_time' | 'contract' | 'temporary' | 'internship' | 'unknown';
+export type RemoteEligibility = 'global' | 'country_restricted' | 'region_restricted' | 'unknown' | 'not_remote';
+
+/** Facts needed for international matching. Every non-evidenced fact is explicitly unknown. */
+export interface MarketFacts {
+  location: { countryCode: string | null; city: string | null; originalText: string | null };
+  remoteEligibility: RemoteEligibility;
+  remoteEligibleCountries: string[];
+  visaSponsorship: 'yes' | 'no' | 'unknown';
+  workAuthorization: 'required' | 'not_required' | 'unknown';
+  relocationAssistance: 'yes' | 'no' | 'unknown';
+}
 
 /** A text block from a sanitised posting. Rendering is always as plain text. */
 export interface TextBlock {
@@ -33,6 +44,8 @@ export interface NormalizedPosting {
   applyUrl: string | null;
   postingUrl: string | null;
   publishedAt: string | null;
+  /** Optional while older fixtures and stored records are migrated; sync persists an explicit value. */
+  market?: MarketFacts;
   /** Facts the source did not state, so the dashboard can say so instead of guessing. */
   unresolved: string[];
 }

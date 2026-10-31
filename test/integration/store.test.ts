@@ -67,4 +67,13 @@ describe('settings', () => {
     expect(rows[0]).toMatchObject({ action: 'setting.updated', subject: 'search.preferredRoles', actor: 'test' });
     db.close();
   });
+
+  it('stores per-country work authorization locally and rejects invalid country or status', () => {
+    const db = openDb(dbFile());
+    setSetting(db, 'candidate.workAuthorizations', { IN: 'authorised', DE: 'needs_sponsorship' }, 'test');
+    expect(getSettings(db)['candidate.workAuthorizations']).toEqual({ IN: 'authorised', DE: 'needs_sponsorship' });
+    expect(() => setSetting(db, 'candidate.workAuthorizations', { India: 'authorised' }, 'test')).toThrow(SettingError);
+    expect(() => setSetting(db, 'candidate.workAuthorizations', { IN: 'maybe' }, 'test')).toThrow(SettingError);
+    db.close();
+  });
 });

@@ -106,6 +106,7 @@ export interface JsonSchema {
   minLength?: number;
   maxLength?: number;
   maximum?: number;
+  additionalProperties?: JsonSchema | boolean;
 }
 
 export interface SettingDefinition {
@@ -137,6 +138,15 @@ export interface PublishedSalary {
   interval: 'year' | 'month' | 'week' | 'day' | 'hour';
 }
 
+export interface MarketFacts {
+  location: { countryCode: string | null; city: string | null; originalText: string | null };
+  remoteEligibility: 'global' | 'country_restricted' | 'region_restricted' | 'unknown' | 'not_remote';
+  remoteEligibleCountries: string[];
+  visaSponsorship: 'yes' | 'no' | 'unknown';
+  workAuthorization: 'required' | 'not_required' | 'unknown';
+  relocationAssistance: 'yes' | 'no' | 'unknown';
+}
+
 export interface JobSummary {
   id: string;
   employer: string;
@@ -153,6 +163,8 @@ export interface JobSummary {
   duplicateOf: string | null;
   disposition: Disposition;
   employerExcluded: boolean;
+  market: MarketFacts;
+  sourceCapabilities: string[];
   fit?: FitSummary;
 }
 

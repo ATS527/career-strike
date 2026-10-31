@@ -25,6 +25,20 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     classification: 'PERSONAL',
     defaultValue: [],
   },
+  'search.preferredCountries': {
+    label: 'Target countries',
+    help: 'Countries where you want to find work, one two-letter ISO code per line (for example IN, DE). This affects ranking, not legal eligibility.',
+    schema: z.array(countryCode).max(50),
+    classification: 'PERSONAL',
+    defaultValue: [],
+  },
+  'search.preferredCities': {
+    label: 'Target cities',
+    help: 'Cities you prefer, one per line (for example Bengaluru or Pune). This affects ranking, not legal eligibility.',
+    schema: z.array(z.string().trim().min(1).max(100)).max(50),
+    classification: 'PERSONAL',
+    defaultValue: [],
+  },
   'search.remotePreference': {
     label: 'Work arrangement',
     help: 'Which arrangements to consider.',
@@ -54,6 +68,13 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     schema: z.array(countryCode).max(50),
     classification: 'PERSONAL',
     defaultValue: [],
+  },
+  'candidate.workAuthorizations': {
+    label: 'Work authorization by country',
+    help: 'One entry per line: IN=authorised, DE=needs_sponsorship, or SG=unknown. This is kept locally and compared only with employer-published evidence.',
+    schema: z.record(countryCode, z.enum(['authorised', 'needs_sponsorship', 'unknown'])),
+    classification: 'SENSITIVE',
+    defaultValue: {},
   },
   'candidate.joiningAvailability': {
     label: 'Joining availability',

@@ -7,10 +7,13 @@ import { approvedProfile } from './profile.js';
 export function fitSettingsFrom(settings: Record<string, unknown>): FitSettings {
   return {
     preferredRoles: (settings['search.preferredRoles'] as string[] | undefined) ?? [],
+    preferredCountries: (settings['search.preferredCountries'] as string[] | undefined) ?? [],
+    preferredCities: (settings['search.preferredCities'] as string[] | undefined) ?? [],
     remotePreference: (settings['search.remotePreference'] as FitSettings['remotePreference'] | undefined) ?? 'remote_only',
     employmentTypes: (settings['search.employmentTypes'] as string[] | undefined) ?? ['full_time'],
     country: (settings['candidate.country'] as string | null | undefined) ?? null,
     eligibleCountries: (settings['search.eligibleCountries'] as string[] | undefined) ?? [],
+    workAuthorizations: (settings['candidate.workAuthorizations'] as FitSettings['workAuthorizations'] | undefined) ?? {},
     joiningAvailability: (settings['candidate.joiningAvailability'] as string | undefined) ?? 'unspecified',
     salaryExpectation: (settings['candidate.salaryExpectation'] as FitSettings['salaryExpectation'] | undefined) ?? null,
     excludedEmployers: (settings['search.excludedEmployers'] as string[] | undefined) ?? [],

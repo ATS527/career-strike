@@ -1,5 +1,5 @@
 import type { CandidateProfile } from '../career/profile.js';
-import type { PublishedSalary, RemotePolicy } from '../sources/types.js';
+import type { MarketFacts, PublishedSalary, RemotePolicy } from '../sources/types.js';
 import type { PostingRequirements } from './requirements.js';
 import { mentions } from './skills.js';
 
@@ -12,7 +12,7 @@ export interface Evidence {
 }
 
 export interface FitFactor {
-  id: 'eligibility' | 'arrangement' | 'employment' | 'skills' | 'experience' | 'role' | 'salary' | 'start' | 'freshness';
+  id: 'eligibility' | 'workAuthorization' | 'market' | 'arrangement' | 'employment' | 'skills' | 'experience' | 'role' | 'salary' | 'start' | 'freshness';
   label: string;
   verdict: Verdict;
   detail: string;
@@ -45,14 +45,19 @@ export interface FitJob {
   status: 'OPEN' | 'STALE' | 'CLOSED' | 'UNVERIFIED';
   descriptionText: string;
   requirements: PostingRequirements;
+  /** Structured source facts, optional while historical records are migrated. */
+  market?: MarketFacts;
 }
 
 export interface FitSettings {
   preferredRoles: string[];
+  preferredCountries: string[];
+  preferredCities: string[];
   remotePreference: 'remote_only' | 'hybrid_ok' | 'onsite_ok';
   employmentTypes: string[];
   country: string | null;
   eligibleCountries: string[];
+  workAuthorizations: Record<string, 'authorised' | 'needs_sponsorship' | 'unknown'>;
   joiningAvailability: string;
   salaryExpectation: { currency: string; minimum: number; interval: 'year' | 'month' | 'hour' } | null;
   excludedEmployers: string[];
@@ -129,7 +134,12 @@ const words = (s: string): string[] => norm(s).split(' ').filter((w) => w.length
 
 function eligibility(job: FitJob, s: FitSettings): FitFactor {
   const allowed = new Set([...s.eligibleCountries, ...(s.country ? [s.country] : [])]);
-  const named = countriesIn([job.locationText, ...job.requirements.locationConstraints].filter(Boolean).join(' · '));
+  const structured = job.market;
+  const named = [...new Set([
+    ...countriesIn([job.locationText, ...job.requirements.locationConstraints].filter(Boolean).join(' · ')),
+    ...(structured?.location.countryCode ? [structured.location.countryCode] : []),
+    ...(structured?.remoteEligibleCountries ?? []),
+  ])];
   const evidence: Evidence[] = [];
   if (job.locationText) evidence.push({ source: 'posting', text: `Location: ${job.locationText}` });
   for (const c of job.requirements.locationConstraints) evidence.push({ source: 'posting', text: c });
@@ -139,6 +149,10 @@ function eligibility(job: FitJob, s: FitSettings): FitFactor {
     return { ...base, verdict: 'unknown', detail: 'Add your country and where you can work to check eligibility.', evidence };
   }
   evidence.push({ source: 'settings', text: `You can work in: ${[...allowed].map((c) => regionNames.of(c) ?? c).join(', ')}` });
+  if (job.remotePolicy === 'remote' && structured?.remoteEligibility === 'global') {
+    evidence.unshift({ source: 'posting', text: 'Remote eligibility: explicitly global.' });
+    return { ...base, verdict: 'meets', detail: 'The posting explicitly permits remote work globally.', evidence };
+  }
   if (named.length === 0) {
     const detail =
       job.remotePolicy === 'remote'
@@ -156,6 +170,44 @@ function eligibility(job: FitJob, s: FitSettings): FitFactor {
     detail: `The posting names ${named.map((c) => regionNames.of(c) ?? c).join(', ')}; none is a country you have said you can work in.`,
     evidence,
   };
+}
+
+/** Desired markets are a preference, deliberately separate from legal eligibility. */
+function marketPreference(job: FitJob, s: FitSettings): FitFactor {
+  const base = { id: 'market' as const, label: 'Target market', hard: false };
+  const countries = new Set(s.preferredCountries.map((code) => code.toUpperCase()));
+  const cities = new Set(s.preferredCities.map((city) => norm(city)));
+  if (countries.size === 0 && cities.size === 0) return { ...base, verdict: 'unknown', detail: 'Set target countries or cities to rank location preference.', evidence: [] };
+  const country = job.market?.location.countryCode ?? countriesIn(job.locationText)[0] ?? null;
+  const city = job.market?.location.city ?? null;
+  const evidence: Evidence[] = [
+    ...s.preferredCountries.map((code) => ({ source: 'settings' as const, text: `Target country: ${regionNames.of(code) ?? code}` })),
+    ...s.preferredCities.map((name) => ({ source: 'settings' as const, text: `Target city: ${name}` })),
+    ...(job.locationText ? [{ source: 'posting' as const, text: `Location: ${job.locationText}` }] : []),
+  ];
+  if (job.remotePolicy === 'remote' && job.market?.remoteEligibility === 'global') {
+    return { ...base, verdict: 'partial', detail: 'The role is explicitly global remote; its target office location is not stated.', evidence };
+  }
+  if (!country && !city) return { ...base, verdict: 'unknown', detail: 'The posting does not state a country or city Career Strike recognises.', evidence };
+  const countryMatch = countries.size === 0 || (country !== null && countries.has(country));
+  const cityMatch = cities.size === 0 || (city !== null && cities.has(norm(city)));
+  if (countryMatch && cityMatch) return { ...base, verdict: 'meets', detail: 'The job is in one of your target markets.', evidence };
+  if (countryMatch) return { ...base, verdict: 'partial', detail: 'The country matches, but the city is outside your preferred cities.', evidence };
+  return { ...base, verdict: 'gap', detail: 'This location is outside your target markets, but that does not mean you are ineligible.', evidence };
+}
+
+function workAuthorization(job: FitJob, s: FitSettings): FitFactor {
+  const base = { id: 'workAuthorization' as const, label: 'Work authorization', hard: true };
+  const country = job.market?.location.countryCode ?? countriesIn(job.locationText)[0] ?? null;
+  if (!country) return { ...base, verdict: 'unknown', detail: 'The posting does not name a country Career Strike recognises.', evidence: [] };
+  const status = s.workAuthorizations[country];
+  if (!status || status === 'unknown') return { ...base, verdict: 'unknown', detail: `You have not recorded your work authorization for ${regionNames.of(country) ?? country}.`, evidence: [] };
+  const evidence: Evidence[] = [{ source: 'settings', text: `Your ${regionNames.of(country) ?? country} work authorization: ${status.replace('_', ' ')}` }];
+  if (status === 'authorised') return { ...base, verdict: 'meets', detail: 'You recorded that you are authorised to work there.', evidence };
+  const sponsorship = job.market?.visaSponsorship ?? 'unknown';
+  if (sponsorship === 'yes') return { ...base, verdict: 'meets', detail: 'You need sponsorship and the posting says it is available.', evidence };
+  if (sponsorship === 'no') return { ...base, verdict: 'gap', detail: 'You need sponsorship, but the posting says it is not available.', evidence };
+  return { ...base, verdict: 'unknown', detail: 'You need sponsorship; the posting does not state whether it is available.', evidence };
 }
 
 function arrangement(job: FitJob, s: FitSettings): FitFactor {
@@ -327,8 +379,8 @@ function freshness(job: FitJob): FitFactor {
 /**
  * Explain how a posting fits the candidate. The tier is decided by the first rule that applies,
  * in this order, and the rule is returned so the dashboard can show it:
- *   1. ineligible — the posting is closed, the employer is excluded, or it names only countries
- *      the candidate cannot work in;
+ *   1. ineligible — the posting is closed, the employer is excluded, it names only countries
+ *      the candidate cannot work in, or it explicitly cannot sponsor the candidate;
  *   2. unknown    — the profile has no skills and no roles, so there is nothing to compare;
  *   3. strong     — skills meet the posting and nothing else is a gap;
  *   4. possible   — at most one gap and skills meet or partly meet;
@@ -339,6 +391,8 @@ export function evaluateFit(job: FitJob, profile: CandidateProfile, settings: Fi
   const st = start(job, settings);
   const factors = [
     eligibility(job, settings),
+    workAuthorization(job, settings),
+    marketPreference(job, settings),
     freshness(job),
     sk.factor,
     experience(job, profile),
@@ -357,6 +411,7 @@ export function evaluateFit(job: FitJob, profile: CandidateProfile, settings: Fi
   if (byId.freshness.verdict === 'gap') [tier, tierRule] = ['ineligible', 'The posting has closed.'];
   else if (excluded) [tier, tierRule] = ['ineligible', 'You excluded this employer in Settings.'];
   else if (byId.eligibility.verdict === 'gap') [tier, tierRule] = ['ineligible', 'It names only countries you have not said you can work in.'];
+  else if (byId.workAuthorization.verdict === 'gap') [tier, tierRule] = ['ineligible', 'You need sponsorship, and the posting says it is not available.'];
   else if (profile.skills.length === 0 && profile.roles.length === 0) [tier, tierRule] = ['unknown', 'Your profile has no skills or roles yet, so there is nothing to compare.'];
   else if (byId.skills.verdict === 'meets' && gaps.length === 0) [tier, tierRule] = ['strong', 'Your skills meet the posting and nothing else is a gap.'];
   else if (gaps.length <= 1 && (byId.skills.verdict === 'meets' || byId.skills.verdict === 'partial')) {

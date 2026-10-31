@@ -77,10 +77,13 @@ describe('experience years', () => {
 
 const settings = (over: Partial<FitSettings> = {}): FitSettings => ({
   preferredRoles: ['Backend Engineer'],
+  preferredCountries: [],
+  preferredCities: [],
   remotePreference: 'remote_only',
   employmentTypes: ['full_time'],
   country: 'IN',
   eligibleCountries: [],
+  workAuthorizations: {},
   joiningAvailability: 'immediate',
   salaryExpectation: null,
   excludedEmployers: [],
@@ -139,6 +142,33 @@ describe('fit evaluation', () => {
     const unnamed = job({ locationText: 'Remote', requirements: { ...job().requirements, locationConstraints: [] } });
     expect(factor(evaluateFit(unnamed, profile(), settings()), 'eligibility')).toMatchObject({ verdict: 'unknown', detail: expect.stringContaining('does not say which countries') });
     expect(factor(evaluateFit(job(), profile(), settings({ country: null })), 'eligibility').verdict).toBe('unknown');
+  });
+
+  it('uses explicitly structured global remote eligibility without assuming it from the remote label', () => {
+    const global = job({
+      locationText: 'Remote', requirements: { ...job().requirements, locationConstraints: [] },
+      market: {
+        location: { countryCode: null, city: null, originalText: 'Remote' }, remoteEligibility: 'global', remoteEligibleCountries: [],
+        visaSponsorship: 'unknown', workAuthorization: 'unknown', relocationAssistance: 'unknown',
+      },
+    });
+    expect(factor(evaluateFit(global, profile(), settings({ country: 'DE' })), 'eligibility')).toMatchObject({ verdict: 'meets', detail: expect.stringContaining('explicitly') });
+    expect(factor(evaluateFit(job({ locationText: 'Remote', requirements: { ...job().requirements, locationConstraints: [] } }), profile(), settings({ country: 'DE' })), 'eligibility').verdict).toBe('unknown');
+  });
+
+  it('ranks target markets separately from work eligibility', () => {
+    const germany = job({ locationText: 'Berlin, Germany', market: { location: { countryCode: 'DE', city: 'Berlin', originalText: 'Berlin, Germany' }, remoteEligibility: 'not_remote', remoteEligibleCountries: [], visaSponsorship: 'unknown', workAuthorization: 'unknown', relocationAssistance: 'unknown' } });
+    const fit = evaluateFit(germany, profile(), settings({ eligibleCountries: ['DE'], preferredCountries: ['IN'], preferredCities: ['Bengaluru'] }));
+    expect(factor(fit, 'eligibility').verdict).toBe('meets');
+    expect(factor(fit, 'market')).toMatchObject({ verdict: 'gap', detail: expect.stringContaining('does not mean you are ineligible') });
+    expect(fit.tier).not.toBe('ineligible');
+  });
+
+  it('does not infer sponsorship, but blocks an explicitly incompatible role', () => {
+    const sponsored = job({ market: { location: { countryCode: 'IN', city: 'Bengaluru', originalText: 'Bengaluru, India' }, remoteEligibility: 'not_remote', remoteEligibleCountries: [], visaSponsorship: 'no', workAuthorization: 'unknown', relocationAssistance: 'unknown' } });
+    const fit = evaluateFit(sponsored, profile(), settings({ workAuthorizations: { IN: 'needs_sponsorship' } }));
+    expect(factor(fit, 'workAuthorization')).toMatchObject({ verdict: 'gap' });
+    expect(fit.tier).toBe('ineligible');
   });
 
   it('salary is compared only when published in the same currency and comparable intervals', () => {

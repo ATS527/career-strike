@@ -1,0 +1,25 @@
+{
+  "name": "career-strike",
+  "version": "0.1.0",
+  "description": "Use the local Career Strike job-search workspace through its privacy-preserving MCP tools.",
+  "author": {
+    "name": "Career Strike"
+  },
+  "license": "Apache-2.0",
+  "keywords": ["career", "jobs", "mcp", "local-first"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Career Strike",
+    "shortDescription": "Private local job-search tools for MCP clients.",
+    "longDescription": "Search verified local job records, track decisions and request narrowly scoped candidate context with explicit approval.",
+    "developerName": "Career Strike",
+    "category": "Productivity",
+    "capabilities": ["Local MCP", "Job search", "Privacy controls"],
+    "defaultPrompt": [
+      "Show my verified open Career Strike jobs.",
+      "Help me compare my shortlisted opportunities.",
+      "Find matching jobs, but do not change anything without asking."
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
