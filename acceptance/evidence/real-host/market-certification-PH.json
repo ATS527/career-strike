@@ -1,0 +1,41 @@
+{
+  "revision": "5b910348ed74f804901c139073b90ba06b322aa9",
+  "at": "2026-10-31T15:00:17.510Z",
+  "passed": true,
+  "command": "career-strike verify-market PH --target avepoint-ph",
+  "target": {
+    "id": "avepoint-ph",
+    "employer": "AvePoint",
+    "officialCareersSite": "https://www.avepoint.com/careers",
+    "source": "greenhouse",
+    "board": "avepoint",
+    "boardUrl": "https://job-boards.greenhouse.io/avepoint"
+  },
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' (exit 3) immediately before the command; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "single complete listing fetched from the AvePoint Greenhouse public board; allowlisted host, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Philippines location evidence present",
+      "passed": true,
+      "detail": "304 postings retrieved; 17 normalise to explicit PH location evidence (Manila 12, Cebu 5), matching the curation review"
+    },
+    {
+      "name": "board adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as board id src_LpdAcXqN69yd with health OK; source-board health record written and confirmed by an independent read of the installation database"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "PH may be described as DISCOVERY_AVAILABLE for this installation; the monitored regional feeds (Ninja Van, Agoda, Xendit) keep carrying their explicitly located PH postings as reviewed"
+    }
+  ]
+}
