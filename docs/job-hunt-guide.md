@@ -77,7 +77,10 @@ boards, user-driven portals and restricted/unverified marketplaces. India should
 **Discovery available** only after `career-strike verify-market IN --target <id>` succeeds from a
 networked local installation with an explicit India posting. Singapore works the same way with
 four reviewed employer-direct boards; see the
-[Singapore discovery guide](singapore-job-discovery.md).
+[Singapore discovery guide](singapore-job-discovery.md). Germany and the other Southeast Asian
+markets have reviewed employer-direct targets too; see the
+[Germany discovery guide](germany-job-discovery.md) and the
+[Southeast Asia discovery guide](southeast-asia-job-discovery.md).
 
 Germany, India, Singapore, Malaysia, Indonesia, the Philippines, Thailand and Vietnam can be
 selected as markets today. A configured market is not the same as automated coverage. See

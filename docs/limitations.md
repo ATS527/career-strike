@@ -27,11 +27,18 @@ tracked with evidence in `acceptance/registry.json`.
   official link or add a role manually unless a future release records authorised access.
 - India and Singapore have four curated employer-direct candidates each: Saviynt (Lever),
   KRAFTON INDIA (Greenhouse), Sarvam AI (Ashby) and Harvey (Ashby) for India; Stripe, Databricks,
-  Coinbase and Twilio (all Greenhouse) for Singapore. Their employer and board identities have
-  been reviewed, but both markets remain **CONFIGURED** until `career-strike verify-market
-  <CC> --target <id>` completes a live permitted fetch with an explicitly located posting. Only
-  then does the command save and monitor that board and allow the local installation to call the
-  market **DISCOVERY_AVAILABLE**.
+  Coinbase and Twilio (all Greenhouse) for Singapore. Germany has four (HelloFresh, Doctolib,
+  Celonis, SumUp — all Greenhouse) and Southeast Asia shares three regional boards (Ninja Van on
+  Lever, Agoda and Xendit on Greenhouse) covering Malaysia, Indonesia, the Philippines, Thailand
+  and Vietnam. Their employer and board identities have been reviewed, but a market stays
+  **CONFIGURED** for a fresh installation until `career-strike verify-market <CC> --target <id>`
+  completes a live permitted fetch with an explicitly located posting. Only then does the command
+  save and monitor that board and allow the local installation to call the market
+  **DISCOVERY_AVAILABLE**.
+- A curated board is adopted once per installation. A board certified for one market also serves
+  its explicitly located postings in the other markets it was reviewed for; a market whose boards
+  are all adopted through other markets therefore has no separate certification command, and
+  claims discovery only through those monitored feeds.
 - A posting counts as open only if its board listed it within the last 72 hours. Boards are
   checked when you add them, when you press **Fetch now**, and on your chosen schedule.
 - Scheduled checks run only while the service is running; there is no operating-system background

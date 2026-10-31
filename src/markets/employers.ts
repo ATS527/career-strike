@@ -137,7 +137,121 @@ export const SINGAPORE_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   },
 ];
 
-export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [...INDIA_EMPLOYER_TARGETS, ...SINGAPORE_EMPLOYER_TARGETS];
+/**
+ * Germany evidence reviewed on 2026-10-31: each employer's official careers site was reachable and
+ * its Greenhouse board returned complete listings with postings located explicitly in Germany
+ * (HelloFresh 90, Doctolib 65, Celonis 56, SumUp 49 on that date). The HelloFresh, Celonis and
+ * SumUp boards redirect `job-boards.greenhouse.io` to the employer's own careers search, which
+ * corroborates ownership the same way it does for the Singapore boards.
+ * This is not live-discovery certification: that is earned only by verifyTargetDiscovery().
+ */
+export const GERMANY_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'hellofresh-de',
+    employer: 'HelloFresh',
+    officialWebsite: 'https://www.hellofresh.com',
+    careersUrl: 'https://careers.hellofresh.com/global/en',
+    source: 'greenhouse',
+    board: 'hellofresh',
+    boardUrl: 'https://job-boards.greenhouse.io/hellofresh',
+    countries: ['DE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'doctolib-de',
+    employer: 'Doctolib',
+    officialWebsite: 'https://www.doctolib.com',
+    careersUrl: 'https://careers.doctolib.com',
+    source: 'greenhouse',
+    board: 'doctolib',
+    boardUrl: 'https://job-boards.greenhouse.io/doctolib',
+    countries: ['DE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'celonis-de',
+    employer: 'Celonis',
+    officialWebsite: 'https://www.celonis.com',
+    careersUrl: 'https://careers.celonis.com',
+    source: 'greenhouse',
+    board: 'celonis',
+    boardUrl: 'https://job-boards.greenhouse.io/celonis',
+    countries: ['DE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'sumup-de',
+    employer: 'SumUp',
+    officialWebsite: 'https://www.sumup.com',
+    careersUrl: 'https://www.sumup.com/careers/',
+    source: 'greenhouse',
+    board: 'sumup',
+    boardUrl: 'https://job-boards.greenhouse.io/sumup',
+    countries: ['DE'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+];
+
+/**
+ * Southeast Asia evidence reviewed on 2026-10-31. Each board is corroborated by the employer's own
+ * careers presence: Ninja Van's careers site deep-links to its Lever postings; Agoda's official
+ * careers site embeds the Greenhouse board directly; Xendit's board postings carry the Xendit
+ * identity. Explicitly located postings on that date: Ninja Van — Malaysia 84, Philippines 17,
+ * Indonesia 7, Thailand 4, Vietnam 2; Agoda — Thailand 200, Malaysia 14, Philippines 2, Vietnam 2;
+ * Xendit — Indonesia 2, Malaysia 1, Thailand 1. Singapore and India are deliberately not in these
+ * target lists: both markets are already certified through their own dedicated boards, and a
+ * duplicate listing would not add evidence.
+ * These are not live-discovery certifications: that is earned only by verifyTargetDiscovery().
+ */
+export const SOUTHEAST_ASIA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'ninjavan-sea',
+    employer: 'Ninja Van',
+    officialWebsite: 'https://www.ninjavan.co',
+    careersUrl: 'https://www.ninjavan.co/en-sg/company/careers',
+    source: 'lever',
+    board: 'ninjavan',
+    boardUrl: 'https://jobs.lever.co/ninjavan',
+    countries: ['MY', 'ID', 'PH', 'TH', 'VN'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'agoda-careers',
+    employer: 'Agoda',
+    officialWebsite: 'https://www.agoda.com',
+    careersUrl: 'https://careersatagoda.com/',
+    source: 'greenhouse',
+    board: 'agoda',
+    boardUrl: 'https://job-boards.greenhouse.io/agoda',
+    countries: ['TH', 'MY', 'PH', 'VN'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'xendit-sea',
+    employer: 'Xendit',
+    officialWebsite: 'https://www.xendit.co',
+    careersUrl: 'https://www.xendit.co/careers/',
+    source: 'greenhouse',
+    board: 'xendit',
+    boardUrl: 'https://job-boards.greenhouse.io/xendit',
+    countries: ['ID', 'TH', 'MY', 'PH'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+];
+
+export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  ...INDIA_EMPLOYER_TARGETS,
+  ...SINGAPORE_EMPLOYER_TARGETS,
+  ...GERMANY_EMPLOYER_TARGETS,
+  ...SOUTHEAST_ASIA_EMPLOYER_TARGETS,
+];
 
 export function employerTargetsFor(country: CountryCode): EmployerTarget[] {
   return EMPLOYER_TARGETS.filter((target) => target.countries.includes(country));

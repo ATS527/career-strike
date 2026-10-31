@@ -21,6 +21,8 @@ describe('configured markets', () => {
     expect(EMPLOYER_TARGETS.map((target) => `${target.source}/${target.board}`)).toEqual([
       'lever/saviynt', 'greenhouse/kraftonindia', 'ashby/sarvam', 'ashby/harvey',
       'greenhouse/stripe', 'greenhouse/databricks', 'greenhouse/coinbase', 'greenhouse/twilio',
+      'greenhouse/hellofresh', 'greenhouse/doctolib', 'greenhouse/celonis', 'greenhouse/sumup',
+      'lever/ninjavan', 'greenhouse/agoda', 'greenhouse/xendit',
     ]);
   });
 
@@ -95,6 +97,15 @@ describe('configured markets', () => {
     expect(singapore.discoveryAvailable).toBe(false);
     expect(singapore.targets.map((t) => t.id)).toEqual(['stripe-singapore', 'databricks-singapore', 'coinbase-singapore', 'twilio-singapore']);
     expect(singapore.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
+    // Germany and the Southeast Asian markets now list curated targets of their own; none of them
+    // is adopted in a fresh installation, so none claims local discovery signals.
+    const germany = before.find((m) => m.code === 'DE')!;
+    expect(germany.targets.map((t) => t.id)).toEqual(['hellofresh-de', 'doctolib-de', 'celonis-de', 'sumup-de']);
+    const malaysia = before.find((m) => m.code === 'MY')!;
+    expect(malaysia.targets.map((t) => t.id)).toEqual(['ninjavan-sea', 'agoda-careers', 'xendit-sea']);
+    for (const code of ['DE', 'MY', 'ID', 'PH', 'TH', 'VN'] as const) {
+      expect(before.find((m) => m.code === code)!.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
+    }
 
     // A healthy adopted board — as verify-market or a monitored fetch would record — is the only
     // local evidence that turns discovery availability on for one market.
