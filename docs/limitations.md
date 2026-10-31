@@ -30,7 +30,9 @@ tracked with evidence in `acceptance/registry.json`.
   Coinbase and Twilio (all Greenhouse) for Singapore. Germany has four (HelloFresh, Doctolib,
   Celonis, SumUp — all Greenhouse) and Southeast Asia shares three regional boards (Ninja Van on
   Lever, Agoda and Xendit on Greenhouse) covering Malaysia, Indonesia, the Philippines, Thailand
-  and Vietnam. Their employer and board identities have been reviewed, but a market stays
+  and Vietnam. The Philippines also has two dedicated candidates (AvePoint and Mitsogo, both
+  Greenhouse) and Vietnam has two (Amanotes on Lever, Sky Mavis on Ashby). Their employer and
+  board identities have been reviewed, but a market stays
   **CONFIGURED** for a fresh installation until `career-strike verify-market <CC> --target <id>`
   completes a live permitted fetch with an explicitly located posting. Only then does the command
   save and monitor that board and allow the local installation to call the market

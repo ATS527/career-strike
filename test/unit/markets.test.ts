@@ -23,6 +23,7 @@ describe('configured markets', () => {
       'greenhouse/stripe', 'greenhouse/databricks', 'greenhouse/coinbase', 'greenhouse/twilio',
       'greenhouse/hellofresh', 'greenhouse/doctolib', 'greenhouse/celonis', 'greenhouse/sumup',
       'lever/ninjavan', 'greenhouse/agoda', 'greenhouse/xendit',
+      'greenhouse/avepoint', 'greenhouse/mitsogoinc', 'lever/amanotes', 'ashby/skymavis',
     ]);
   });
 
@@ -103,6 +104,12 @@ describe('configured markets', () => {
     expect(germany.targets.map((t) => t.id)).toEqual(['hellofresh-de', 'doctolib-de', 'celonis-de', 'sumup-de']);
     const malaysia = before.find((m) => m.code === 'MY')!;
     expect(malaysia.targets.map((t) => t.id)).toEqual(['ninjavan-sea', 'agoda-careers', 'xendit-sea']);
+    // The Philippines and Vietnam combine the shared regional boards with dedicated boards of
+    // their own; none of them is adopted in a fresh installation, so none claims local signals.
+    expect(before.find((m) => m.code === 'PH')!.targets.map((t) => t.id))
+      .toEqual(['ninjavan-sea', 'agoda-careers', 'xendit-sea', 'avepoint-ph', 'mitsogo-ph']);
+    expect(before.find((m) => m.code === 'VN')!.targets.map((t) => t.id))
+      .toEqual(['ninjavan-sea', 'agoda-careers', 'amanotes-vn', 'skymavis-vn']);
     for (const code of ['DE', 'MY', 'ID', 'PH', 'TH', 'VN'] as const) {
       expect(before.find((m) => m.code === code)!.targets.every((t) => t.monitoringState === 'NOT_ADOPTED')).toBe(true);
     }

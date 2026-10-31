@@ -18,20 +18,31 @@ market also carries its explicit postings for the other markets it was reviewed 
 | Ninja Van | [Careers](https://www.ninjavan.co/en-sg/company/careers) | [Lever](https://jobs.lever.co/ninjavan) | `ninjavan-sea` | MY, ID, PH, TH, VN |
 | Agoda | [Careers](https://careersatagoda.com/) | [Greenhouse](https://job-boards.greenhouse.io/agoda) | `agoda-careers` | TH, MY, PH, VN |
 | Xendit | [Careers](https://www.xendit.co/careers/) | [Greenhouse](https://job-boards.greenhouse.io/xendit) | `xendit-sea` | ID, TH, MY, PH |
+| AvePoint | [Careers](https://www.avepoint.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/avepoint) | `avepoint-ph` | PH |
+| Mitsogo | [Careers](https://www.mitsogo.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/mitsogoinc) | `mitsogo-ph` | PH |
+| Amanotes | [Careers](https://www.careers.amanotes.com/) | [Lever](https://jobs.lever.co/amanotes) | `amanotes-vn` | VN |
+| Sky Mavis | [Careers](https://skymavis.com/careers) | [Ashby](https://jobs.ashbyhq.com/skymavis) | `skymavis-vn` | VN |
 
 On the review date the public board APIs returned complete listings with explicit local evidence:
 Ninja Van — Malaysia 84, Philippines 17, Indonesia 7, Thailand 4, Vietnam 2 postings; Agoda —
 Thailand 200, Malaysia 14, Philippines 2, Vietnam 2; Xendit — Indonesia 2, Malaysia 1, Thailand 1.
-Ninja Van's own careers site deep-links to its Lever postings, Agoda's official careers site
-embeds the Greenhouse board directly, and Xendit's board postings carry the Xendit identity; the
-Singapore and India markets are deliberately not in these target lists because both are already
-certified through their own dedicated boards.
+The Philippines and Vietnam are also served by dedicated boards of their own, reviewed the same
+day: AvePoint — Manila 11, Cebu 5, Manila and Cebu 1; Mitsogo — Manila 3, Philippines 4;
+Amanotes — Ho Chi Minh City 15; Sky Mavis — Vietnam 6. Ninja Van's own careers site deep-links to
+its Lever postings, Agoda's official careers site embeds the Greenhouse board directly, and
+Xendit's board postings carry the Xendit identity; AvePoint's Greenhouse board is rendered by
+AvePoint's own careers site, Mitsogo's site links its Greenhouse board directly, Amanotes'
+dedicated careers site embeds its Lever postings, and Sky Mavis' careers page links its Ashby
+board. The Singapore and India markets are deliberately not in these target lists because both
+are already certified through their own dedicated boards.
 
 Use a networked local installation to certify exactly one target per market:
 
     career-strike verify-market MY --target ninjavan-sea
     career-strike verify-market TH --target agoda-careers
     career-strike verify-market ID --target xendit-sea
+    career-strike verify-market PH --target avepoint-ph
+    career-strike verify-market VN --target amanotes-vn
 
 The command calls the existing guarded public ATS adapter. It saves jobs and begins monitoring only
 after the source returns a complete listing with at least one explicit posting located in the

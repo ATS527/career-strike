@@ -204,7 +204,8 @@ export const GERMANY_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
  * Indonesia 7, Thailand 4, Vietnam 2; Agoda — Thailand 200, Malaysia 14, Philippines 2, Vietnam 2;
  * Xendit — Indonesia 2, Malaysia 1, Thailand 1. Singapore and India are deliberately not in these
  * target lists: both markets are already certified through their own dedicated boards, and a
- * duplicate listing would not add evidence.
+ * duplicate listing would not add evidence. The Philippines and Vietnam are also served by their
+ * own dedicated boards below; these regional boards keep carrying their explicit postings.
  * These are not live-discovery certifications: that is earned only by verifyTargetDiscovery().
  */
 export const SOUTHEAST_ASIA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
@@ -246,11 +247,82 @@ export const SOUTHEAST_ASIA_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   },
 ];
 
+/**
+ * Philippines evidence reviewed on 2026-10-31. Each target is corroborated by the employer's own
+ * careers presence: `job-boards.greenhouse.io/avepoint` redirects to AvePoint's own careers page,
+ * which renders the same board, and Mitsogo's own site links its Greenhouse board directly.
+ * Explicitly located postings on that date: AvePoint — Manila 11, Cebu 5, Manila and Cebu 1;
+ * Mitsogo — Manila 3, Philippines 4. These are not live-discovery certifications: that is earned
+ * only by verifyTargetDiscovery().
+ */
+export const PHILIPPINES_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'avepoint-ph',
+    employer: 'AvePoint',
+    officialWebsite: 'https://www.avepoint.com',
+    careersUrl: 'https://www.avepoint.com/careers',
+    source: 'greenhouse',
+    board: 'avepoint',
+    boardUrl: 'https://job-boards.greenhouse.io/avepoint',
+    countries: ['PH'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'mitsogo-ph',
+    employer: 'Mitsogo',
+    officialWebsite: 'https://www.mitsogo.com',
+    careersUrl: 'https://www.mitsogo.com/careers',
+    source: 'greenhouse',
+    board: 'mitsogoinc',
+    boardUrl: 'https://job-boards.greenhouse.io/mitsogoinc',
+    countries: ['PH'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+];
+
+/**
+ * Vietnam evidence reviewed on 2026-10-31. Each target is corroborated by the employer's own
+ * careers presence: Amanotes' dedicated careers site embeds its Lever postings, and Sky Mavis'
+ * own careers page links its Ashby board directly. Explicitly located postings on that date:
+ * Amanotes — Ho Chi Minh City 15; Sky Mavis — Vietnam 6. These are not live-discovery
+ * certifications: that is earned only by verifyTargetDiscovery().
+ */
+export const VIETNAM_EMPLOYER_TARGETS: readonly EmployerTarget[] = [
+  {
+    id: 'amanotes-vn',
+    employer: 'Amanotes',
+    officialWebsite: 'https://www.amanotes.com',
+    careersUrl: 'https://www.careers.amanotes.com/',
+    source: 'lever',
+    board: 'amanotes',
+    boardUrl: 'https://jobs.lever.co/amanotes',
+    countries: ['VN'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+  {
+    id: 'skymavis-vn',
+    employer: 'Sky Mavis',
+    officialWebsite: 'https://skymavis.com',
+    careersUrl: 'https://skymavis.com/careers',
+    source: 'ashby',
+    board: 'skymavis',
+    boardUrl: 'https://jobs.ashbyhq.com/skymavis',
+    countries: ['VN'],
+    verification: 'OFFICIAL_CAREERS_AND_ATS_BOARD_CONFIRMED',
+    verifiedAt: '2026-10-31T00:00:00.000Z',
+  },
+];
+
 export const EMPLOYER_TARGETS: readonly EmployerTarget[] = [
   ...INDIA_EMPLOYER_TARGETS,
   ...SINGAPORE_EMPLOYER_TARGETS,
   ...GERMANY_EMPLOYER_TARGETS,
   ...SOUTHEAST_ASIA_EMPLOYER_TARGETS,
+  ...PHILIPPINES_EMPLOYER_TARGETS,
+  ...VIETNAM_EMPLOYER_TARGETS,
 ];
 
 export function employerTargetsFor(country: CountryCode): EmployerTarget[] {
