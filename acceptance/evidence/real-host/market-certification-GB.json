@@ -1,0 +1,75 @@
+{
+  "revision": "a206d824885a3dee5fda8d32c2c602f97faf97f0",
+  "at": "2026-10-31T19:10:05.000Z",
+  "passed": true,
+  "command": "career-strike verify-market GB --target monzo-gb && career-strike verify-market GB --target wayve-gb && career-strike verify-market GB --target elevenlabs-gb && career-strike verify-market GB --target synthesia-gb",
+  "targets": [
+    {
+      "id": "monzo-gb",
+      "employer": "Monzo",
+      "officialCareersSite": "https://monzo.com/careers",
+      "source": "greenhouse",
+      "board": "monzo",
+      "boardUrl": "https://job-boards.greenhouse.io/monzo",
+      "adoptedBoardId": "src_i6jFh_PDePVQ",
+      "certifiedAt": "2026-10-31T19:09:53.052Z"
+    },
+    {
+      "id": "wayve-gb",
+      "employer": "Wayve",
+      "officialCareersSite": "https://wayve.ai/careers/",
+      "source": "ashby",
+      "board": "wayve",
+      "boardUrl": "https://jobs.ashbyhq.com/wayve",
+      "adoptedBoardId": "src_odCXuZ-Paanf",
+      "certifiedAt": "2026-10-31T19:09:56.455Z"
+    },
+    {
+      "id": "elevenlabs-gb",
+      "employer": "ElevenLabs",
+      "officialCareersSite": "https://elevenlabs.io/careers",
+      "source": "ashby",
+      "board": "elevenlabs",
+      "boardUrl": "https://jobs.ashbyhq.com/elevenlabs",
+      "adoptedBoardId": "src_ZHdDIJqMVKaw",
+      "certifiedAt": "2026-10-31T19:10:00.621Z"
+    },
+    {
+      "id": "synthesia-gb",
+      "employer": "Synthesia",
+      "officialCareersSite": "https://www.synthesia.io/careers",
+      "source": "ashby",
+      "board": "synthesia",
+      "boardUrl": "https://jobs.ashbyhq.com/synthesia",
+      "adoptedBoardId": "src_5HBENXJFd9N0",
+      "certifiedAt": "2026-10-31T19:10:04.091Z"
+    }
+  ],
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "four single complete listings fetched in this run (Greenhouse for Monzo, Ashby for Wayve, ElevenLabs and Synthesia); allowlisted hosts, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit United Kingdom location evidence present",
+      "passed": true,
+      "detail": "Monzo 64 postings retrieved (49 with explicit GB evidence under the deterministic parser; the review-day count of 51 also includes two 'Remote (UK)' listings that name neither a configured city nor 'United Kingdom'); Wayve 175 (49, each reading 'London, United Kingdom'); ElevenLabs 144 (27); Synthesia 32 (11; the review-day count of 12 also includes one 'UK Remote' listing of the same kind)"
+    },
+    {
+      "name": "boards adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as src_i6jFh_PDePVQ, src_odCXuZ-Paanf, src_ZHdDIJqMVKaw and src_5HBENXJFd9N0, each with health OK; source-board health records written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "GB may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
+    }
+  ]
+}

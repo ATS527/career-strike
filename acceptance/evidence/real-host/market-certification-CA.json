@@ -1,0 +1,75 @@
+{
+  "revision": "a206d824885a3dee5fda8d32c2c602f97faf97f0",
+  "at": "2026-10-31T19:11:02.000Z",
+  "passed": true,
+  "command": "career-strike verify-market CA --target 1password-ca && career-strike verify-market CA --target wealthsimple-ca && career-strike verify-market CA --target jane-ca && career-strike verify-market CA --target trulioo-ca",
+  "targets": [
+    {
+      "id": "1password-ca",
+      "employer": "1Password",
+      "officialCareersSite": "https://1password.com/careers",
+      "source": "ashby",
+      "board": "1password",
+      "boardUrl": "https://jobs.ashbyhq.com/1password",
+      "adoptedBoardId": "src_W7GJrwPVuTDv",
+      "certifiedAt": "2026-10-31T19:10:47.722Z"
+    },
+    {
+      "id": "wealthsimple-ca",
+      "employer": "Wealthsimple",
+      "officialCareersSite": "https://www.wealthsimple.com/en-ca/careers",
+      "source": "ashby",
+      "board": "wealthsimple",
+      "boardUrl": "https://jobs.ashbyhq.com/wealthsimple",
+      "adoptedBoardId": "src_Nx5bP_HYjDkz",
+      "certifiedAt": "2026-10-31T19:10:53.496Z"
+    },
+    {
+      "id": "jane-ca",
+      "employer": "Jane",
+      "officialCareersSite": "https://jane.app/careers",
+      "source": "ashby",
+      "board": "jane",
+      "boardUrl": "https://jobs.ashbyhq.com/jane",
+      "adoptedBoardId": "src_j3jtWO_l93Kp",
+      "certifiedAt": "2026-10-31T19:10:58.016Z"
+    },
+    {
+      "id": "trulioo-ca",
+      "employer": "Trulioo",
+      "officialCareersSite": "https://www.trulioo.com/company/careers",
+      "source": "ashby",
+      "board": "trulioo",
+      "boardUrl": "https://jobs.ashbyhq.com/trulioo",
+      "adoptedBoardId": "src_1Gnfu5S91pmP",
+      "certifiedAt": "2026-10-31T19:11:01.997Z"
+    }
+  ],
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "four single complete listings fetched in this run, all Ashby (1Password, Wealthsimple, Jane and Trulioo); allowlisted hosts, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Canada location evidence present",
+      "passed": true,
+      "detail": "1Password 87 postings retrieved (62 with explicit CA evidence under the deterministic parser: 'Remote (United States | Canada)' 56 and 'Toronto, ON' 6); Wealthsimple 42 (41: 'Remote (Canada)' 39 and 'Toronto Headquarters' 2); Jane 26 (24: 'Canada' 17 and 'Canada/US' 7); Trulioo 25 (18, each reading 'Vancouver, BC')"
+    },
+    {
+      "name": "boards adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as src_W7GJrwPVuTDv, src_Nx5bP_HYjDkz, src_j3jtWO_l93Kp and src_1Gnfu5S91pmP, each with health OK; source-board health records written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "CA may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
+    }
+  ]
+}

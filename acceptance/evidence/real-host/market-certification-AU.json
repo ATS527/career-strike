@@ -1,0 +1,75 @@
+{
+  "revision": "a206d824885a3dee5fda8d32c2c602f97faf97f0",
+  "at": "2026-10-31T19:10:38.000Z",
+  "passed": true,
+  "command": "career-strike verify-market AU --target cultureamp-au && career-strike verify-market AU --target mable-au && career-strike verify-market AU --target deputy-au && career-strike verify-market AU --target immutable-au",
+  "targets": [
+    {
+      "id": "cultureamp-au",
+      "employer": "Culture Amp",
+      "officialCareersSite": "https://www.cultureamp.com/company/careers",
+      "source": "greenhouse",
+      "board": "cultureamp",
+      "boardUrl": "https://job-boards.greenhouse.io/cultureamp",
+      "adoptedBoardId": "src_I4XGEHUo8JdD",
+      "certifiedAt": "2026-10-31T19:10:12.312Z"
+    },
+    {
+      "id": "mable-au",
+      "employer": "Mable",
+      "officialCareersSite": "https://mable.com.au/about-us/careers-at-mable/",
+      "source": "lever",
+      "board": "mable",
+      "boardUrl": "https://jobs.lever.co/mable",
+      "adoptedBoardId": "src_JCHPqs5LAby7",
+      "certifiedAt": "2026-10-31T19:10:18.640Z"
+    },
+    {
+      "id": "deputy-au",
+      "employer": "Deputy",
+      "officialCareersSite": "https://www.deputy.com/careers",
+      "source": "lever",
+      "board": "deputy",
+      "boardUrl": "https://jobs.lever.co/deputy",
+      "adoptedBoardId": "src_AMSVZGrrgGgl",
+      "certifiedAt": "2026-10-31T19:10:26.099Z"
+    },
+    {
+      "id": "immutable-au",
+      "employer": "Immutable",
+      "officialCareersSite": "https://www.immutable.com/careers",
+      "source": "lever",
+      "board": "immutable",
+      "boardUrl": "https://jobs.lever.co/immutable",
+      "adoptedBoardId": "src_seqAiRs9LJ-t",
+      "certifiedAt": "2026-10-31T19:10:37.066Z"
+    }
+  ],
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "four single complete listings fetched in this run (Greenhouse for Culture Amp, Lever for Mable, Deputy and Immutable); allowlisted hosts, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Australia location evidence present",
+      "passed": true,
+      "detail": "Culture Amp 33 postings retrieved (14 with explicit AU evidence under the deterministic parser: 'Sydney' 5, 'Melbourne' 9); Mable 12 (12); Deputy 6 (6); Immutable 5 (4, each reading 'Sydney')"
+    },
+    {
+      "name": "boards adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as src_I4XGEHUo8JdD, src_JCHPqs5LAby7, src_AMSVZGrrgGgl and src_seqAiRs9LJ-t, each with health OK; source-board health records written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "AU may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "revision": "a206d824885a3dee5fda8d32c2c602f97faf97f0",
+  "at": "2026-10-31T19:09:42.000Z",
+  "passed": true,
+  "command": "career-strike verify-market JP --target openai-jp && career-strike verify-market JP --target anthropic-jp && career-strike verify-market JP --target newrelic-jp && career-strike verify-market JP --target figma-jp",
+  "targets": [
+    {
+      "id": "openai-jp",
+      "employer": "OpenAI",
+      "officialCareersSite": "https://openai.com/careers",
+      "source": "ashby",
+      "board": "openai",
+      "boardUrl": "https://jobs.ashbyhq.com/openai",
+      "adoptedBoardId": "src_dxId3A5VnrtO",
+      "certifiedAt": "2026-10-31T19:09:21.735Z"
+    },
+    {
+      "id": "anthropic-jp",
+      "employer": "Anthropic",
+      "officialCareersSite": "https://www.anthropic.com/careers",
+      "source": "greenhouse",
+      "board": "anthropic",
+      "boardUrl": "https://job-boards.greenhouse.io/anthropic",
+      "adoptedBoardId": "src_5jJMRFZFhmmt",
+      "certifiedAt": "2026-10-31T19:09:30.565Z"
+    },
+    {
+      "id": "newrelic-jp",
+      "employer": "New Relic",
+      "officialCareersSite": "https://newrelic.com/careers",
+      "source": "greenhouse",
+      "board": "newrelic",
+      "boardUrl": "https://job-boards.greenhouse.io/newrelic",
+      "adoptedBoardId": "src_dx6luJlkgtGf",
+      "certifiedAt": "2026-10-31T19:09:37.453Z"
+    },
+    {
+      "id": "figma-jp",
+      "employer": "Figma",
+      "officialCareersSite": "https://www.figma.com/careers/",
+      "source": "greenhouse",
+      "board": "figma",
+      "boardUrl": "https://job-boards.greenhouse.io/figma",
+      "adoptedBoardId": "src_Nd_PFHmnWvn2",
+      "certifiedAt": "2026-10-31T19:09:41.241Z"
+    }
+  ],
+  "checks": [
+    {
+      "name": "service stopped before the live fetch",
+      "passed": true,
+      "detail": "career-strike status reported 'stopped' before all four fetches; the command also refuses a live or hung process"
+    },
+    {
+      "name": "one permitted live retrieval per target via the guarded public ATS adapter",
+      "passed": true,
+      "detail": "four single complete listings fetched in this run (Ashby for OpenAI, Greenhouse for Anthropic, New Relic and Figma); allowlisted hosts, SSRF guard and rate limits applied"
+    },
+    {
+      "name": "explicit Japan location evidence present",
+      "passed": true,
+      "detail": "OpenAI 812 postings retrieved (29 with explicit JP evidence under the deterministic parser, each reading 'Tokyo, Japan'); Anthropic 675 (16); New Relic 52 (12); Figma 140 (3)"
+    },
+    {
+      "name": "boards adopted and monitoring enabled only after verification",
+      "passed": true,
+      "detail": "adopted as src_dxId3A5VnrtO, src_5jJMRFZFhmmt, src_dx6luJlkgtGf and src_Nd_PFHmnWvn2, each with health OK; source-board health records written"
+    },
+    {
+      "name": "market status honest for this installation",
+      "passed": true,
+      "detail": "JP may be described as DISCOVERY_AVAILABLE for this installation through all four curated employer-direct boards; other unverified markets remain CONFIGURED"
+    }
+  ]
+}
