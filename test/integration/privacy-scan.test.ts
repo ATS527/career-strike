@@ -43,9 +43,9 @@ describe('privacy scan', () => {
   it('scans staged content, not the working tree', () => {
     const dir = repoWith({ 'a.txt': 'clean' });
     fs.writeFileSync(path.join(dir, 'a.txt'), `unstaged ${FAKE_AWS}`);
-    expect(scanStaged(dir, [])).toEqual([]);
+    expect(scanStaged(dir, [], GIT_ENV)).toEqual([]);
     execFileSync('git', ['add', 'a.txt'], { cwd: dir, env: GIT_ENV });
-    expect(scanStaged(dir, []).map((f) => f.rule)).toEqual(['aws-access-key']);
+    expect(scanStaged(dir, [], GIT_ENV).map((f) => f.rule)).toEqual(['aws-access-key']);
   });
 
   it('CLI exits non-zero without echoing the secret value', () => {
