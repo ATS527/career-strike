@@ -67,14 +67,14 @@ export function processAlive(pid: number): boolean {
   }
 }
 
-export async function dashboardUrl(info: RuntimeInfo): Promise<string> {
+export async function dashboardUrl(info: RuntimeInfo, origin = `http://127.0.0.1:${info.port}`): Promise<string> {
   const res = await localRequest(info.port, '/api/session/launch-token', {
     method: 'POST',
     headers: { authorization: `Bearer ${info.token}` },
   });
   const body = res.body as { token?: unknown } | null;
   if (res.status !== 200 || typeof body?.token !== 'string') throw new Error(`Could not create a dashboard session (HTTP ${res.status}).`);
-  return `http://127.0.0.1:${info.port}/auth/launch?t=${encodeURIComponent(body.token)}`;
+  return `${origin}/auth/launch?t=${encodeURIComponent(body.token)}`;
 }
 
 export function openInBrowser(url: string): void {

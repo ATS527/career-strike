@@ -108,6 +108,13 @@ describe('career-strike CLI', () => {
       expect(res.status).toBe(303);
       expect(res.headers.get('set-cookie')).toContain('HttpOnly');
       expect((await fetch(url, { redirect: 'manual' })).status).toBe(401);
+
+      const devDash = runCli(home, ['dashboard', '--no-open', '--dev']);
+      expect(devDash.status, devDash.stderr).toBe(0);
+      const devUrl = new URL(devDash.stdout.trim());
+      expect(devUrl.origin).toBe('http://127.0.0.1:5173');
+      expect(devUrl.pathname).toBe('/auth/launch');
+      expect((await fetch(new URL(`${devUrl.pathname}${devUrl.search}`, url.origin), { redirect: 'manual' })).status).toBe(303);
     } finally {
       const stop = runCli(home, ['stop']);
       expect(stop.status, stop.stderr).toBe(0);

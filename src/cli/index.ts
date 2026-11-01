@@ -85,10 +85,11 @@ program
   .command('dashboard')
   .description('Open the dashboard in your browser, starting the service if needed')
   .option('-p, --port <port>', 'port to use if the service must be started', parsePort, DEFAULT_PORT)
+  .option('--dev', 'open the Vite dashboard on http://127.0.0.1:5173')
   .option('--no-open', 'print the single-use dashboard link instead of opening a browser')
-  .action(async (opts: { port: number; open: boolean }) => {
+  .action(async (opts: { port: number; dev?: boolean; open: boolean }) => {
     const info = await startDetached(appPaths(), CLI_ENTRY, opts.port);
-    const url = await dashboardUrl(info);
+    const url = await dashboardUrl(info, opts.dev ? 'http://127.0.0.1:5173' : undefined);
     if (opts.open) {
       openInBrowser(url);
       console.log(`Opened the dashboard (service on http://127.0.0.1:${info.port}).`);
