@@ -30,6 +30,8 @@ jobs:
       - name: Check the tag against package.json and CHANGELOG.md
         run: npm run --silent release -- verify "$GITHUB_REF_NAME" --notes release-notes.md --repository "$GITHUB_REPOSITORY"
 
+      - name: Warm the npm cache for the offline packaged-install test
+        run: npm install --global --prefix "$RUNNER_TEMP/warm-cache" --no-fund --no-audit $(node -p "Object.entries(require('./package.json').dependencies).map(([n, v]) => n + '@' + v).join(' ')")
       - run: npm run typecheck
       - run: npm test
       - run: npx playwright install --with-deps chromium
