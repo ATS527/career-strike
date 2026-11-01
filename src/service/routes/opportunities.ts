@@ -3,9 +3,11 @@ import { z } from 'zod';
 import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { candidateContext } from '../../career/context.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
-import { addFact, approveFact, deleteFact, listFacts, NewFact, suggestSkills, updateFact } from '../../career/profile.js';
-import { addEvidence, deleteEvidence, listEvidence, NewEvidence, updateEvidence } from '../../career/evidence.js';
+import { addFact, approveAllFacts, approveFact, deleteFact, listFacts, NewFact, suggestSkills, updateFact } from '../../career/profile.js';
+import { addEvidence, confirmEvidence, deleteEvidence, listEvidence, NewEvidence, updateEvidence } from '../../career/evidence.js';
+import { importLinkedInExport, parseLinkedInArchive, parseLinkedInCsvText } from '../../career/linkedin-export.js';
 import type { Db } from '../../store/db.js';
+import { getSettings } from '../../store/settings.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { TaskSupervisor } from '../../supervisor/tasks.js';
@@ -114,7 +116,10 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
 
   // ---- candidate profile (SENSITIVE) ----
 
-  app.get('/api/profile', async () => ({ facts: listFacts(db), evidence: listEvidence(db) }));
+  app.get('/api/profile', async () => ({
+    facts: listFacts(db),
+    evidence: listEvidence(db),
+  }));
 
   app.post('/api/profile/facts', async (req, reply) => {
     const parsed = NewFact.safeParse(req.body);
@@ -146,6 +151,12 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
     return { fact };
   });
 
+  app.post('/api/profile/facts/approve-all', async (req) => {
+    const kind = typeof (req.body as { kind?: unknown })?.kind === 'string' ? (req.body as { kind: string }).kind : undefined;
+    const count = approveAllFacts(db, actorOf(req), kind as any);
+    return { count };
+  });
+
   app.put<{ Params: { id: string } }>('/api/profile/facts/:id', async (req, reply) => {
     const body = req.body as { value?: unknown } | null;
     const result = updateFact(db, req.params.id, body?.value, actorOf(req));
@@ -167,6 +178,12 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
     return reply.code(201).send({ evidence: addEvidence(db, parsed.data, actorOf(req)) });
   });
 
+  app.post<{ Params: { id: string } }>('/api/profile/evidence/:id/confirm', async (req, reply) => {
+    const item = confirmEvidence(db, req.params.id, actorOf(req));
+    if (!item) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return { evidence: item };
+  });
+
   app.put<{ Params: { id: string } }>('/api/profile/evidence/:id', async (req, reply) => {
     const body = req.body as { value?: unknown } | null;
     const result = updateEvidence(db, req.params.id, body?.value, actorOf(req));
@@ -178,5 +195,44 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
   app.delete<{ Params: { id: string } }>('/api/profile/evidence/:id', async (req, reply) => {
     if (!deleteEvidence(db, req.params.id, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
     return { ok: true };
+  });
+
+  app.post('/api/profile/import/linkedin', { bodyLimit: 15 * 1024 * 1024 }, async (req, reply) => {
+    let data;
+    try {
+      if (Buffer.isBuffer(req.body)) {
+        if (req.body.length >= 4 && req.body[0] === 0x50 && req.body[1] === 0x4b) {
+          data = parseLinkedInArchive(req.body);
+        } else {
+          const filename = req.headers['x-cs-filename'] ? decodeURIComponent(String(req.headers['x-cs-filename'])) : undefined;
+          data = parseLinkedInCsvText(req.body.toString('utf8'), filename);
+        }
+      } else if (typeof req.body === 'object' && req.body !== null) {
+        const body = req.body as { zipBase64?: string; csvText?: string; filename?: string; documentId?: string };
+        if (body.documentId) {
+          const doc = vault.get(body.documentId);
+          if (!doc) return reply.code(404).send({ error: 'NOT_FOUND' });
+          const bytes = vault.read(doc.id);
+          if (!bytes) return reply.code(404).send({ error: 'NOT_FOUND' });
+          if (bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b) {
+            data = parseLinkedInArchive(bytes);
+          } else {
+            data = parseLinkedInCsvText(bytes.toString('utf8'), doc.filename);
+          }
+        } else if (body.zipBase64) {
+          data = parseLinkedInArchive(Buffer.from(body.zipBase64, 'base64'));
+        } else if (typeof body.csvText === 'string') {
+          data = parseLinkedInCsvText(body.csvText, body.filename);
+        } else {
+          return reply.code(400).send({ error: 'INVALID_INPUT', message: 'Provide zipBase64, csvText, documentId, or a file payload.' });
+        }
+      } else {
+        return reply.code(400).send({ error: 'INVALID_INPUT', message: 'Invalid payload.' });
+      }
+      const result = importLinkedInExport(db, data, actorOf(req));
+      return reply.code(200).send({ ok: true, result });
+    } catch (err) {
+      return reply.code(400).send({ error: 'IMPORT_FAILED', message: err instanceof Error ? err.message : String(err) });
+    }
   });
 }

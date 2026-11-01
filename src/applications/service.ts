@@ -733,11 +733,16 @@ function toFollowUp(r: FollowUpRow): FollowUp {
 }
 
 export function identityFrom(settings: Record<string, unknown>): Identity {
+  const profileLinks = (settings['identity.profileLinks'] as string[] | undefined) ?? [];
+  const linkedin = (settings['candidate.linkedinUrl'] as string | null | undefined) ?? null;
+  const links = linkedin && !profileLinks.some((l) => /linkedin\.com/i.test(l))
+    ? [linkedin, ...profileLinks]
+    : profileLinks;
   return {
     fullName: (settings['identity.fullName'] as string | null) ?? null,
     email: (settings['identity.email'] as string | null) ?? null,
     phone: (settings['identity.phone'] as string | null) ?? null,
-    links: (settings['identity.profileLinks'] as string[] | undefined) ?? [],
+    links,
   };
 }
 

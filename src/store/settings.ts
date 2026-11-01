@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeLinkedInUrl } from '../career/linkedin-url.js';
 import type { Db } from './db.js';
 
 export type Classification = 'PUBLIC' | 'PERSONAL' | 'SENSITIVE';
@@ -59,6 +60,26 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     label: 'Country of residence',
     help: 'Two-letter ISO code, e.g. IN or DE. Used for location eligibility.',
     schema: countryCode.nullable(),
+    classification: 'PERSONAL',
+    defaultValue: null,
+  },
+  'candidate.linkedinUrl': {
+    label: 'LinkedIn profile address',
+    help: 'Your member profile address, e.g. https://www.linkedin.com/in/your-name.',
+    schema: z
+      .string()
+      .trim()
+      .max(300)
+      .nullable()
+      .transform((val, ctx) => {
+        if (val === null || val === '') return null;
+        const res = normalizeLinkedInUrl(val);
+        if (!res.ok) {
+          ctx.addIssue({ code: 'custom', message: res.reason });
+          return z.NEVER;
+        }
+        return res.url;
+      }),
     classification: 'PERSONAL',
     defaultValue: null,
   },

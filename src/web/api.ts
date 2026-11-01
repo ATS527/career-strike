@@ -340,6 +340,24 @@ export interface ProfileEvidence {
   updatedAt: string;
 }
 
+export interface LinkedInImportResult {
+  imported: {
+    skills: number;
+    roles: number;
+    education: number;
+    certifications: number;
+    languages: number;
+    projects: number;
+  };
+  total: number;
+  skipped: number;
+  profile?: {
+    fullName?: string;
+    headline?: string;
+    summary?: string;
+  };
+}
+
 export interface PersonalizationVariant {
   id: string;
   kind: 'resume' | 'cover_letter';

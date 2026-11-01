@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type FactKind, type ProfileEvidence, type ProfileFact, type StoredDocument, type ValidationIssue } from '../api';
+import { api, ApiError, type FactKind, type LinkedInImportResult, type ProfileEvidence, type ProfileFact, type StoredDocument, type ValidationIssue } from '../api';
 import { formatDate } from '../format';
 import { uploadDocument } from './ApplicationPage';
 import { ErrorPanel, Loading } from './states';
@@ -87,13 +87,20 @@ const SECTIONS: { kind: FactKind; title: string; intro: string; fields: FieldSpe
 export function Profile() {
   const [facts, setFacts] = useState<ProfileFact[] | null>(null);
   const [evidence, setEvidence] = useState<ProfileEvidence[] | null>(null);
+  const [linkedinUrl, setLinkedinUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const profile = await api<{ facts: ProfileFact[]; evidence: ProfileEvidence[] }>('/api/profile');
+      const [profile, settingsRes] = await Promise.all([
+        api<{ facts: ProfileFact[]; evidence: ProfileEvidence[] }>('/api/profile'),
+        api<{ settings: Record<string, unknown> }>('/api/settings').catch(() => null),
+      ]);
       setFacts(profile.facts);
       setEvidence(profile.evidence);
+      if (settingsRes?.settings) {
+        setLinkedinUrl((settingsRes.settings['candidate.linkedinUrl'] as string | null) ?? null);
+      }
       setError(false);
     } catch {
       setError(true);
@@ -113,6 +120,8 @@ export function Profile() {
       </div>
       {error && <ErrorPanel message="Your profile could not be loaded." onRetry={() => void load()} />}
       {!facts && !error && <Loading label="Loading your profile" />}
+      {facts && <LinkedInSection currentUrl={linkedinUrl} onChange={() => void load()} />}
+      {facts && <LinkedInImportSection onChange={() => void load()} />}
       {facts && <SuggestSkills onChange={() => void load()} />}
       {facts &&
         SECTIONS.map((section) => (
@@ -121,6 +130,174 @@ export function Profile() {
       {facts && <Documents />}
       {facts && evidence && <EvidenceSection evidence={evidence} roles={facts.filter((f) => f.kind === 'role')} onChange={() => void load()} />}
     </>
+  );
+}
+
+function LinkedInSection({ currentUrl, onChange }: { currentUrl: string | null; onChange: () => void }) {
+  const [url, setUrl] = useState(currentUrl ?? '');
+  const [status, setStatus] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setUrl(currentUrl ?? '');
+  }, [currentUrl]);
+
+  const submit = async (e: FormEvent): Promise<void> => {
+    e.preventDefault();
+    const val = url.trim();
+    try {
+      const res = await api<{ key: string; value: string | null }>('/api/settings/candidate.linkedinUrl', {
+        method: 'PUT',
+        body: { value: val || null },
+      });
+      setUrl(res.value ?? '');
+      setStatus(res.value ? 'Saved your LinkedIn profile address.' : 'Cleared your LinkedIn profile address.');
+      setIsEditing(false);
+      onChange();
+    } catch (err) {
+      const issues = err instanceof ApiError ? ((err.body as { issues?: ValidationIssue[] } | null)?.issues ?? []) : [];
+      setStatus(issues[0]?.message ?? 'Enter a valid LinkedIn profile address (e.g. linkedin.com/in/your-name).');
+    }
+  };
+
+  return (
+    <section className="settings-group" aria-labelledby="linkedin-profile-title" id="linkedin-profile">
+      <h2 id="linkedin-profile-title">LinkedIn Profile</h2>
+      <p className="help">
+        Your member profile address (e.g. <code>https://www.linkedin.com/in/your-name</code>). Used to pre-fill LinkedIn questions in job applications, and only shared with AI assistants when you approve a personal-info request.
+      </p>
+      {currentUrl && !isEditing ? (
+        <div className="fact-list">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'var(--color-surface, #f9f9f9)', borderRadius: '6px' }}>
+            <span>
+              <a href={currentUrl} target="_blank" rel="noopener noreferrer">
+                {currentUrl}
+              </a>
+            </span>
+            <span style={{ display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className="quiet" onClick={() => setIsEditing(true)}>
+                Edit
+              </button>
+              <button
+                type="button"
+                className="quiet"
+                onClick={async () => {
+                  await api('/api/settings/candidate.linkedinUrl', { method: 'PUT', body: { value: null } });
+                  setUrl('');
+                  setStatus('Cleared your LinkedIn profile address.');
+                  onChange();
+                }}
+              >
+                Clear
+              </button>
+            </span>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={(e) => void submit(e)} className="fact-form">
+          <div className="record__part">
+            <label htmlFor="linkedin-url-input">LinkedIn profile address</label>
+            <input
+              id="linkedin-url-input"
+              type="text"
+              placeholder="https://www.linkedin.com/in/your-name"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div className="fact-form__submit" style={{ display: 'flex', gap: '0.5rem' }}>
+            <button type="submit">Save</button>
+            {isEditing && (
+              <button type="button" className="quiet" onClick={() => { setIsEditing(false); setUrl(currentUrl ?? ''); }}>
+                Cancel
+              </button>
+            )}
+          </div>
+        </form>
+      )}
+      <p role="status" aria-live="polite" className="save-status">
+        {status}
+      </p>
+    </section>
+  );
+}
+
+function LinkedInImportSection({ onChange }: { onChange: () => void }) {
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setLoading(true);
+    setStatus('Reading export file...');
+    try {
+      let body: unknown;
+      if (file.name.endsWith('.zip')) {
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]!);
+        }
+        body = { zipBase64: btoa(binary) };
+      } else {
+        const text = await file.text();
+        body = { csvText: text, filename: file.name };
+      }
+      const res = await api<{ ok: boolean; result: LinkedInImportResult }>('/api/profile/import/linkedin', {
+        method: 'POST',
+        body,
+      });
+      const { imported, total, skipped } = res.result;
+      if (total === 0) {
+        setStatus(skipped > 0 ? `All items in ${file.name} were already in your profile.` : `No profile items found in ${file.name}.`);
+      } else {
+        const parts = [
+          imported.roles ? `${imported.roles} role${imported.roles > 1 ? 's' : ''}` : null,
+          imported.skills ? `${imported.skills} skill${imported.skills > 1 ? 's' : ''}` : null,
+          imported.education ? `${imported.education} education` : null,
+          imported.certifications ? `${imported.certifications} cert${imported.certifications > 1 ? 's' : ''}` : null,
+          imported.languages ? `${imported.languages} language${imported.languages > 1 ? 's' : ''}` : null,
+          imported.projects ? `${imported.projects} project${imported.projects > 1 ? 's' : ''}` : null,
+        ].filter(Boolean);
+        setStatus(`Imported ${parts.join(', ')} for your review below. Nothing is used until you approve it.`);
+      }
+      onChange();
+    } catch (err) {
+      setStatus(err instanceof ApiError ? ((err.body as { message?: string } | null)?.message ?? 'Import failed.') : 'Could not import the file.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <section className="settings-group" aria-labelledby="linkedin-import-title" id="linkedin-import">
+      <h2 id="linkedin-import-title">Import from LinkedIn export</h2>
+      <p className="help">
+        Upload your LinkedIn data export archive (.zip) or individual CSV file (e.g. <code>Positions.csv</code>, <code>Skills.csv</code>, <code>Education.csv</code>, <code>Projects.csv</code>). Career Strike extracts facts locally on this computer; each item is suggested for your review below and is never used until you approve it.
+      </p>
+      <div className="fact-form">
+        <div className="record__part">
+          <label htmlFor="linkedin-export-file">LinkedIn export file (.zip or .csv)</label>
+          <input
+            id="linkedin-export-file"
+            type="file"
+            accept=".zip,.csv,application/zip,text/csv"
+            disabled={loading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                void handleFile(file);
+                e.target.value = '';
+              }
+            }}
+          />
+        </div>
+      </div>
+      <p role="status" aria-live="polite" className="save-status">
+        {status}
+      </p>
+    </section>
   );
 }
 
@@ -161,7 +338,40 @@ function EvidenceSection({ evidence, roles, onChange }: { evidence: ProfileEvide
     <section className="settings-group" aria-labelledby="evidence-title">
       <h2 id="evidence-title">Projects and evidence</h2>
       <p className="help">Add only work, achievements, and links you can stand behind. Tailored documents use confirmed evidence, never inferred claims.</p>
-      {evidence.length > 0 && <ul className="fact-list">{evidence.map((item) => <li key={item.id}><span>{describe(item)}</span><button type="button" className="quiet" onClick={async () => { await api(`/api/profile/evidence/${item.id}`, { method: 'DELETE' }); onChange(); }}>Remove<span className="visually-hidden"> evidence</span></button></li>)}</ul>}
+      {evidence.length > 0 && (
+        <ul className="fact-list">
+          {evidence.map((item) => (
+            <li key={item.id}>
+              <span>{describe(item)}</span>
+              {!item.confirmed && <span className="badge">Suggested — not used until you confirm</span>}
+              {!item.confirmed && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await api(`/api/profile/evidence/${item.id}/confirm`, { method: 'POST' });
+                    setStatus(`Confirmed ${describe(item)}.`);
+                    onChange();
+                  }}
+                >
+                  Confirm<span className="visually-hidden"> evidence</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="quiet"
+                onClick={async () => {
+                  await api(`/api/profile/evidence/${item.id}`, { method: 'DELETE' });
+                  setStatus(`Removed ${describe(item)}.`);
+                  onChange();
+                }}
+              >
+                {item.confirmed ? 'Remove' : 'Discard'}
+                <span className="visually-hidden"> evidence</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
       <form className="fact-form" onSubmit={(event) => void submit(event)}>
         <div className="record__part"><label htmlFor="evidence-kind">Type</label><select id="evidence-kind" value={kind} onChange={(event) => setKind(event.target.value as ProfileEvidence['kind'])}><option value="project">Project</option><option value="achievement">Achievement</option><option value="portfolio">Portfolio or GitHub link</option><option value="employment_detail">Employment detail</option></select></div>
         {(kind === 'project' || kind === 'portfolio') && <div className="record__part"><label htmlFor="evidence-name">{kind === 'project' ? 'Project name' : 'Label'}</label><input id="evidence-name" value={name} onChange={(event) => setName(event.target.value)} /></div>}
@@ -232,23 +442,40 @@ function FactSection({ section, facts, onChange }: { section: (typeof SECTIONS)[
       {facts.length === 0 ? (
         <p className="empty">None added yet.</p>
       ) : (
-        <ul className="fact-list">
-          {facts.map((f) => (
-            <li key={f.id}>
-              <span>{section.describe(f.value)}</span>
-              {!f.approved && <span className="badge">Suggested — not used until you approve</span>}
-              {!f.approved && (
-                <button type="button" onClick={() => void approve(f)}>
-                  Approve<span className="visually-hidden"> {section.describe(f.value)}</span>
-                </button>
-              )}
-              <button type="button" className="quiet" onClick={() => void remove(f)}>
-                {f.approved ? 'Remove' : 'Discard'}
-                <span className="visually-hidden"> {section.describe(f.value)}</span>
+        <>
+          {facts.filter((f) => !f.approved).length > 1 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <button
+                type="button"
+                className="quiet"
+                onClick={async () => {
+                  await api('/api/profile/facts/approve-all', { method: 'POST', body: { kind: section.kind } });
+                  setStatus(`Approved all suggested ${section.title.toLowerCase()}.`);
+                  onChange();
+                }}
+              >
+                Approve all {facts.filter((f) => !f.approved).length} suggested {section.title.toLowerCase()}
               </button>
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+          <ul className="fact-list">
+            {facts.map((f) => (
+              <li key={f.id}>
+                <span>{section.describe(f.value)}</span>
+                {!f.approved && <span className="badge">Suggested — not used until you approve</span>}
+                {!f.approved && (
+                  <button type="button" onClick={() => void approve(f)}>
+                    Approve<span className="visually-hidden"> {section.describe(f.value)}</span>
+                  </button>
+                )}
+                <button type="button" className="quiet" onClick={() => void remove(f)}>
+                  {f.approved ? 'Remove' : 'Discard'}
+                  <span className="visually-hidden"> {section.describe(f.value)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
       <form className="fact-form" onSubmit={(e) => void submit(e)} noValidate aria-label={`Add to ${section.title.toLowerCase()}`}>
         {section.fields.map((f) => {

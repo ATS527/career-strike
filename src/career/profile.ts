@@ -182,6 +182,22 @@ export function approveFact(db: Db, id: string, actor: string): ProfileFact | nu
   return row ? toFact(row) : null;
 }
 
+export function approveAllFacts(db: Db, actor: string, kind?: FactKind): number {
+  const at = new Date().toISOString();
+  let count = 0;
+  db.transaction(() => {
+    const query = kind
+      ? 'UPDATE profile_facts SET approved = 1, updated_at = ? WHERE approved = 0 AND kind = ?'
+      : 'UPDATE profile_facts SET approved = 1, updated_at = ? WHERE approved = 0';
+    const params = kind ? [at, kind] : [at];
+    count = db.prepare(query).run(...params).changes;
+    if (count > 0) {
+      db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.facts.approved_all', `${count} approved`);
+    }
+  })();
+  return count;
+}
+
 /** The approved profile in the shape matching needs. Unapproved facts are invisible here. */
 export interface CandidateProfile {
   skills: { name: string; years: number | null; level: string | null; factId: string }[];

@@ -95,6 +95,17 @@ export function updateEvidence(db: Db, id: string, value: unknown, actor: string
   return toEvidence(db.prepare('SELECT * FROM profile_evidence WHERE id = ?').get(id) as Row);
 }
 
+export function confirmEvidence(db: Db, id: string, actor: string): ProfileEvidence | null {
+  const at = new Date().toISOString();
+  let changed = false;
+  db.transaction(() => {
+    changed = db.prepare('UPDATE profile_evidence SET confirmed = 1, updated_at = ? WHERE id = ? AND confirmed = 0').run(at, id).changes > 0;
+    if (changed) db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.evidence.confirmed', id);
+  })();
+  const row = db.prepare('SELECT * FROM profile_evidence WHERE id = ?').get(id) as Row | undefined;
+  return row ? toEvidence(row) : null;
+}
+
 export function deleteEvidence(db: Db, id: string, actor: string): boolean {
   const at = new Date().toISOString();
   const removed = db.prepare('DELETE FROM profile_evidence WHERE id = ?').run(id).changes > 0;
