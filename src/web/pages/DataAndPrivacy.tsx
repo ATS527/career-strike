@@ -99,7 +99,7 @@ export function DataAndPrivacy() {
         <p className="help">
           Download a complete, readable JSON archive of your jobs, applications, notes and documents. Login sessions and private signing keys are excluded.
         </p>
-        <div className="field__actions">
+        <div className="field__actions field__actions--flush">
           <a href="/api/data/export" download="career-strike-export.json" className="button" data-testid="download-export">
             Download data export
           </a>
@@ -205,7 +205,7 @@ export function DataAndPrivacy() {
                 {deleteError}
               </p>
             )}
-            <div className="field__actions">
+            <div className="field__actions field__actions--flush">
               <button
                 type="submit"
                 disabled={confirmText !== 'delete my career data'}
@@ -226,7 +226,7 @@ export function DataAndPrivacy() {
             </div>
           </form>
         ) : (
-          <div className="field__actions">
+          <div className="field__actions field__actions--flush">
             <button
               type="button"
               className="quiet"

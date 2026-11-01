@@ -90,7 +90,7 @@ function SettingField({ def, value }: { def: SettingDefinition; value: unknown }
         {def.help}
         {def.classification === 'SENSITIVE' && <span className="badge">Sensitive · stays on this device</span>}
       </p>
-      <div className="field__actions">
+      <div className="field__actions field__actions--flush">
         <button type="submit" disabled={!dirty || save.status === 'saving'}>
           {save.status === 'saving' ? 'Saving…' : 'Save'}
         </button>

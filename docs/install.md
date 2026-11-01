@@ -61,6 +61,19 @@ start, and a job board to monitor). Each item links to the page where you do it.
 | `career-strike delete-data --confirm "delete my career data"` | Permanently delete all Career Strike data on this computer. |
 | `career-strike uninstall` | Remove Career Strike from AI assistants and remove the program. Your data is kept. |
 
+### Developing the dashboard
+
+From the repository, run both the service and Vite with one command:
+
+```bash
+npm run dev
+```
+
+This starts the local service and Vite with hot reload, then opens a one-time sign-in link in
+your browser. Vite serves the UI at `http://127.0.0.1:5173` and proxies API and sign-in requests
+to the service. Press Ctrl+C to stop development; if the service was already running, it is left
+running. To open the normal built dashboard instead, use `career-strike dashboard`.
+
 ## Where your data lives
 
 - macOS: `~/Library/Application Support/career-strike`
