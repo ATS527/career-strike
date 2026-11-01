@@ -49,16 +49,15 @@ documents, contact details, application records, and notes do not go to those se
 Requirements: Node.js 22.12 or later, macOS or Linux, and a modern browser. Windows is not yet
 tested.
 
-Career Strike is installed from a package built from this repository:
+Install the newest release with the one-line command shown on the latest release of this
+repository's GitHub **Releases** page:
 
 ```bash
-npm install
-npm pack
-npm install --global ./career-strike-0.1.0.tgz
+npm install --global https://github.com/<owner>/career-strike/releases/latest/download/career-strike.tgz
 ```
 
-The package filename includes its version; if it differs, use the `.tgz` filename printed by
-`npm pack`.
+Later, `career-strike update` installs new versions safely: your data is backed up first and the
+update can be undone. To build from source instead, see [install.md](docs/install.md#install).
 
 ### 2. Create your private workspace and open it
 

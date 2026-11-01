@@ -1,6 +1,6 @@
 {
   "name": "career-strike",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local-first, privacy-first job-hunting platform with an independent dashboard and MCP integrations.",
   "license": "Apache-2.0",
   "private": true,
@@ -12,6 +12,7 @@
     "dist",
     "plugins",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "docs"
   ],
@@ -20,7 +21,7 @@
   },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
-    "build": "npm run clean && tsc -p tsconfig.build.json && vite build",
+    "build": "npm run clean && tsc -p tsconfig.build.json && vite build && node --import tsx scripts/stamp-release.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.web.json && tsc -p tsconfig.e2e.json",
     "dev": "node --import tsx scripts/dev.ts",
     "dev:serve": "node --import tsx src/cli/index.ts serve",
@@ -31,6 +32,8 @@
     "privacy-scan": "node --import tsx scripts/privacy-scan.ts",
     "test:e2e": "npm run build && playwright test",
     "test:live": "CS_LIVE=1 vitest run test/live",
+    "test:update": "node --import tsx scripts/update-rehearsal.ts",
+    "release": "node --import tsx scripts/release.ts",
     "prepack": "npm run build"
   },
   "dependencies": {

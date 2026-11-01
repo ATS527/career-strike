@@ -1,0 +1,67 @@
+name: Release
+
+# Pushing a tag such as v0.3.0 (see `npm run release`) builds, tests and publishes that version.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub Release
+      id-token: write # sign the build-provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - name: Check the tag against package.json and CHANGELOG.md
+        run: npm run --silent release -- verify "$GITHUB_REF_NAME" --notes release-notes.md --repository "$GITHUB_REPOSITORY"
+
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - run: npm run test:update
+
+      - name: Package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          npm pack
+          test -f "career-strike-$version.tgz"
+          sha256sum "career-strike-$version.tgz" > "career-strike-$version.tgz.sha256"
+          # A fixed name too, so releases/latest/download/career-strike.tgz always installs the newest.
+          cp "career-strike-$version.tgz" career-strike.tgz
+          sha256sum career-strike.tgz > career-strike.tgz.sha256
+          cat ./*.sha256
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: career-strike-*.tgz
+
+      - name: Publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "career-strike-$version.tgz" \
+            "career-strike-$version.tgz.sha256" \
+            career-strike.tgz \
+            career-strike.tgz.sha256 \
+            --title "Career Strike $version" \
+            --notes-file release-notes.md \
+            --verify-tag

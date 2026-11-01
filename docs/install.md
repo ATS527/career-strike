@@ -13,12 +13,22 @@ For a guided first search after installation, use the [practical job-hunt guide]
 
 ## Install
 
-Career Strike is not published to the npm registry. Build a package from this repository and
-install it:
+Install the newest release with one command. The latest release on this repository's GitHub
+**Releases** page shows it ready to copy; it has this form, where `<owner>` is the GitHub account
+that publishes Career Strike:
+
+    npm install --global https://github.com/<owner>/career-strike/releases/latest/download/career-strike.tgz
+
+Each release also has a versioned package (`career-strike-<version>.tgz`), its SHA-256 checksum,
+and a build-provenance attestation proving it was built from this repository by its release
+workflow. To check a download yourself:
+`gh attestation verify career-strike-<version>.tgz --repo <owner>/career-strike`.
+
+To build from source instead:
 
     npm install
     npm pack                                 # builds and writes career-strike-<version>.tgz
-    npm install --global ./career-strike-0.1.0.tgz
+    npm install --global ./career-strike-<version>.tgz
 
 Check the installation (after `career-strike init`, below):
 
@@ -57,6 +67,7 @@ start, and a job board to monitor). Each item links to the page where you do it.
 | `career-strike export <folder>` | Write all your data and documents to a new folder, readable without Career Strike. |
 | `career-strike backup <folder>` | Copy the database and documents for `restore`. |
 | `career-strike restore <folder>` | Replace current data with a verified backup (current data is kept aside first). |
+| `career-strike update` | Install the newest release; your data is backed up first and the update can be undone. See [Updating](#updating). |
 | `career-strike rollback` | Restore the database backup saved before an upgrade (current data is kept aside first). |
 | `career-strike delete-data --confirm "delete my career data"` | Permanently delete all Career Strike data on this computer. |
 | `career-strike uninstall` | Remove Career Strike from AI assistants and remove the program. Your data is kept. |
@@ -73,6 +84,49 @@ This starts the local service and Vite with hot reload, then opens a one-time si
 your browser. Vite serves the UI at `http://127.0.0.1:5173` and proxies API and sign-in requests
 to the service. Press Ctrl+C to stop development; if the service was already running, it is left
 running. To open the normal built dashboard instead, use `career-strike dashboard`.
+
+## Updating
+
+    career-strike update
+
+That is all. It shows what is new and asks before changing anything, then:
+
+1. downloads the release and checks it against its published SHA-256 checksum (and its build
+   provenance too, if the [GitHub CLI](https://cli.github.com) is installed and signed in);
+2. keeps a copy of the version you have, stops the service and backs up your data;
+3. installs the new version and checks that it reports the right version and starts cleanly
+   (starting applies any database changes, after their own backup);
+4. restarts the service on the same port if it was running.
+
+If any step fails, the previous version and your data are put back automatically and nothing is
+lost. When you next open the dashboard, it shows what changed.
+
+| Command | What it does |
+| --- | --- |
+| `career-strike update --check` | Only say whether a newer version has been released. |
+| `career-strike update --undo` | Go back to the version the last update replaced. If the new version changed how data is stored, your data is restored from the backup taken just before the update; anything you changed since is kept aside, not deleted. |
+| `career-strike update --to 0.3.0` | Install a specific newer release. |
+| `career-strike update --yes` | Do not ask for confirmation (for scripts). |
+
+**Being told about new versions.** Career Strike never contacts anyone about updates unless you
+ask. To be told when a new version is out, turn on *Check for new versions* in Settings →
+Background monitoring (`career-strike init` also asks once). It then asks GitHub's public release
+list once a week and shows a note in the dashboard. Settings → Updates shows your version and has
+a *Check now* button.
+
+**Updating from 0.1.0 (once).** Version 0.1.0 has no `update` command, so install 0.2.0 by hand.
+Your data is kept:
+
+    career-strike stop
+    npm install --global https://github.com/<owner>/career-strike/releases/latest/download/career-strike.tgz
+    career-strike start
+
+From then on, use `career-strike update`.
+
+**Running from a source checkout?** `update` only manages installs made with
+`npm install --global`. In a checkout, run `git pull && npm ci && npm run build`, then restart the
+service. `career-strike status` warns when the running service is older than the installed
+program.
 
 ## Where your data lives
 
