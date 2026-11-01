@@ -3,6 +3,7 @@ import { api, ApiError, type SettingDefinition, type SettingsResponse, type Vali
 import { useHashFocus } from '../router';
 import { useResource } from '../useResource';
 import { type Draft, type FieldKind, fieldKind, fromDraft, groupOf, sameValue, toDraft } from './settingFields';
+import { UpdatesPanel } from '../components/Updates';
 import { AiAssistants, AiRequests } from './AiAssistants';
 import { DataAndPrivacy } from './DataAndPrivacy';
 import { ErrorPanel, Loading } from './states';
@@ -40,6 +41,7 @@ export function Settings() {
         ))}
       {settings.state === 'ready' && <AiRequests />}
       {settings.state === 'ready' && <AiAssistants />}
+      {settings.state === 'ready' && <UpdatesPanel />}
       {settings.state === 'ready' && <DataAndPrivacy />}
     </>
   );

@@ -118,6 +118,16 @@ export interface SettingDefinition {
   schema: JsonSchema;
 }
 
+export interface UpdateStatus {
+  current: string;
+  checks: 'off' | 'weekly';
+  checkedAt: string | null;
+  latest: { version: string; name: string; url: string; notes: string; publishedAt: string | null } | null;
+  updateAvailable: boolean;
+  error: string | null;
+  whatsNew: { from: string; to: string; notes: string | null } | null;
+}
+
 export interface SettingsResponse {
   settings: Record<string, unknown>;
   definitions: SettingDefinition[];

@@ -29,6 +29,8 @@ import { registerInterviewRoutes } from './routes/interviews.js';
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
 import { registerReadinessRoutes } from './routes/readiness.js';
+import { registerUpdateRoutes } from './routes/updates.js';
+import { UpdateChecker } from '../updates/checker.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
 import { clearedSessionCookie, readCookie, SESSION_COOKIE, sessionCookie, SessionStore } from './sessions.js';
 import { DASHBOARD_CSP, type StaticAsset } from './static.js';
@@ -122,6 +124,9 @@ export function buildServer({
   const scheduler = new Scheduler(db, discovery, logger);
   scheduler.start();
   app.addHook('onClose', async () => scheduler.stop());
+  const updates = new UpdateChecker(db, currentPaths, logger);
+  updates.start();
+  app.addHook('onClose', async () => updates.stop());
   const backfilled = backfillRequirements(db);
   if (backfilled > 0) logger.info('jobs.requirements-backfilled', { count: backfilled });
   app.decorateRequest('principal', null);
@@ -394,6 +399,8 @@ export function buildServer({
     const checks = await runDoctorChecks(currentPaths, port);
     return { checks, allOk: checks.every((c) => c.ok) };
   });
+
+  registerUpdateRoutes(app, updates);
 
   app.all('/api/*', async (_req, reply) => reject(reply, 404, 'NOT_FOUND'));
 

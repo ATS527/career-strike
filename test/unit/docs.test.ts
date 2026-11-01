@@ -29,6 +29,10 @@ describe('user documentation', () => {
     expect(hosts).toEqual(['api.ashbyhq.com', 'api.lever.co', 'boards-api.greenhouse.io']);
     const privacy = read('docs/privacy.md');
     for (const h of hosts) expect(privacy).toContain(`\`${h}\``);
+    // So is every host the updater may contact.
+    const updateHosts = [...read('src/updates/releases.ts').matchAll(/^  '([a-z.-]+)',$/gm)].map((m) => m[1]!);
+    expect(updateHosts).toContain('api.github.com');
+    for (const h of updateHosts) expect(privacy).toContain(`\`${h}\``);
   });
 
   it('relative links resolve', () => {

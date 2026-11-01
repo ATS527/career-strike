@@ -107,6 +107,14 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     classification: 'PERSONAL',
     defaultValue: '0',
   },
+  'monitoring.updateChecks': {
+    label: 'Check for new versions',
+    help: 'Once a week, ask GitHub whether a newer Career Strike has been released. This is one request for the public release list and sends nothing about you. Off until you choose; `career-strike update` always works.',
+    options: { off: 'Off', weekly: 'Once a week' },
+    schema: z.enum(['off', 'weekly']),
+    classification: 'PUBLIC',
+    defaultValue: 'off',
+  },
   'identity.fullName': {
     label: 'Full name',
     help: 'As you want it to appear on applications.',

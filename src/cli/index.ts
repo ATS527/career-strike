@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import readline from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { Command, InvalidArgumentError } from 'commander';
 import { appPaths, ensureHome, findGitRoot } from '../core/paths.js';
@@ -21,6 +22,11 @@ import { isCountryCode, type CountryCode } from '../markets/countries.js';
 import { createAdapters } from '../sources/adapters.js';
 import { Discovery, DuplicateBoardError } from '../career/discovery.js';
 import { TaskSupervisor } from '../supervisor/tasks.js';
+import { getSettings, setSetting } from '../store/settings.js';
+import { UPDATE_CHECK_SETTING } from '../updates/checker.js';
+import { latestRelease, UpdateError } from '../updates/releases.js';
+import { Updater } from '../updates/updater.js';
+import { compareVersions } from '../updates/version.js';
 
 const CLI_ENTRY = fileURLToPath(import.meta.url);
 
@@ -40,13 +46,27 @@ const program = new Command().name('career-strike').description('Local-first job
 program
   .command('init')
   .description('Create the local data directory and database')
-  .action(() => {
+  .option('--check-updates', 'look for new Career Strike versions once a week')
+  .option('--no-check-updates', 'never look for new versions on its own')
+  .action(async (opts: { checkUpdates?: boolean }) => {
     const paths = appPaths();
     ensureHome(paths);
     const db = openDb(paths.db);
-    console.log(`Data directory: ${paths.home}`);
-    console.log(`Database schema: v${schemaVersion(db)}`);
-    db.close();
+    try {
+      console.log(`Data directory: ${paths.home}`);
+      console.log(`Database schema: v${schemaVersion(db)}`);
+      // Asked once: an explicit flag, or a question in an interactive terminal. Never assumed.
+      const decided = db.prepare('SELECT 1 FROM settings WHERE key = ?').get(UPDATE_CHECK_SETTING) !== undefined;
+      let choice = opts.checkUpdates;
+      if (choice === undefined && !decided && process.stdin.isTTY && process.stdout.isTTY) {
+        choice = await ask('Check for new Career Strike versions once a week? This sends one request to GitHub with nothing about you. [y/N] ');
+      }
+      if (choice !== undefined) setSetting(db, UPDATE_CHECK_SETTING, choice ? 'weekly' : 'off', 'local-client');
+      const on = getSettings(db)[UPDATE_CHECK_SETTING] === 'weekly';
+      console.log(`Update checks: ${on ? 'once a week' : 'off'} (change in Settings, or run \`career-strike update --check\` any time)`);
+    } finally {
+      db.close();
+    }
   });
 
 program
@@ -234,8 +254,12 @@ program
   .action(async (opts: { json?: boolean }) => {
     const info = readRuntime(appPaths().runtimeFile);
     if (info && (await probeHealth(info))) {
-      const result = { state: 'running', port: info.port, pid: info.pid, version: info.version, startedAt: info.startedAt };
+      const result = { state: 'running', port: info.port, pid: info.pid, version: info.version, installedVersion: VERSION, startedAt: info.startedAt };
       console.log(opts.json ? JSON.stringify(result) : `running on http://127.0.0.1:${info.port} (pid ${info.pid})`);
+      // After an install without a restart, the old program keeps running until it is restarted.
+      if (!opts.json && info.version !== VERSION) {
+        console.log(`The running service is ${info.version} but ${VERSION} is installed. Restart it: career-strike stop && career-strike start`);
+      }
       return;
     }
     // A runtime file without a live service means the previous process died without cleanup.
@@ -343,6 +367,79 @@ program
       `Restored pre-upgrade backup from ${r.restoredFrom} (schema v${r.schemaVersion}).` +
         (r.previous ? ` Your previous data was moved to ${r.previous}` : ''),
     );
+  });
+
+async function ask(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return /^y(es)?$/i.test((await rl.question(question)).trim());
+  } finally {
+    rl.close();
+  }
+}
+
+program
+  .command('update')
+  .description('Update Career Strike to the newest release; your data is backed up first and the update can be undone')
+  .option('--check', 'only say whether a newer version has been released')
+  .option('--to <version>', 'install a specific newer release')
+  .option('--undo', 'go back to the version the last update replaced')
+  .option('-y, --yes', 'do not ask for confirmation')
+  .option('--json', 'machine-readable output (with --check)')
+  .action(async (opts: { check?: boolean; to?: string; undo?: boolean; yes?: boolean; json?: boolean }) => {
+    try {
+      if (opts.check) {
+        const latest = await latestRelease();
+        const available = latest !== null && compareVersions(latest.version, VERSION) > 0;
+        if (opts.json) {
+          console.log(JSON.stringify({ current: VERSION, latest: latest?.version ?? null, updateAvailable: available, url: latest?.url ?? null }));
+        } else if (!latest) {
+          console.log(`You have ${VERSION}. No releases have been published yet.`);
+        } else if (available) {
+          console.log(`Career Strike ${latest.version} is available (you have ${VERSION}).`);
+          console.log(`Release notes: ${latest.url}`);
+          console.log('Install it with: career-strike update');
+        } else {
+          console.log(`You have the newest version (${VERSION}).`);
+        }
+        return;
+      }
+
+      const prefix = globalPrefix();
+      if (!prefix) {
+        throw new UpdateError(
+          `This copy of Career Strike runs from ${packageRoot()}, not from an npm global install. Update it the way you installed it (for a source checkout: git pull && npm ci && npm run build).`,
+        );
+      }
+      const confirm = async (question: string): Promise<boolean> => {
+        if (opts.yes) return true;
+        if (!process.stdin.isTTY) throw new UpdateError('Run with --yes to update without a confirmation prompt.');
+        return ask(`${question} [y/N] `);
+      };
+      const updater = new Updater({ paths: appPaths(), currentVersion: VERSION, packageRoot: packageRoot(), prefix, confirm });
+
+      if (opts.undo) {
+        const r = await updater.undo();
+        console.log(`Back on Career Strike ${r.to} (was ${r.from}).${r.restoredData ? ' Your data was restored from before the update.' : ''}`);
+        return;
+      }
+
+      const r = await updater.update({ to: opts.to });
+      if (r.result === 'up-to-date') console.log(r.latest ? `You have the newest version (${r.current}).` : `You have ${r.current}. No releases have been published yet.`);
+      else if (r.result === 'declined') console.log('Nothing was changed.');
+      else if (r.result === 'rolled-back') {
+        console.error(`Career Strike was not updated to ${r.to}; you are still on ${r.from}. Reason: ${r.reason}`);
+        process.exitCode = 1;
+      } else {
+        console.log(`Updated Career Strike ${r.from} → ${r.to}.${r.restarted ? ' The service was restarted.' : ''}`);
+        console.log('Changed your mind? career-strike update --undo');
+        console.log('Open the dashboard: career-strike dashboard');
+      }
+    } catch (err) {
+      if (!(err instanceof UpdateError)) throw err;
+      console.error(err.message);
+      process.exitCode = 1;
+    }
   });
 
 /** The npm prefix Career Strike was installed into globally, if it was. */

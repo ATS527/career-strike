@@ -29,7 +29,8 @@ export class CsService {
   }
 
   env(): NodeJS.ProcessEnv {
-    return { ...process.env, CAREER_STRIKE_HOME: this.home, CAREER_STRIKE_SECRET_STORE: 'file' };
+    // Update checks go to a closed loopback port: browser tests never contact GitHub.
+    return { ...process.env, CAREER_STRIKE_HOME: this.home, CAREER_STRIKE_SECRET_STORE: 'file', CAREER_STRIKE_RELEASES_URL: 'http://127.0.0.1:9/releases' };
   }
 
   private async startProcess(port: number): Promise<void> {

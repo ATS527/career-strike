@@ -1,4 +1,5 @@
 import { Outlet } from '@tanstack/react-router';
+import { UpdateBanner } from './components/Updates';
 import { RETRY_MS, useConnection } from './connection';
 import { Link, usePath } from './router';
 
@@ -52,6 +53,7 @@ export function Shell() {
         </div>
       )}
       <main id="main" tabIndex={-1} key={generation}>
+        <UpdateBanner />
         <Outlet />
       </main>
       <footer className="site-foot">

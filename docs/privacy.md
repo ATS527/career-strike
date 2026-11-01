@@ -27,6 +27,21 @@ cannot make Career Strike fetch anything else), redirects are refused, responses
 20 MB, and each host is contacted at most once per second. If a source asks Career Strike to slow
 down, scheduled checks wait at least as long as asked.
 
+### Updates
+
+Career Strike contacts GitHub about updates only when you ask (`career-strike update`, or
+*Check now* in Settings) or after you turn on weekly checks, which are off by default:
+
+| Destination | What is sent | Why |
+| --- | --- | --- |
+| `api.github.com` | A GET for Career Strike's public release list | Find out whether a newer version exists |
+| `github.com` | A GET for a release package and its checksum (only when you update) | Download the update |
+| `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | The same download, where GitHub redirects it | Download the update |
+
+These requests also carry nothing about you; the `User-Agent` names the Career Strike version.
+Only these hosts can be contacted for updates, over HTTPS, and redirects are followed only between
+them. A package is installed only if it matches its published SHA-256 checksum.
+
 Career Strike never submits an application to a real employer and never sends a message to a
 recruiter. You do that yourself on the employer's site, using the package you reviewed and
 approved. Automated submission exists only for the owned practice endpoint on your own computer
