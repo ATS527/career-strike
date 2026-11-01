@@ -3,11 +3,12 @@ import { api, ApiError, type ApplicationSummary, type JobDetail } from '../api';
 import { FitPanel, RequirementsPanel } from '../components/FitPanel';
 import { DispositionControls, StatusChip } from '../components/jobBits';
 import { EMPLOYMENT_LABEL, formatDate, formatDateTime, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../format';
-import { ExternalLink, Link, navigate } from '../router';
+import { ExternalLink, Link, useNavigateTo } from '../router';
 import { useResource } from '../useResource';
 import { ErrorPanel, Loading } from './states';
 
 export function JobPage({ id }: { id: string }) {
+  const navigate = useNavigateTo();
   const res = useResource<{ job: JobDetail }>(`/api/jobs/${encodeURIComponent(id)}`);
   const [job, setJob] = useState<JobDetail | null>(null);
   const [applicationId, setApplicationId] = useState<string | null>(null);

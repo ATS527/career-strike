@@ -1,58 +1,34 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { RouterProvider } from '@tanstack/react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, ApiError, onConnectionProblem, setCsrfToken } from './api';
-import { Activity } from './pages/Activity';
-import { AddJob } from './pages/AddJob';
-import { Insights } from './pages/Insights';
-import { ApplicationPage } from './pages/ApplicationPage';
-import { Applications } from './pages/Applications';
-import { Compare } from './pages/Compare';
-import { Home } from './pages/Home';
-import { JobPage } from './pages/JobPage';
-import { NotFound } from './pages/NotFound';
-import { Opportunities } from './pages/Opportunities';
-import { Prep } from './pages/Prep';
-import { Profile } from './pages/Profile';
-import { Settings } from './pages/Settings';
-import { Sources } from './pages/Sources';
-import { Link, navigate, usePath } from './router';
-
-type Connection = 'checking' | 'connected' | 'unauthenticated' | 'unavailable';
-
-const NAV = [
-  { href: '/', label: 'Home' },
-  { href: '/opportunities', label: 'Opportunities' },
-  { href: '/applications', label: 'Applications' },
-  { href: '/profile', label: 'Profile' },
-  { href: '/insights', label: 'Insights' },
-  { href: '/activity', label: 'Activity' },
-  { href: '/settings', label: 'Settings' },
-] as const;
-
-function isCurrent(href: string, path: string): boolean {
-  if (href === '/') return path === '/';
-  return path === href || path.startsWith(`${href}/`) || (href === '/opportunities' && path.startsWith('/jobs/'));
-}
-
-const RETRY_MS = 3000;
+import { type Connection, ConnectionContext, type ConnectionState, RETRY_MS } from './connection';
+import { router } from './routes';
 
 export function App() {
+  const queryClient = useQueryClient();
   const [connection, setConnection] = useState<Connection>('checking');
-  // Bumped after reconnecting so pages refetch rather than show data from before the outage.
   const [generation, setGeneration] = useState(0);
-  const path = usePath();
+  const connectionRef = useRef(connection);
+  useEffect(() => {
+    connectionRef.current = connection;
+  }, [connection]);
 
   const checkSession = useCallback(async () => {
     try {
       const session = await api<{ kind: string; csrf?: string }>('/api/session');
       setCsrfToken(session.csrf ?? null);
-      setConnection((prev) => {
-        if (prev === 'unavailable') setGeneration((g) => g + 1);
-        return 'connected';
-      });
+      if (connectionRef.current === 'unavailable') {
+        // Cached data is from before the outage. Drop it *before* the remount so the remounted
+        // pages subscribe to fresh queries (removing it afterwards would orphan their fetches).
+        queryClient.removeQueries();
+        setGeneration((g) => g + 1);
+      }
+      setConnection('connected');
     } catch (err) {
       setConnection(err instanceof ApiError && err.status === 401 ? 'unauthenticated' : 'unavailable');
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     void checkSession();
@@ -65,74 +41,23 @@ export function App() {
     return () => window.clearInterval(timer);
   }, [connection, checkSession]);
 
+  const logout = useCallback(async () => {
+    await api('/api/session/logout', { method: 'POST' }).catch(() => undefined);
+    setCsrfToken(null);
+    queryClient.clear();
+    setConnection('unauthenticated');
+  }, [queryClient]);
+
+  const value = useMemo<ConnectionState>(() => ({ connection, generation, logout }), [connection, generation, logout]);
+
   if (connection === 'checking') return <div className="boot" aria-busy="true" />;
   if (connection === 'unauthenticated') return <SessionRequired />;
 
-  const logout = async (): Promise<void> => {
-    await api('/api/session/logout', { method: 'POST' }).catch(() => undefined);
-    setCsrfToken(null);
-    setConnection('unauthenticated');
-  };
-
   return (
-    <div className="shell">
-      <a className="skip-link" href="#main">
-        Skip to content
-      </a>
-      <header className="masthead">
-        <Link href="/" className="wordmark">
-          Career <span>Strike</span>
-        </Link>
-        <nav aria-label="Primary">
-          <ul>
-            {NAV.map((item) => (
-              <li key={item.href}>
-                <Link href={item.href} aria-current={isCurrent(item.href, path) ? 'page' : undefined}>
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <button type="button" className="quiet" onClick={() => void logout()}>
-          Sign out
-        </button>
-      </header>
-      {connection === 'unavailable' && (
-        <div className="banner banner--attention" role="status">
-          <strong>The Career Strike service is not responding.</strong> Your data is safe on this device. Retrying every{' '}
-          {RETRY_MS / 1000} seconds — or run <code>career-strike start</code>.
-        </div>
-      )}
-      <main id="main" tabIndex={-1} key={generation}>
-        {renderPage(path)}
-      </main>
-      <footer className="site-foot">
-        <p className="eyebrow">Career Strike</p>
-        <p className="muted">Local-first and private by design — your data never leaves this computer.</p>
-      </footer>
-    </div>
+    <ConnectionContext.Provider value={value}>
+      <RouterProvider router={router} />
+    </ConnectionContext.Provider>
   );
-}
-
-function renderPage(path: string) {
-  if (path === '/') return <Home />;
-  if (path === '/settings') return <Settings />;
-  if (path === '/profile') return <Profile />;
-  if (path === '/activity') return <Activity />;
-  if (path === '/insights') return <Insights />;
-  if (path === '/opportunities') return <Opportunities />;
-  if (path === '/opportunities/sources') return <Sources />;
-  if (path === '/opportunities/new') return <AddJob />;
-  if (path === '/opportunities/compare') return <Compare />;
-  if (path === '/applications') return <Applications />;
-  const prep = /^\/applications\/([A-Za-z0-9_-]+)\/prep$/.exec(path);
-  if (prep) return <Prep key={prep[1]} applicationId={prep[1]!} />;
-  const application = /^\/applications\/([A-Za-z0-9_-]+)$/.exec(path);
-  if (application) return <ApplicationPage key={application[1]} id={application[1]!} />;
-  const job = /^\/jobs\/([A-Za-z0-9_-]+)$/.exec(path);
-  if (job) return <JobPage key={job[1]} id={job[1]!} />;
-  return <NotFound onHome={() => navigate('/')} />;
 }
 
 function SessionRequired() {

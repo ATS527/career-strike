@@ -1,28 +1,33 @@
-import { type AnchorHTMLAttributes, type MouseEvent, type ReactNode, useEffect, useSyncExternalStore } from 'react';
+import { useRouter, useRouterState } from '@tanstack/react-router';
+import { type AnchorHTMLAttributes, type MouseEvent, type ReactNode, useCallback, useEffect } from 'react';
 
-// Minimal history router: the dashboard has a handful of top-level pages. Filters live in the
-// query string so views are linkable and survive reloads.
-
-const subscribe = (notify: () => void): (() => void) => {
-  window.addEventListener('popstate', notify);
-  return () => window.removeEventListener('popstate', notify);
-};
+// Navigation helpers over TanStack Router (the route tree lives in routes.tsx). Pages link by
+// plain same-origin href because some targets come from the API (next actions). Filters live in
+// the query string so views are linkable and survive reloads.
 
 export function usePath(): string {
-  return useSyncExternalStore(subscribe, () => window.location.pathname);
+  return useRouterState({ select: (s) => s.location.pathname });
 }
 
+/** The raw query string ("?a=1&b=2" or ""), for reading with URLSearchParams. */
 export function useSearch(): string {
-  return useSyncExternalStore(subscribe, () => window.location.search);
+  return useRouterState({ select: (s) => s.location.searchStr });
 }
 
-export function navigate(to: string, opts: { replace?: boolean } = {}): void {
-  const url = new URL(to, window.location.origin);
-  if (url.origin !== window.location.origin) return;
-  const target = url.pathname + url.search + url.hash;
-  if (opts.replace) window.history.replaceState(null, '', target);
-  else window.history.pushState(null, '', target);
-  window.dispatchEvent(new PopStateEvent('popstate'));
+export type NavigateTo = (to: string, opts?: { replace?: boolean }) => void;
+
+/** Client-side navigation to a same-origin href. Other origins are ignored. */
+export function useNavigateTo(): NavigateTo {
+  const router = useRouter();
+  return useCallback(
+    (to, opts = {}) => {
+      const url = new URL(to, window.location.origin);
+      if (url.origin !== window.location.origin) return;
+      // Replacing the URL (e.g. a filter change) keeps the reader's scroll position.
+      void router.navigate({ href: url.pathname + url.search + url.hash, replace: opts.replace, resetScroll: !opts.replace });
+    },
+    [router],
+  );
 }
 
 /** Scroll to and focus the element named by the URL hash once it exists. */
@@ -38,6 +43,7 @@ export function useHashFocus(ready: boolean): void {
 }
 
 export function Link({ href, onClick, ...rest }: AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) {
+  const navigate = useNavigateTo();
   const handle = (e: MouseEvent<HTMLAnchorElement>): void => {
     onClick?.(e);
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

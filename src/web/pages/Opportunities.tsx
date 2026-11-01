@@ -3,7 +3,7 @@ import { api, type Disposition, type JobList, type JobSummary, type SettingsResp
 import { TierChip } from '../components/FitPanel';
 import { DispositionControls, StatusChip } from '../components/jobBits';
 import { EMPLOYMENT_LABEL, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../format';
-import { Link, navigate, useSearch } from '../router';
+import { Link, useNavigateTo, useSearch } from '../router';
 import { ErrorPanel, Loading } from './states';
 import { useResource } from '../useResource';
 import { COUNTRY_CODES, COUNTRY_REGISTRY } from '../../markets/countries';
@@ -70,6 +70,7 @@ const FILTERS = {
 type FilterKey = keyof typeof FILTERS;
 
 export function Opportunities() {
+  const navigate = useNavigateTo();
   const search = useSearch();
   const settings = useResource<SettingsResponse>('/api/settings');
   const params = new URLSearchParams(search);

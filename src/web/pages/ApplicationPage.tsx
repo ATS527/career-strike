@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type Interview, type PayloadField, type PersonalizationView, type StoredDocument } from '../api';
 import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
-import { ExternalLink, Link, navigate } from '../router';
+import { ExternalLink, Link, useNavigateTo } from '../router';
 import { ErrorPanel, Loading } from './states';
 
 const SOURCE_NOTE: Record<PayloadField['source'], string> = {
@@ -455,6 +455,7 @@ function Actions({
   post: (path: string, body?: unknown) => Promise<{ application: ApplicationView }>;
   run: (label: string, request: () => Promise<{ application: ApplicationView }>) => Promise<void>;
 }) {
+  const navigate = useNavigateTo();
   const [ack, setAck] = useState(false);
   const can = (s: string): boolean => view.allowedTransitions.includes(s as ApplicationView['state']);
   const reject = (): void => {

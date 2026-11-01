@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from 'react';
 import { api, ApiError, type JobDetail, type ValidationIssue } from '../api';
-import { Link, navigate } from '../router';
+import { Link, useNavigateTo } from '../router';
 
 const ARRANGEMENTS = [
   ['unknown', 'Not stated'],
@@ -10,6 +10,7 @@ const ARRANGEMENTS = [
 ] as const;
 
 export function AddJob() {
+  const navigate = useNavigateTo();
   const [form, setForm] = useState({ employer: '', title: '', url: '', location: '', remotePolicy: 'unknown', description: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
