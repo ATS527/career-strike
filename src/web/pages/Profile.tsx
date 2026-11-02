@@ -240,12 +240,14 @@ export function Profile() {
         ['candidate.portfolioUrl', portfolioUrl.trim() || null],
       ];
 
-      for (const [key, value] of updates) {
-        await api(`/api/settings/${encodeURIComponent(key)}`, {
-          method: 'PUT',
-          body: { value },
-        });
-      }
+      await Promise.all(
+        updates.map(([key, value]) =>
+          api(`/api/settings/${encodeURIComponent(key)}`, {
+            method: 'PUT',
+            body: { value },
+          }),
+        ),
+      );
 
       setSaveStatus('All profile changes saved.');
       await load();

@@ -53,12 +53,14 @@ export function DataAndPrivacy() {
 
   const load = useCallback(async () => {
     try {
-      const b = await api<BackupStatus>('/api/data/backups').catch(() => null);
+      const [b, d, diag] = await Promise.all([
+        api<BackupStatus>('/api/data/backups').catch(() => null),
+        api<{ disclosures: DisclosureItem[]; fields: Record<string, string> }>('/api/disclosures').catch(() => null),
+        api<{ checks: DiagnosticCheck[]; allOk: boolean }>('/api/diagnostics').catch(() => null),
+      ]);
       setBackups(b);
-      const d = await api<{ disclosures: DisclosureItem[]; fields: Record<string, string> }>('/api/disclosures').catch(() => null);
       setDisclosures(d?.disclosures ?? null);
       setLabels(d?.fields ?? {});
-      const diag = await api<{ checks: DiagnosticCheck[]; allOk: boolean }>('/api/diagnostics').catch(() => null);
       setDiagnostics(diag);
     } catch {
       // Ignore initial load error

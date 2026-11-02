@@ -192,11 +192,14 @@ export async function latestRelease(opts: ReleaseSourceOptions = {}): Promise<Re
  * archive is the Career Strike version it claims to be. Returns the verified file path.
  */
 export async function downloadRelease(release: Release, dir: string, opts: ReleaseSourceOptions = {}): Promise<{ file: string; sha256: string }> {
-  const sumText = (await readLimited(await get(release.checksumUrl, 'application/octet-stream', opts), 4096)).toString('utf8');
+  const [sumBuffer, body] = await Promise.all([
+    get(release.checksumUrl, 'application/octet-stream', opts).then((res) => readLimited(res, 4096)),
+    get(release.packageUrl, 'application/octet-stream', opts).then((res) => readLimited(res, MAX_PACKAGE_BYTES)),
+  ]);
+  const sumText = sumBuffer.toString('utf8');
   const expected = /^([a-f0-9]{64})\b/i.exec(sumText.trim())?.[1]?.toLowerCase();
   if (!expected) throw new UpdateError('The published checksum could not be read.');
 
-  const body = await readLimited(await get(release.packageUrl, 'application/octet-stream', opts), MAX_PACKAGE_BYTES);
   const actual = createHash('sha256').update(body).digest('hex');
   if (actual !== expected) throw new UpdateError(`The download does not match its published checksum (expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…). Nothing was installed.`);
 

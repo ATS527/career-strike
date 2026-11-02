@@ -223,11 +223,8 @@ export async function deleteAllData(paths: AppPaths, secrets: SecretStore): Prom
       removed.push(name);
     }
   }
-  const secretsRemoved: string[] = [];
-  for (const name of SECRET_NAMES) {
-    await secrets.delete(name);
-    secretsRemoved.push(name);
-  }
+  await Promise.all(SECRET_NAMES.map((name) => secrets.delete(name)));
+  const secretsRemoved: string[] = [...SECRET_NAMES];
   const still = OWNED.filter((n) => fs.existsSync(path.join(paths.home, n)));
   if (still.length > 0) throw new LifecycleError(`Could not remove: ${still.join(', ')}`);
   const leftInPlace = fs.existsSync(paths.home) ? fs.readdirSync(paths.home) : [];

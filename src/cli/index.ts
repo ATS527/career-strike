@@ -195,9 +195,12 @@ program
     const info = readRuntime(paths.runtimeFile);
     if (info && (await probeHealth(info))) {
       const list = await localRequest(info.port, '/api/mcp-clients', { headers: { authorization: `Bearer ${info.token}` } });
-      for (const c of (list.body as { clients: { id: string; name: string }[] }).clients.filter((x) => x.name === assistant)) {
-        await localRequest(info.port, `/api/mcp-clients/${c.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } });
-      }
+      const clientsToRevoke = (list.body as { clients: { id: string; name: string }[] }).clients.filter((x) => x.name === assistant);
+      await Promise.all(
+        clientsToRevoke.map((c) =>
+          localRequest(info.port, `/api/mcp-clients/${c.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } }),
+        ),
+      );
     }
     const gone = await settlesTo(assistant, false);
     console.log(removed === 'removed' ? `Removed Career Strike from ${assistant}.` : `${assistant} did not have Career Strike configured.`);
@@ -217,10 +220,12 @@ program
     const list = await localRequest(info.port, '/api/mcp-clients', { headers: { authorization: `Bearer ${info.token}` } });
     if (list.status !== 200) throw new Error(`Could not list MCP clients (HTTP ${list.status}).`);
     const matches = (list.body as { clients: { id: string; name: string }[] }).clients.filter((item) => item.name === client);
-    for (const item of matches) {
-      const res = await localRequest(info.port, `/api/mcp-clients/${item.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } });
-      if (res.status !== 200) throw new Error(`Could not revoke MCP credentials (HTTP ${res.status}).`);
-    }
+    await Promise.all(
+      matches.map(async (item) => {
+        const res = await localRequest(info.port, `/api/mcp-clients/${item.id}/revoke`, { method: 'POST', headers: { authorization: `Bearer ${info.token}` } });
+        if (res.status !== 200) throw new Error(`Could not revoke MCP credentials (HTTP ${res.status}).`);
+      }),
+    );
     fs.rmSync(tokenFile(paths, client), { force: true });
     console.log(matches.length ? `Revoked ${client}. Remove its Career Strike MCP entry from the client’s configuration.` : `${client} had no active Career Strike credential.`);
   });
@@ -232,8 +237,10 @@ program
   .action(async (opts: { port: number }) => {
     const { startPracticeAts } = await import('../practice/test-ats.js');
     const paths = appPaths();
-    const info = await startDetached(paths, CLI_ENTRY, DEFAULT_PORT);
-    const ats = await startPracticeAts(opts.port);
+    const [info, ats] = await Promise.all([
+      startDetached(paths, CLI_ENTRY, DEFAULT_PORT),
+      startPracticeAts(opts.port),
+    ]);
     const auth = { authorization: `Bearer ${info.token}` };
     const set = await localRequest(info.port, '/api/practice/endpoint', { method: 'POST', body: { origin: ats.origin }, headers: auth });
     if (set.status !== 200) throw new Error(`Could not register the practice endpoint (HTTP ${set.status}).`);
@@ -457,14 +464,16 @@ program
   .action(async () => {
     const paths = appPaths();
     console.log(`Service: ${await stopService(paths)}`);
-    for (const host of HOSTS) {
-      if (!(await hostVersion(host))) continue;
-      if (!(await isRegistered(host))) continue;
-      await unregister(host);
-      const gone = await settlesTo(host, false);
-      console.log(gone ? `Removed Career Strike from ${host}.` : `${host} still lists Career Strike; remove "career-strike" from its MCP settings by hand.`);
-      if (!gone) process.exitCode = 1;
-    }
+    await Promise.all(
+      HOSTS.map(async (host) => {
+        if (!(await hostVersion(host))) return;
+        if (!(await isRegistered(host))) return;
+        await unregister(host);
+        const gone = await settlesTo(host, false);
+        console.log(gone ? `Removed Career Strike from ${host}.` : `${host} still lists Career Strike; remove "career-strike" from its MCP settings by hand.`);
+        if (!gone) process.exitCode = 1;
+      }),
+    );
     fs.rmSync(path.join(paths.home, 'mcp'), { recursive: true, force: true });
     const prefix = globalPrefix();
     if (prefix) {
