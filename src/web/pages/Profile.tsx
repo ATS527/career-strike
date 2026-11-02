@@ -1,12 +1,37 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type FactKind, type LinkedInImportResult, type ProfileEvidence, type ProfileFact, type ProfileReadinessReport, type StoredDocument, type ValidationIssue } from '../api';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  api,
+  ApiError,
+  type FactKind,
+  type LinkedInImportResult,
+  type ProfileEvidence,
+  type ProfileFact,
+  type ProfileReadinessReport,
+  type StoredDocument,
+  type ValidationIssue,
+} from '../api';
 import { formatDate } from '../format';
+import { ExternalLink, Link } from '../router';
 import { uploadDocument } from './ApplicationPage';
+import { CURATED_MARKETS } from './Markets';
 import { ErrorPanel, Loading } from './states';
 
-type FieldSpec = { name: string; label: string; type: 'text' | 'number' | 'select'; required?: boolean; options?: [string, string][]; hint?: string };
+type FieldSpec = {
+  name: string;
+  label: string;
+  type: 'text' | 'number' | 'select';
+  required?: boolean;
+  options?: [string, string][];
+  hint?: string;
+};
 
-const SECTIONS: { kind: FactKind; title: string; intro: string; fields: FieldSpec[]; describe: (v: Record<string, unknown>) => string }[] = [
+const SECTIONS: {
+  kind: FactKind;
+  title: string;
+  intro: string;
+  fields: FieldSpec[];
+  describe: (v: Record<string, unknown>) => string;
+}[] = [
   {
     kind: 'skill',
     title: 'Skills',
@@ -84,25 +109,92 @@ const SECTIONS: { kind: FactKind; title: string; intro: string; fields: FieldSpe
   },
 ];
 
+function getInitials(name: string | null | undefined): string {
+  if (!name || !name.trim()) return 'SC';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
+  return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+}
+
+function validLinkedin(s: string): boolean {
+  try {
+    const u = new URL(s);
+    return (
+      u.protocol === 'https:' &&
+      ['linkedin.com', 'www.linkedin.com'].includes(u.hostname) &&
+      /^\/in\/[^/?#]+\/?$/.test(u.pathname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function Profile() {
   const [facts, setFacts] = useState<ProfileFact[] | null>(null);
   const [evidence, setEvidence] = useState<ProfileEvidence[] | null>(null);
-  const [linkedinUrl, setLinkedinUrl] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [readiness, setReadiness] = useState<ProfileReadinessReport | null>(null);
+  const [savedSettings, setSavedSettings] = useState<Record<string, unknown>>({});
   const [error, setError] = useState(false);
+
+  // Editable candidate fields
+  const [fullName, setFullName] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [summary, setSummary] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+
+  // Preferences
+  const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
+  const [remotePref, setRemotePref] = useState('remote_only');
+  const [targetCountries, setTargetCountries] = useState<string[]>([]);
+  const [authSituation, setAuthSituation] = useState<'unknown' | 'sponsor' | 'existing'>('unknown');
+
+  // Status & saving
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const resumeFileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [profile, settingsRes, readinessRes] = await Promise.all([
+      const [profileRes, settingsRes, readinessRes, docsRes] = await Promise.all([
         api<{ facts: ProfileFact[]; evidence: ProfileEvidence[] }>('/api/profile'),
         api<{ settings: Record<string, unknown> }>('/api/settings').catch(() => null),
         api<{ readiness: ProfileReadinessReport }>('/api/profile/readiness').catch(() => null),
+        api<{ documents: StoredDocument[] }>('/api/documents').catch(() => null),
       ]);
-      setFacts(profile.facts);
-      setEvidence(profile.evidence);
+
+      setFacts(profileRes.facts);
+      setEvidence(profileRes.evidence);
+      if (docsRes?.documents) setDocuments(docsRes.documents);
+
       if (settingsRes?.settings) {
-        setLinkedinUrl((settingsRes.settings['candidate.linkedinUrl'] as string | null) ?? null);
+        const s = settingsRes.settings;
+        setSavedSettings(s);
+        setFullName(typeof s['identity.fullName'] === 'string' ? s['identity.fullName'] : '');
+        setHeadline(typeof s['identity.headline'] === 'string' ? s['identity.headline'] : '');
+        setSummary(typeof s['identity.summary'] === 'string' ? s['identity.summary'] : '');
+        setLinkedinUrl(typeof s['candidate.linkedinUrl'] === 'string' ? s['candidate.linkedinUrl'] : '');
+        setGithubUrl(typeof s['candidate.githubUrl'] === 'string' ? s['candidate.githubUrl'] : '');
+        setPortfolioUrl(typeof s['candidate.portfolioUrl'] === 'string' ? s['candidate.portfolioUrl'] : '');
+
+        if (Array.isArray(s['search.preferredRoles'])) {
+          setPreferredRoles(s['search.preferredRoles'].map(String));
+        }
+        if (typeof s['search.remotePreference'] === 'string') {
+          setRemotePref(s['search.remotePreference']);
+        }
+        if (Array.isArray(s['search.preferredCountries'])) {
+          setTargetCountries(s['search.preferredCountries'].map(String));
+        }
+        const auths = (s['candidate.workAuthorizations'] as Record<string, string> | undefined) ?? {};
+        const values = Object.values(auths);
+        if (values.includes('needs_sponsorship')) setAuthSituation('sponsor');
+        else if (values.includes('authorised')) setAuthSituation('existing');
+        else setAuthSituation('unknown');
       }
+
       if (readinessRes?.readiness) {
         setReadiness(readinessRes.readiness);
       }
@@ -111,158 +203,572 @@ export function Profile() {
       setError(true);
     }
   }, []);
-  useEffect(() => void load(), [load]);
-
-  return (
-    <>
-      <div className="page-head">
-        <p className="eyebrow">Profile</p>
-        <h1>What you bring</h1>
-        <p className="lede">
-          Career Strike compares postings with these facts. They are stored only on this computer and are never sent anywhere
-          without your explicit approval.
-        </p>
-      </div>
-      {error && <ErrorPanel message="Your profile could not be loaded." onRetry={() => void load()} />}
-      {!facts && !error && <Loading label="Loading your profile" />}
-      {readiness && (
-        <section aria-labelledby="readiness-profile-title" className="readiness-banner" style={{ marginBottom: '1.75rem', padding: '1.1rem 1.35rem', background: 'var(--paper-raised)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
-                <span className="badge">
-                  {readiness.title}
-                </span>
-                <span className="muted" style={{ fontSize: '0.85rem' }}>
-                  {readiness.counts.confirmedRoles} role{readiness.counts.confirmedRoles === 1 ? '' : 's'} · {readiness.counts.confirmedSkills} skill{readiness.counts.confirmedSkills === 1 ? '' : 's'}
-                  {readiness.counts.totalUnconfirmed > 0 && ` · ${readiness.counts.totalUnconfirmed} awaiting approval`}
-                </span>
-              </div>
-              <p id="readiness-profile-title" style={{ margin: 0, color: 'var(--ink)' }}>{readiness.summary}</p>
-            </div>
-            {readiness.counts.totalUnconfirmed > 0 && (
-              <span className="badge" style={{ background: 'var(--attention-wash)', color: 'var(--attention)' }}>
-                Action required below
-              </span>
-            )}
-          </div>
-          {readiness.missingRequirements.length > 0 && (
-            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--ink-soft)' }}>
-              <strong>To complete profile:</strong> {readiness.missingRequirements.join(' · ')}
-            </div>
-          )}
-        </section>
-      )}
-      {facts && (
-        <nav aria-label="Profile sections" style={{ marginBottom: '1.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <a href="#linkedin-profile" className="button button--quiet">LinkedIn Profile</a>
-          <a href="#linkedin-import" className="button button--quiet">Import Export</a>
-          <a href="#profile-role" className="button button--quiet">Experience ({facts.filter((f) => f.kind === 'role' && f.approved).length})</a>
-          <a href="#profile-skill" className="button button--quiet">Skills ({facts.filter((f) => f.kind === 'skill' && f.approved).length})</a>
-          <a href="#evidence-title" className="button button--quiet">Projects & Evidence</a>
-          <a href="#documents" className="button button--quiet">Documents</a>
-        </nav>
-      )}
-      {facts && <LinkedInSection currentUrl={linkedinUrl} onChange={() => void load()} />}
-      {facts && <LinkedInImportSection onChange={() => void load()} />}
-      {facts && <SuggestSkills onChange={() => void load()} />}
-      {facts &&
-        SECTIONS.map((section) => (
-          <FactSection key={section.kind} section={section} facts={facts.filter((f) => f.kind === section.kind)} onChange={() => void load()} />
-        ))}
-      {facts && <Documents />}
-      {facts && evidence && <EvidenceSection evidence={evidence} roles={facts.filter((f) => f.kind === 'role')} onChange={() => void load()} />}
-    </>
-  );
-}
-
-function LinkedInSection({ currentUrl, onChange }: { currentUrl: string | null; onChange: () => void }) {
-  const [url, setUrl] = useState(currentUrl ?? '');
-  const [status, setStatus] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    setUrl(currentUrl ?? '');
-  }, [currentUrl]);
+    void load();
+  }, [load]);
 
-  const submit = async (e: FormEvent): Promise<void> => {
-    e.preventDefault();
-    const val = url.trim();
+  const isDirty = useMemo(() => {
+    const s = savedSettings;
+    return (
+      fullName !== (typeof s['identity.fullName'] === 'string' ? s['identity.fullName'] : '') ||
+      headline !== (typeof s['identity.headline'] === 'string' ? s['identity.headline'] : '') ||
+      summary !== (typeof s['identity.summary'] === 'string' ? s['identity.summary'] : '') ||
+      linkedinUrl !== (typeof s['candidate.linkedinUrl'] === 'string' ? s['candidate.linkedinUrl'] : '') ||
+      githubUrl !== (typeof s['candidate.githubUrl'] === 'string' ? s['candidate.githubUrl'] : '') ||
+      portfolioUrl !== (typeof s['candidate.portfolioUrl'] === 'string' ? s['candidate.portfolioUrl'] : '')
+    );
+  }, [fullName, headline, summary, linkedinUrl, githubUrl, portfolioUrl, savedSettings]);
+
+  const saveProfileDraft = async () => {
+    setIsSaving(true);
+    setSaveStatus('Saving profile...');
     try {
-      const res = await api<{ key: string; value: string | null }>('/api/settings/candidate.linkedinUrl', {
-        method: 'PUT',
-        body: { value: val || null },
-      });
-      setUrl(res.value ?? '');
-      setStatus(res.value ? 'Saved your LinkedIn profile address.' : 'Cleared your LinkedIn profile address.');
-      setIsEditing(false);
-      onChange();
+      const updates: [string, unknown][] = [
+        ['identity.fullName', fullName.trim() || null],
+        ['identity.headline', headline.trim() || null],
+        ['identity.summary', summary.trim() || null],
+        ['candidate.linkedinUrl', linkedinUrl.trim() || null],
+        ['candidate.githubUrl', githubUrl.trim() || null],
+        ['candidate.portfolioUrl', portfolioUrl.trim() || null],
+      ];
+
+      for (const [key, value] of updates) {
+        await api(`/api/settings/${encodeURIComponent(key)}`, {
+          method: 'PUT',
+          body: { value },
+        });
+      }
+
+      setSaveStatus('All profile changes saved.');
+      await load();
     } catch (err) {
-      const issues = err instanceof ApiError ? ((err.body as { issues?: ValidationIssue[] } | null)?.issues ?? []) : [];
-      setStatus(issues[0]?.message ?? 'Enter a valid LinkedIn profile address (e.g. linkedin.com/in/your-name).');
+      setSaveStatus(err instanceof ApiError ? 'Could not save some profile fields. Check values and retry.' : 'Save failed.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
+  const updatePreference = async (key: string, value: unknown) => {
+    try {
+      await api(`/api/settings/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        body: { value },
+      });
+      await load();
+    } catch {
+      setSaveStatus('Could not update preference.');
+    }
+  };
+
+  const candidateCountry = typeof savedSettings['candidate.country'] === 'string' ? savedSettings['candidate.country'] : null;
+
+  // Completeness score
+  const completenessScore = useMemo(() => {
+    let count = 0;
+    if (fullName.trim()) count++;
+    if (headline.trim()) count++;
+    if (summary.trim()) count++;
+    if (linkedinUrl.trim() || githubUrl.trim() || portfolioUrl.trim()) count++;
+    if (targetCountries.length > 0) count++;
+    if (facts && facts.some((f) => f.kind === 'role' && f.approved)) count++;
+    if (facts && facts.some((f) => f.kind === 'skill' && f.approved)) count++;
+    if (documents.length > 0) count++;
+    return Math.round((count / 8) * 100);
+  }, [fullName, headline, summary, linkedinUrl, githubUrl, portfolioUrl, targetCountries, facts, documents]);
+
+  const nextActionAdvice = useMemo(() => {
+    if (targetCountries.length === 0) {
+      return {
+        text: 'Start by choosing your international target job markets to align role recommendations.',
+        btnText: 'Explore matching markets ↗',
+        btnHref: '/markets',
+      };
+    }
+    if (!linkedinUrl.trim() && documents.length === 0) {
+      return {
+        text: 'Add your LinkedIn profile link or upload a résumé to ground your candidate evidence.',
+        btnText: 'Upload résumé document ↗',
+        btnHref: '#documents',
+      };
+    }
+    if (facts && facts.some((f) => !f.approved)) {
+      return {
+        text: 'Review and approve your suggested skills and experience below to unlock verified matches.',
+        btnText: 'Review imported facts ↗',
+        btnHref: '#profile-role',
+      };
+    }
+    return {
+      text: 'Your profile is ready. Discover verified opportunities across your target markets.',
+      btnText: 'Explore open opportunities ↗',
+      btnHref: '/opportunities',
+    };
+  }, [targetCountries, linkedinUrl, documents, facts]);
+
   return (
-    <section className="settings-group" aria-labelledby="linkedin-profile-title" id="linkedin-profile">
-      <h2 id="linkedin-profile-title">LinkedIn Profile</h2>
-      <p className="help">
-        Your member profile address (e.g. <code>https://www.linkedin.com/in/your-name</code>). Used to pre-fill LinkedIn questions in job applications, and only shared with AI assistants when you approve a personal-info request.
-      </p>
-      {currentUrl && !isEditing ? (
-        <div className="fact-list">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: 'var(--color-surface, #f9f9f9)', borderRadius: '6px' }}>
-            <span>
-              <a href={currentUrl} target="_blank" rel="noopener noreferrer">
-                {currentUrl}
-              </a>
-            </span>
-            <span style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="quiet" onClick={() => setIsEditing(true)}>
-                Edit
-              </button>
-              <button
-                type="button"
-                className="quiet"
-                onClick={async () => {
-                  await api('/api/settings/candidate.linkedinUrl', { method: 'PUT', body: { value: null } });
-                  setUrl('');
-                  setStatus('Cleared your LinkedIn profile address.');
-                  onChange();
-                }}
-              >
-                Clear
-              </button>
-            </span>
+    <>
+      <div className="page-head" style={{ marginBottom: '1.25rem' }}>
+        <p className="eyebrow">Professional identity</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1>Your career profile</h1>
+            <p className="lede" style={{ maxWidth: '75ch' }}>
+              One verified profile powering job matching, applications and approved AI assistants.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input
+              type="file"
+              ref={resumeFileRef}
+              accept=".pdf,.docx,.txt"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setSaveStatus(await uploadDocument(file, 'resume'));
+                e.target.value = '';
+                void load();
+              }}
+            />
+            <button
+              type="button"
+              className="button button--quiet"
+              onClick={() => resumeFileRef.current?.click()}
+            >
+              ↑ Import resume
+            </button>
+            <button
+              type="button"
+              className="button button--primary"
+              disabled={isSaving}
+              onClick={() => void saveProfileDraft()}
+            >
+              {isSaving ? 'Saving...' : isDirty ? 'Save draft (unsaved)' : 'Save profile'}
+            </button>
           </div>
         </div>
-      ) : (
-        <form onSubmit={(e) => void submit(e)} className="fact-form">
-          <div className="record__part">
-            <label htmlFor="linkedin-url-input">LinkedIn profile address</label>
-            <input
-              id="linkedin-url-input"
-              type="text"
-              placeholder="https://www.linkedin.com/in/your-name"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-          <div className="fact-form__submit" style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="submit">Save</button>
-            {isEditing && (
-              <button type="button" className="quiet" onClick={() => { setIsEditing(false); setUrl(currentUrl ?? ''); }}>
-                Cancel
-              </button>
-            )}
-          </div>
-        </form>
+      </div>
+
+      {saveStatus && (
+        <p role="status" aria-live="polite" data-testid="profile-save-status" className="save-status" style={{ marginBottom: '1rem' }}>
+          {saveStatus}
+        </p>
       )}
-      <p role="status" aria-live="polite" className="save-status">
-        {status}
-      </p>
-    </section>
+
+      {error && <ErrorPanel message="Your profile could not be loaded." onRetry={() => void load()} />}
+      {!facts && !error && <Loading label="Loading your profile workspace" />}
+
+      {facts && (
+        <nav aria-label="Profile workspace quick navigation" style={{ marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <a href="#overview-section" className="button button--quiet">Overview</a>
+          <a href="#links-section" className="button button--quiet">Links</a>
+          <a href="#profile-role" className="button button--quiet">Experience ({facts.filter((f) => f.kind === 'role' && f.approved).length})</a>
+          <a href="#profile-skill" className="button button--quiet">Skills ({facts.filter((f) => f.kind === 'skill' && f.approved).length})</a>
+          <a href="#evidence-title" className="button button--quiet">Projects & Evidence ({evidence?.length ?? 0})</a>
+          <a href="#documents" className="button button--quiet">Documents ({documents.length})</a>
+          <a href="#linkedin-import" className="button button--quiet">Import Export</a>
+        </nav>
+      )}
+
+      {facts && (
+        <div className="candidate-workspace-layout">
+          {/* Main Left Column (2/3) */}
+          <div className="workspace-stack">
+            {/* 1. Professional Overview Card */}
+            <section className="workspace-card" id="overview-section" aria-labelledby="overview-heading">
+              <div className="workspace-card-header">
+                <h2 id="overview-heading">Professional overview</h2>
+                <span className="badge" style={{ background: 'var(--accent-wash)', color: 'var(--accent)' }}>
+                  Single source of truth
+                </span>
+              </div>
+
+              <div className="workspace-hero">
+                <div className="workspace-avatar" aria-label="Candidate avatar">
+                  {getInitials(fullName)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                    {fullName.trim() || 'Your Name'}
+                  </h3>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', color: 'var(--ink-soft)' }}>
+                    {headline.trim() || 'Add a professional headline below'}
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span className="badge">
+                      📍 {candidateCountry ? `Country: ${candidateCountry}` : 'Current country not set'}
+                    </span>
+                    <span className="badge" style={{ background: 'var(--ok-wash)', color: 'var(--ok)' }}>
+                      Open to relocation
+                    </span>
+                    <span className="badge">
+                      {remotePref === 'remote_only' ? 'Remote only' : remotePref === 'hybrid_ok' ? 'Remote or hybrid' : 'On-site or hybrid'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--rule)', margin: '1.25rem 0' }} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="record__part">
+                  <label htmlFor="candidate-fullname">Full name</label>
+                  <input
+                    id="candidate-fullname"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Sample Candidate"
+                    autoComplete="name"
+                  />
+                </div>
+                <div className="record__part">
+                  <label htmlFor="candidate-headline">Professional headline</label>
+                  <input
+                    id="candidate-headline"
+                    type="text"
+                    value={headline}
+                    onChange={(e) => setHeadline(e.target.value)}
+                    placeholder="e.g. Software Engineer · Mobile & Platform Systems"
+                  />
+                </div>
+              </div>
+
+              <div className="record__part">
+                <label htmlFor="candidate-summary">About you</label>
+                <textarea
+                  id="candidate-summary"
+                  rows={4}
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  placeholder="Summarize your engineering background, key systems delivered, and what you are looking for next."
+                />
+                <span className="muted field-note">
+                  Only confirmed information is shared with employers or approved AI assistants.
+                </span>
+              </div>
+            </section>
+
+            {/* 2. Professional Links Card */}
+            <section className="workspace-card" id="links-section" aria-labelledby="links-heading">
+              <div className="workspace-card-header">
+                <div>
+                  <h2 id="links-heading">Professional links</h2>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                    Give recruiters trusted places to learn more about your work.
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="record__part">
+                  <label htmlFor="candidate-linkedin">LinkedIn profile address</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <input
+                      id="candidate-linkedin"
+                      type="url"
+                      style={{ flex: '1 1 260px' }}
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      placeholder="https://www.linkedin.com/in/your-profile"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      className="button button--quiet"
+                      onClick={() => {
+                        if (!linkedinUrl.trim()) setSaveStatus('Enter a LinkedIn URL first.');
+                        else if (validLinkedin(linkedinUrl.trim())) setSaveStatus('✓ Valid HTTPS LinkedIn profile URL.');
+                        else setSaveStatus('Use an HTTPS linkedin.com/in/your-profile URL.');
+                      }}
+                    >
+                      Verify URL
+                    </button>
+                    {linkedinUrl.trim() && validLinkedin(linkedinUrl.trim()) && (
+                      <ExternalLink href={linkedinUrl.trim()} className="button button--quiet">
+                        Open profile ↗
+                      </ExternalLink>
+                    )}
+                  </div>
+                  <span className="muted field-note">
+                    URL validation only; importing profile history requires an authorized or candidate-provided export below.
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                  <div className="record__part">
+                    <label htmlFor="candidate-github">GitHub profile</label>
+                    <input
+                      id="candidate-github"
+                      type="url"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      placeholder="https://github.com/username"
+                    />
+                  </div>
+                  <div className="record__part">
+                    <label htmlFor="candidate-portfolio">Portfolio or personal website</label>
+                    <input
+                      id="candidate-portfolio"
+                      type="url"
+                      value={portfolioUrl}
+                      onChange={(e) => setPortfolioUrl(e.target.value)}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 3. Experience Section */}
+            {SECTIONS.filter((s) => s.kind === 'role').map((section) => (
+              <FactSection
+                key={section.kind}
+                section={section}
+                facts={facts.filter((f) => f.kind === section.kind)}
+                onChange={() => void load()}
+              />
+            ))}
+
+            {/* 4. Projects & Evidence Section */}
+            {evidence && (
+              <EvidenceSection
+                evidence={evidence}
+                roles={facts.filter((f) => f.kind === 'role')}
+                onChange={() => void load()}
+              />
+            )}
+
+            {/* 5. Skills Section */}
+            {SECTIONS.filter((s) => s.kind === 'skill').map((section) => (
+              <FactSection
+                key={section.kind}
+                section={section}
+                facts={facts.filter((f) => f.kind === section.kind)}
+                onChange={() => void load()}
+              />
+            ))}
+            <SuggestSkills onChange={() => void load()} />
+
+            {/* 6. Education, Certifications & Languages */}
+            {SECTIONS.filter((s) => s.kind !== 'role' && s.kind !== 'skill').map((section) => (
+              <FactSection
+                key={section.kind}
+                section={section}
+                facts={facts.filter((f) => f.kind === section.kind)}
+                onChange={() => void load()}
+              />
+            ))}
+
+            {/* 7. Supporting Documents */}
+            <Documents />
+
+            {/* 8. LinkedIn Export Import */}
+            <LinkedInImportSection onChange={() => void load()} />
+          </div>
+
+          {/* Right Sidebar Column (1/3) */}
+          <div className="workspace-stack">
+            {/* 1. Readiness Meter Card */}
+            <section className="workspace-card" aria-labelledby="readiness-meter-heading">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 id="readiness-meter-heading" style={{ margin: 0, fontSize: '1.15rem' }}>
+                    Profile readiness
+                  </h2>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
+                    Based on verified facts and details.
+                  </p>
+                </div>
+                <strong style={{ fontSize: '1.6rem', color: 'var(--accent)', letterSpacing: '-0.02em' }}>
+                  {completenessScore}%
+                </strong>
+              </div>
+
+              <div
+                className="meter-bar"
+                role="progressbar"
+                aria-label="Profile readiness"
+                aria-valuenow={completenessScore}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              >
+                <div className="meter-bar-fill" style={{ width: `${completenessScore}%` }} />
+              </div>
+
+              <div>
+                <div className="checklist-line">
+                  <span className={fullName.trim() && headline.trim() ? 'checklist-ok' : 'checklist-warn'}>
+                    {fullName.trim() && headline.trim() ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {fullName.trim() && headline.trim() ? 'Core identity & headline added' : 'Add full name and professional headline'}
+                  </span>
+                </div>
+                <div className="checklist-line">
+                  <span className={targetCountries.length > 0 ? 'checklist-ok' : 'checklist-warn'}>
+                    {targetCountries.length > 0 ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {targetCountries.length > 0
+                      ? `${targetCountries.length} target country market(s) selected`
+                      : 'Choose international target markets'}
+                  </span>
+                </div>
+                <div className="checklist-line">
+                  <span className={documents.length > 0 ? 'checklist-ok' : 'checklist-warn'}>
+                    {documents.length > 0 ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {documents.length > 0 ? `${documents.length} document(s) in private vault` : 'Add a résumé for fact extraction'}
+                  </span>
+                </div>
+                <div className="checklist-line">
+                  <span className={linkedinUrl.trim() || githubUrl.trim() ? 'checklist-ok' : 'checklist-warn'}>
+                    {linkedinUrl.trim() || githubUrl.trim() ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {linkedinUrl.trim() || githubUrl.trim() ? 'Professional links added' : 'Add LinkedIn or GitHub profile link'}
+                  </span>
+                </div>
+                <div className="checklist-line">
+                  <span className={facts.some((f) => f.kind === 'role' && f.approved) ? 'checklist-ok' : 'checklist-warn'}>
+                    {facts.some((f) => f.kind === 'role' && f.approved) ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {facts.some((f) => f.kind === 'role' && f.approved) ? 'Confirmed role history' : 'Add and confirm past roles'}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            {/* 2. Your Next Best Action Card */}
+            <div className="workspace-focus-card">
+              <h3>Your next best action</h3>
+              <p>{nextActionAdvice.text}</p>
+              {nextActionAdvice.btnHref.startsWith('#') ? (
+                <a href={nextActionAdvice.btnHref} className="button">
+                  {nextActionAdvice.btnText}
+                </a>
+              ) : (
+                <Link href={nextActionAdvice.btnHref} className="button">
+                  {nextActionAdvice.btnText}
+                </Link>
+              )}
+            </div>
+
+            {/* 3. Career Preferences Card */}
+            <section className="workspace-card" aria-labelledby="preferences-card-heading">
+              <div className="workspace-card-header">
+                <h2 id="preferences-card-heading">Career preferences</h2>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                <div className="record__part">
+                  <label htmlFor="pref-roles-select">Target role</label>
+                  <select
+                    id="pref-roles-select"
+                    value={preferredRoles[0] ?? ''}
+                    onChange={(e) => {
+                      const val = e.target.value ? [e.target.value] : [];
+                      setPreferredRoles(val);
+                      void updatePreference('search.preferredRoles', val);
+                    }}
+                  >
+                    <option value="">Choose primary target role...</option>
+                    <option value="Software Engineer">Software Engineer</option>
+                    <option value="Platform / Backend Engineer">Platform / Backend Engineer</option>
+                    <option value="Mobile / iOS Engineer">Mobile / iOS Engineer</option>
+                    <option value="AI / ML Engineer">AI / ML Engineer</option>
+                    <option value="Technical Product Manager">Technical Product Manager</option>
+                  </select>
+                </div>
+
+                <div className="record__part">
+                  <label htmlFor="pref-workmode-select">Working arrangement</label>
+                  <select
+                    id="pref-workmode-select"
+                    value={remotePref}
+                    onChange={(e) => {
+                      setRemotePref(e.target.value);
+                      void updatePreference('search.remotePreference', e.target.value);
+                    }}
+                  >
+                    <option value="remote_only">Remote only</option>
+                    <option value="hybrid_ok">Remote or hybrid</option>
+                    <option value="onsite_ok">Local / on-site or hybrid</option>
+                  </select>
+                </div>
+
+                <div className="record__part">
+                  <label htmlFor="pref-auth-select">Work authorization situation</label>
+                  <select
+                    id="pref-auth-select"
+                    value={authSituation}
+                    onChange={(e) => {
+                      const val = e.target.value as typeof authSituation;
+                      setAuthSituation(val);
+                      const rec: Record<string, string> = {};
+                      for (const c of targetCountries) {
+                        rec[c] = val === 'sponsor' ? 'needs_sponsorship' : val === 'existing' ? 'authorised' : 'unknown';
+                      }
+                      void updatePreference('candidate.workAuthorizations', rec);
+                    }}
+                  >
+                    <option value="unknown">Not assessed yet</option>
+                    <option value="sponsor">I may need employer sponsorship</option>
+                    <option value="existing">I have authorization in target markets</option>
+                  </select>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
+                    Target countries
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
+                    {targetCountries.length === 0 ? (
+                      <span className="badge">No markets selected yet</span>
+                    ) : (
+                      targetCountries.map((c) => {
+                        const market = CURATED_MARKETS.find((m) => m.code === c);
+                        return (
+                          <span key={c} className="badge" style={{ background: 'var(--accent-wash)', color: 'var(--accent)' }}>
+                            {market ? `${market.flag} ${market.name}` : c}
+                          </span>
+                        );
+                      })
+                    )}
+                  </div>
+                  <Link href="/markets" className="button button--quiet" style={{ width: '100%', textAlign: 'center' }}>
+                    Explore markets →
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            {/* 4. Privacy Notice Card */}
+            <div
+              style={{
+                fontSize: '0.82rem',
+                color: 'var(--ink-soft)',
+                background: 'var(--paper-raised)',
+                border: '1px solid var(--rule)',
+                borderRadius: 'var(--radius)',
+                padding: '0.9rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <strong style={{ color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>
+                Privacy first.
+              </strong>
+              In Career Strike, each AI connection receives only permitted profile fields. A resume import never silently
+              overwrites verified information.
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -352,31 +858,42 @@ function EvidenceSection({ evidence, roles, onChange }: { evidence: ProfileEvide
   const [url, setUrl] = useState('');
   const [roleFactId, setRoleFactId] = useState('');
   const [status, setStatus] = useState<string | null>(null);
+
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
-    const value = kind === 'project'
-      ? { name, summary: detail, skills: skills.split(',').map((s) => s.trim()).filter(Boolean), url: url || null }
-      : kind === 'achievement'
-        ? { text: detail, roleFactId: roleFactId || null }
-        : kind === 'portfolio'
-          ? { label: name, url }
-          : { roleFactId, summary: detail };
+    const value =
+      kind === 'project'
+        ? { name, summary: detail, skills: skills.split(',').map((s) => s.trim()).filter(Boolean), url: url || null }
+        : kind === 'achievement'
+          ? { text: detail, roleFactId: roleFactId || null }
+          : kind === 'portfolio'
+            ? { label: name, url }
+            : { roleFactId, summary: detail };
     try {
       await api('/api/profile/evidence', { method: 'POST', body: { kind, value } });
-      setName(''); setDetail(''); setSkills(''); setUrl(''); setRoleFactId('');
+      setName('');
+      setDetail('');
+      setSkills('');
+      setUrl('');
+      setRoleFactId('');
       setStatus('Saved as confirmed evidence.');
       onChange();
     } catch (err) {
-      const message = err instanceof ApiError ? ((err.body as { issues?: ValidationIssue[] } | null)?.issues?.[0]?.message ?? 'Check the fields and try again.') : 'Could not save evidence.';
+      const message =
+        err instanceof ApiError
+          ? ((err.body as { issues?: ValidationIssue[] } | null)?.issues?.[0]?.message ?? 'Check the fields and try again.')
+          : 'Could not save evidence.';
       setStatus(message);
     }
   };
+
   const describe = (item: ProfileEvidence): string => {
     if (item.kind === 'project') return `${String(item.value.name)} — ${String(item.value.summary)}`;
     if (item.kind === 'achievement') return String(item.value.text);
     if (item.kind === 'portfolio') return `${String(item.value.label)} — ${String(item.value.url)}`;
     return String(item.value.summary);
   };
+
   return (
     <section className="settings-group" aria-labelledby="evidence-title">
       <h2 id="evidence-title">Projects and evidence</h2>
@@ -416,15 +933,59 @@ function EvidenceSection({ evidence, roles, onChange }: { evidence: ProfileEvide
         </ul>
       )}
       <form className="fact-form" onSubmit={(event) => void submit(event)}>
-        <div className="record__part"><label htmlFor="evidence-kind">Type</label><select id="evidence-kind" value={kind} onChange={(event) => setKind(event.target.value as ProfileEvidence['kind'])}><option value="project">Project</option><option value="achievement">Achievement</option><option value="portfolio">Portfolio or GitHub link</option><option value="employment_detail">Employment detail</option></select></div>
-        {(kind === 'project' || kind === 'portfolio') && <div className="record__part"><label htmlFor="evidence-name">{kind === 'project' ? 'Project name' : 'Label'}</label><input id="evidence-name" value={name} onChange={(event) => setName(event.target.value)} /></div>}
-        {(kind === 'project' || kind === 'achievement' || kind === 'employment_detail') && <div className="record__part"><label htmlFor="evidence-detail">{kind === 'achievement' ? 'Verified achievement' : 'Description'}</label><textarea id="evidence-detail" rows={3} value={detail} onChange={(event) => setDetail(event.target.value)} /></div>}
-        {kind === 'project' && <div className="record__part"><label htmlFor="evidence-skills">Skills used</label><input id="evidence-skills" value={skills} onChange={(event) => setSkills(event.target.value)} placeholder="TypeScript, Kubernetes" /></div>}
-        {(kind === 'project' || kind === 'portfolio') && <div className="record__part"><label htmlFor="evidence-url">Link {kind === 'project' ? '(optional)' : ''}</label><input id="evidence-url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://…" /></div>}
-        {(kind === 'achievement' || kind === 'employment_detail') && <div className="record__part"><label htmlFor="evidence-role">Related role {kind === 'achievement' ? '(optional)' : ''}</label><select id="evidence-role" value={roleFactId} onChange={(event) => setRoleFactId(event.target.value)}><option value="">—</option>{roles.map((role) => <option key={role.id} value={role.id}>{String(role.value.title)}</option>)}</select></div>}
-        <div className="fact-form__submit"><button type="submit">Add confirmed evidence</button></div>
+        <div className="record__part">
+          <label htmlFor="evidence-kind">Type</label>
+          <select id="evidence-kind" value={kind} onChange={(event) => setKind(event.target.value as ProfileEvidence['kind'])}>
+            <option value="project">Project</option>
+            <option value="achievement">Achievement</option>
+            <option value="portfolio">Portfolio or GitHub link</option>
+            <option value="employment_detail">Employment detail</option>
+          </select>
+        </div>
+        {(kind === 'project' || kind === 'portfolio') && (
+          <div className="record__part">
+            <label htmlFor="evidence-name">{kind === 'project' ? 'Project name' : 'Label'}</label>
+            <input id="evidence-name" value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+        )}
+        {(kind === 'project' || kind === 'achievement' || kind === 'employment_detail') && (
+          <div className="record__part">
+            <label htmlFor="evidence-detail">{kind === 'achievement' ? 'Verified achievement' : 'Description'}</label>
+            <textarea id="evidence-detail" rows={3} value={detail} onChange={(event) => setDetail(event.target.value)} />
+          </div>
+        )}
+        {kind === 'project' && (
+          <div className="record__part">
+            <label htmlFor="evidence-skills">Skills used</label>
+            <input id="evidence-skills" value={skills} onChange={(event) => setSkills(event.target.value)} placeholder="TypeScript, Kubernetes" />
+          </div>
+        )}
+        {(kind === 'project' || kind === 'portfolio') && (
+          <div className="record__part">
+            <label htmlFor="evidence-url">Link {kind === 'project' ? '(optional)' : ''}</label>
+            <input id="evidence-url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://…" />
+          </div>
+        )}
+        {(kind === 'achievement' || kind === 'employment_detail') && (
+          <div className="record__part">
+            <label htmlFor="evidence-role">Related role {kind === 'achievement' ? '(optional)' : ''}</label>
+            <select id="evidence-role" value={roleFactId} onChange={(event) => setRoleFactId(event.target.value)}>
+              <option value="">—</option>
+              {roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {String(role.value.title)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="fact-form__submit">
+          <button type="submit">Add confirmed evidence</button>
+        </div>
       </form>
-      <p role="status" aria-live="polite" className="save-status">{status}</p>
+      <p role="status" aria-live="polite" className="save-status">
+        {status}
+      </p>
     </section>
   );
 }
@@ -568,10 +1129,10 @@ function FactSection({ section, facts, onChange }: { section: (typeof SECTIONS)[
   );
 }
 
-/** Find known skills in pasted résumé text. The text itself is not kept. */
 function SuggestSkills({ onChange }: { onChange: () => void }) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<string | null>(null);
+
   const submit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     if (!text.trim()) {
@@ -591,6 +1152,7 @@ function SuggestSkills({ onChange }: { onChange: () => void }) {
       setStatus('Could not read the text. Check that the service is running.');
     }
   };
+
   return (
     <section className="settings-group" aria-labelledby="suggest-title">
       <h2 id="suggest-title">Suggest skills from your résumé</h2>
@@ -618,10 +1180,14 @@ function Documents() {
   const [docs, setDocs] = useState<StoredDocument[] | null>(null);
   const [kind, setKind] = useState<'resume' | 'cover_letter' | 'other'>('resume');
   const [status, setStatus] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     setDocs((await api<{ documents: StoredDocument[] }>('/api/documents').catch(() => ({ documents: [] }))).documents);
   }, []);
-  useEffect(() => void load(), [load]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <section className="settings-group" aria-labelledby="documents-title" id="documents">

@@ -2991,3 +2991,139 @@ input[type='datetime-local'] {
     text-decoration-thickness: 2px;
   }
 }
+
+/* ---- candidate workspace & global career explorer ---- */
+
+.candidate-workspace-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(290px, 0.95fr);
+  gap: 1.35rem;
+  align-items: start;
+}
+
+@media (max-width: 1160px) {
+  .candidate-workspace-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.workspace-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.workspace-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: 1.35rem;
+}
+
+.workspace-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.15rem;
+}
+
+.workspace-card-header h2 {
+  margin: 0;
+  font-size: 1.18rem;
+  letter-spacing: -0.01em;
+}
+
+.workspace-hero {
+  display: flex;
+  gap: 1.15rem;
+  align-items: center;
+}
+
+.workspace-avatar {
+  width: 67px;
+  height: 67px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-wash), var(--paper-sunk));
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 1px solid var(--rule);
+}
+
+.workspace-focus-card {
+  background: linear-gradient(115deg, #163646, #204c5c);
+  color: #f6f9fc;
+  border-radius: var(--radius-lg);
+  padding: 1.35rem;
+  box-shadow: var(--shadow-2);
+}
+
+.workspace-focus-card h3 {
+  color: #ffffff;
+  margin: 0 0 0.45rem;
+  font-size: 1.05rem;
+}
+
+.workspace-focus-card p {
+  color: #d1e5ec;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
+
+.workspace-focus-card .button {
+  background: #f6f9fc;
+  color: #163646;
+  border: 0;
+  font-weight: 600;
+}
+
+.workspace-focus-card .button:hover {
+  background: #ffffff;
+  color: #0d232e;
+}
+
+.meter-bar {
+  background: var(--paper-sunk);
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.75rem 0 1rem;
+  border: 1px solid var(--rule);
+}
+
+.meter-bar-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--t-med) var(--ease);
+}
+
+.checklist-line {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  font-size: 0.88rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.checklist-line:last-child {
+  border-bottom: 0;
+}
+
+.checklist-ok {
+  color: var(--ok);
+  font-weight: 700;
+}
+
+.checklist-warn {
+  color: var(--attention);
+  font-weight: 700;
+}
+

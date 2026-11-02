@@ -9,6 +9,7 @@ import { Compare } from './pages/Compare';
 import { Home } from './pages/Home';
 import { Insights } from './pages/Insights';
 import { JobPage } from './pages/JobPage';
+import { Markets } from './pages/Markets';
 import { NotFound } from './pages/NotFound';
 import { Opportunities } from './pages/Opportunities';
 import { Prep } from './pages/Prep';
@@ -62,6 +63,7 @@ const routeTree = rootRoute.addChildren([
   page('/', Home),
   page('/settings', Settings),
   page('/profile', Profile),
+  page('/markets', Markets),
   page('/activity', Activity),
   page('/insights', Insights),
   page('/opportunities', Opportunities),

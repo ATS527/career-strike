@@ -6,6 +6,7 @@ import { Link, usePath } from './router';
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/opportunities', label: 'Opportunities' },
+  { href: '/markets', label: 'Markets' },
   { href: '/resume', label: 'Resume Studio' },
   { href: '/applications', label: 'Applications' },
   { href: '/profile', label: 'Profile' },
