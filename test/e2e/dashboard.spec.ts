@@ -146,6 +146,7 @@ test.describe('settings', () => {
       'search.remotePreference': 'hybrid_ok',
       'search.employmentTypes': ['full_time', 'contract'],
       'candidate.country': 'IN',
+      'candidate.linkedinUrl': null,
       'search.eligibleCountries': ['IN', 'AE'],
       'candidate.workAuthorizations': { IN: 'authorised', DE: 'needs_sponsorship' },
       'candidate.joiningAvailability': 'immediate',

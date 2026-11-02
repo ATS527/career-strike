@@ -281,6 +281,39 @@ export interface PostingRequirements {
 
 export type FactKind = 'skill' | 'role' | 'education' | 'certification' | 'language';
 
+export type ProfileReadinessState =
+  | 'PROFILE_MISSING_INFORMATION'
+  | 'PROFILE_EXTRACTED_UNCONFIRMED'
+  | 'PROFILE_READY_FOR_MATCHING'
+  | 'APPLICATION_INFORMATION_INCOMPLETE'
+  | 'PROFILE_READY_FOR_APPLICATION_PREPARATION';
+
+export interface ProfileReadinessCounts {
+  confirmedRoles: number;
+  unconfirmedRoles: number;
+  confirmedSkills: number;
+  unconfirmedSkills: number;
+  confirmedEducation: number;
+  confirmedCertifications: number;
+  confirmedLanguages: number;
+  confirmedEvidence: number;
+  unconfirmedEvidence: number;
+  totalUnconfirmed: number;
+}
+
+export interface ProfileReadinessReport {
+  state: ProfileReadinessState;
+  title: string;
+  summary: string;
+  actionLabel: string;
+  actionHref: string;
+  counts: ProfileReadinessCounts;
+  hasContactDetails: boolean;
+  hasLinkedInUrl: boolean;
+  missingRequirements: string[];
+  recommendations: string[];
+}
+
 export interface ProfileFact {
   id: string;
   kind: FactKind;

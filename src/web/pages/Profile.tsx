@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { api, ApiError, type FactKind, type LinkedInImportResult, type ProfileEvidence, type ProfileFact, type StoredDocument, type ValidationIssue } from '../api';
+import { api, ApiError, type FactKind, type LinkedInImportResult, type ProfileEvidence, type ProfileFact, type ProfileReadinessReport, type StoredDocument, type ValidationIssue } from '../api';
 import { formatDate } from '../format';
 import { uploadDocument } from './ApplicationPage';
 import { ErrorPanel, Loading } from './states';
@@ -88,18 +88,23 @@ export function Profile() {
   const [facts, setFacts] = useState<ProfileFact[] | null>(null);
   const [evidence, setEvidence] = useState<ProfileEvidence[] | null>(null);
   const [linkedinUrl, setLinkedinUrl] = useState<string | null>(null);
+  const [readiness, setReadiness] = useState<ProfileReadinessReport | null>(null);
   const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [profile, settingsRes] = await Promise.all([
+      const [profile, settingsRes, readinessRes] = await Promise.all([
         api<{ facts: ProfileFact[]; evidence: ProfileEvidence[] }>('/api/profile'),
         api<{ settings: Record<string, unknown> }>('/api/settings').catch(() => null),
+        api<{ readiness: ProfileReadinessReport }>('/api/profile/readiness').catch(() => null),
       ]);
       setFacts(profile.facts);
       setEvidence(profile.evidence);
       if (settingsRes?.settings) {
         setLinkedinUrl((settingsRes.settings['candidate.linkedinUrl'] as string | null) ?? null);
+      }
+      if (readinessRes?.readiness) {
+        setReadiness(readinessRes.readiness);
       }
       setError(false);
     } catch {
@@ -120,6 +125,44 @@ export function Profile() {
       </div>
       {error && <ErrorPanel message="Your profile could not be loaded." onRetry={() => void load()} />}
       {!facts && !error && <Loading label="Loading your profile" />}
+      {readiness && (
+        <section aria-labelledby="readiness-profile-title" className="readiness-banner" style={{ marginBottom: '1.75rem', padding: '1.1rem 1.35rem', background: 'var(--paper-raised)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                <span className="badge">
+                  {readiness.title}
+                </span>
+                <span className="muted" style={{ fontSize: '0.85rem' }}>
+                  {readiness.counts.confirmedRoles} role{readiness.counts.confirmedRoles === 1 ? '' : 's'} · {readiness.counts.confirmedSkills} skill{readiness.counts.confirmedSkills === 1 ? '' : 's'}
+                  {readiness.counts.totalUnconfirmed > 0 && ` · ${readiness.counts.totalUnconfirmed} awaiting approval`}
+                </span>
+              </div>
+              <p id="readiness-profile-title" style={{ margin: 0, color: 'var(--ink)' }}>{readiness.summary}</p>
+            </div>
+            {readiness.counts.totalUnconfirmed > 0 && (
+              <span className="badge" style={{ background: 'var(--attention-wash)', color: 'var(--attention)' }}>
+                Action required below
+              </span>
+            )}
+          </div>
+          {readiness.missingRequirements.length > 0 && (
+            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--ink-soft)' }}>
+              <strong>To complete profile:</strong> {readiness.missingRequirements.join(' · ')}
+            </div>
+          )}
+        </section>
+      )}
+      {facts && (
+        <nav aria-label="Profile sections" style={{ marginBottom: '1.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <a href="#linkedin-profile" className="button button--quiet">LinkedIn Profile</a>
+          <a href="#linkedin-import" className="button button--quiet">Import Export</a>
+          <a href="#profile-role" className="button button--quiet">Experience ({facts.filter((f) => f.kind === 'role' && f.approved).length})</a>
+          <a href="#profile-skill" className="button button--quiet">Skills ({facts.filter((f) => f.kind === 'skill' && f.approved).length})</a>
+          <a href="#evidence-title" className="button button--quiet">Projects & Evidence</a>
+          <a href="#documents" className="button button--quiet">Documents</a>
+        </nav>
+      )}
       {facts && <LinkedInSection currentUrl={linkedinUrl} onChange={() => void load()} />}
       {facts && <LinkedInImportSection onChange={() => void load()} />}
       {facts && <SuggestSkills onChange={() => void load()} />}

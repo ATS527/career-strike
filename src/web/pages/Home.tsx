@@ -1,4 +1,4 @@
-import type { Overview } from '../api';
+import type { Overview, ProfileReadinessReport } from '../api';
 import { ago } from '../format';
 import { Link } from '../router';
 import { useResource } from '../useResource';
@@ -9,6 +9,7 @@ const timeFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 
 export function Home() {
   const overview = useResource<Overview>('/api/overview');
+  const readiness = useResource<{ readiness: ProfileReadinessReport }>('/api/profile/readiness');
 
   return (
     <>
@@ -19,7 +20,30 @@ export function Home() {
       {overview.state === 'loading' && <Loading label="Loading your overview" />}
       {overview.state === 'error' && <ErrorPanel message={overview.message} onRetry={overview.retry} />}
       {overview.state === 'ready' && (
-        <div className="home-grid">
+        <>
+          {readiness.state === 'ready' && (
+            <section aria-labelledby="readiness-home-title" className="readiness-banner" style={{ marginBottom: '1.75rem', padding: '1.1rem 1.35rem', background: 'var(--paper-raised)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.35rem' }}>
+                    <span className="badge">
+                      {readiness.data.readiness.title}
+                    </span>
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>
+                      {readiness.data.readiness.counts.confirmedRoles} confirmed role{readiness.data.readiness.counts.confirmedRoles === 1 ? '' : 's'} · {readiness.data.readiness.counts.confirmedSkills} confirmed skill{readiness.data.readiness.counts.confirmedSkills === 1 ? '' : 's'}
+                      {readiness.data.readiness.counts.totalUnconfirmed > 0 && ` · ${readiness.data.readiness.counts.totalUnconfirmed} unconfirmed`}
+                    </span>
+                  </div>
+                  <p id="readiness-home-title" style={{ margin: 0, color: 'var(--ink)' }}>{readiness.data.readiness.summary}</p>
+                </div>
+                <Link href={readiness.data.readiness.actionHref} className="button button--secondary">
+                  {readiness.data.readiness.actionLabel}
+                </Link>
+              </div>
+            </section>
+          )}
+
+          <div className="home-grid">
           <section aria-labelledby="nba-title" className="ledger">
             <h2 id="nba-title">Next best actions</h2>
             {overview.data.nextActions.length === 0 ? (
@@ -151,6 +175,7 @@ export function Home() {
             </dl>
           </aside>
         </div>
+        </>
       )}
     </>
   );

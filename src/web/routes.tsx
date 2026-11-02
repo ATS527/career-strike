@@ -13,6 +13,7 @@ import { NotFound } from './pages/NotFound';
 import { Opportunities } from './pages/Opportunities';
 import { Prep } from './pages/Prep';
 import { Profile } from './pages/Profile';
+import { ResumeStudio } from './pages/ResumeStudio';
 import { Settings } from './pages/Settings';
 import { Sources } from './pages/Sources';
 
@@ -67,6 +68,7 @@ const routeTree = rootRoute.addChildren([
   page('/opportunities/sources', Sources),
   page('/opportunities/new', AddJob),
   page('/opportunities/compare', Compare),
+  page('/resume', ResumeStudio),
   page('/applications', Applications),
   applicationRoute,
   prepRoute,

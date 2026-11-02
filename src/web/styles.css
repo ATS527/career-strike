@@ -7,7 +7,7 @@
   --paper-sunk: #ede5d6;
   --ink: #1d1b16;
   --ink-soft: #4b463c;
-  --ink-faint: #6b6456;
+  --ink-faint: #595245;
   --rule: #d6ccb8;
   --rule-strong: #b9ad95;
   --accent: #0f5c56;
@@ -51,7 +51,7 @@
     --paper-sunk: #11100c;
     --ink: #ece6d8;
     --ink-soft: #c9c1b0;
-    --ink-faint: #a39b8a;
+    --ink-faint: #b5ada0;
     --rule: #37332a;
     --rule-strong: #4f493c;
     --accent: #5fb8ad;
@@ -1096,6 +1096,30 @@ a.button[aria-disabled='true'] {
   color: var(--ink-faint);
   border-color: var(--rule-strong);
   box-shadow: none;
+}
+
+.choice-group {
+  display: inline-flex;
+  gap: 0.35rem;
+  background: var(--paper-sunk);
+  padding: 0.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+}
+
+.choice-group button {
+  min-height: 38px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+.readiness-banner {
+  box-shadow: var(--shadow-1);
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.readiness-banner:hover {
+  border-color: var(--rule-strong);
 }
 
 .chip {
