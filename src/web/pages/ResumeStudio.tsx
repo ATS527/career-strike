@@ -252,7 +252,7 @@ export function ResumeStudio() {
           <p className="eyebrow">Document Workspace</p>
           <h1>Resume Studio</h1>
           <p className="lede">
-            Inspired by <a href="https://dossier.aien.me" target="_blank" rel="noopener noreferrer">Dossier</a>: your career facts in one truthful master profile, tailored with zero fabrication, verified against ATS structure standards.
+            Evidence-backed tailoring: your confirmed career facts organized in one truthful master profile, tailored with zero fabrication and verified against role requirements.
           </p>
         </div>
         <div className="page-actions">

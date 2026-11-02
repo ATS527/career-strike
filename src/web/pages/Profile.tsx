@@ -295,7 +295,7 @@ export function Profile() {
       };
     }
     return {
-      text: 'Your dossier is grounded and verified. Discover verified opportunities across your target markets.',
+      text: 'Your profile is grounded and verified. Discover verified opportunities across your target markets.',
       btnText: 'Explore open opportunities ↗',
       btnHref: '/opportunities',
     };
@@ -309,7 +309,7 @@ export function Profile() {
           <div>
             <h1>Your career profile</h1>
             <p className="lede" style={{ maxWidth: '75ch' }}>
-              One verified professional dossier powering job discovery, tailored applications, and approved AI assistants.
+              One verified professional profile powering job discovery, tailored applications, and approved AI assistants.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -370,23 +370,23 @@ export function Profile() {
         <div className="candidate-workspace-layout">
           {/* Main Left Column (2/3) */}
           <div className="workspace-stack">
-            {/* 1. Professional Overview Dossier Card */}
-            <section className="dossier-card" id="overview-section" aria-labelledby="overview-heading">
-              <div className="dossier-card-header">
+            {/* 1. Professional Overview Profile Card */}
+            <section className="profile-card" id="overview-section" aria-labelledby="overview-heading">
+              <div className="profile-card-header">
                 <div>
                   <h2 id="overview-heading">Professional overview</h2>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
                     Your candidate identity, headline, and core engineering summary.
                   </p>
                 </div>
-                <span className="dossier-chip dossier-chip--verified">
-                  Verified dossier
+                <span className="evidence-chip evidence-chip--verified">
+                  Verified profile
                 </span>
               </div>
 
-              {/* Dignified Dossier Hero */}
-              <div className="workspace-hero dossier-hero">
-                <div className="workspace-avatar dossier-avatar" aria-label="Candidate avatar">
+              {/* Dignified Profile Hero */}
+              <div className="workspace-hero profile-hero">
+                <div className="workspace-avatar profile-avatar" aria-label="Candidate avatar">
                   {getInitials(fullName)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -397,20 +397,20 @@ export function Profile() {
                     {headline.trim() || 'Add a professional headline below'}
                   </p>
                   <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-                    <span className="dossier-chip">
+                    <span className="evidence-chip">
                       📍 {candidateCountry ? `Country: ${candidateCountry}` : 'Location unconfirmed'}
                     </span>
-                    <span className="dossier-chip dossier-chip--verified">
+                    <span className="evidence-chip evidence-chip--verified">
                       Open to relocation
                     </span>
-                    <span className="dossier-chip">
+                    <span className="evidence-chip">
                       {remotePref === 'remote_only' ? 'Remote only' : remotePref === 'hybrid_ok' ? 'Remote or hybrid' : 'On-site or hybrid'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Dossier Summary Narrative */}
+              {/* Profile Summary Narrative */}
               <div style={{ marginTop: '1.25rem' }}>
                 <p style={{ margin: 0, fontSize: '0.94rem', color: 'var(--ink)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
                   {summary.trim() || 'No professional summary added yet. Click edit overview below to describe your engineering background, systems delivered, and current focus.'}
@@ -418,7 +418,7 @@ export function Profile() {
               </div>
 
               {/* Structured Edit Form */}
-              <div className="dossier-edit-panel" style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--rule)' }}>
+              <div className="profile-edit-panel" style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--rule)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                   <div className="record__part">
                     <label htmlFor="candidate-fullname">Full name</label>
@@ -470,16 +470,16 @@ export function Profile() {
               </div>
             </section>
 
-            {/* 2. Professional Links Dossier Card */}
-            <section className="dossier-card" id="links-section" aria-labelledby="links-heading">
-              <div className="dossier-card-header">
+            {/* 2. Professional Links Profile Card */}
+            <section className="profile-card" id="links-section" aria-labelledby="links-heading">
+              <div className="profile-card-header">
                 <div>
                   <h2 id="links-heading">Professional links</h2>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
                     Recruiter-verifiable portfolios, repositories, and professional profiles.
                   </p>
                 </div>
-                <span className="dossier-chip">External evidence</span>
+                <span className="evidence-chip">External evidence</span>
               </div>
 
               {/* View Mode Links */}
@@ -495,7 +495,7 @@ export function Profile() {
                   </div>
                   {linkedinUrl.trim() && validLinkedin(linkedinUrl.trim()) && (
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <span className="dossier-chip dossier-chip--verified" style={{ fontSize: '0.78rem' }}>
+                      <span className="evidence-chip evidence-chip--verified" style={{ fontSize: '0.78rem' }}>
                         ✓ Valid URL syntax
                       </span>
                       <ExternalLink href={linkedinUrl.trim()} className="button button--quiet" style={{ fontSize: '0.82rem' }}>
@@ -531,7 +531,7 @@ export function Profile() {
               </div>
 
               {/* Edit Mode Links Form */}
-              <div className="dossier-edit-panel" style={{ marginTop: '1.25rem', paddingTop: '1.15rem', borderTop: '1px solid var(--rule)' }}>
+              <div className="profile-edit-panel" style={{ marginTop: '1.25rem', paddingTop: '1.15rem', borderTop: '1px solid var(--rule)' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div className="record__part">
                     <label htmlFor="candidate-linkedin">LinkedIn profile address</label>
@@ -643,12 +643,12 @@ export function Profile() {
 
           {/* Right Sidebar Column (1/3) */}
           <div className="workspace-stack">
-            {/* 1. Actionable Dossier Status Card (Replacing arbitrary 88% gamification) */}
-            <section className="actionable-status-card" aria-labelledby="dossier-status-heading">
+            {/* 1. Actionable Profile Readiness Card */}
+            <section className="actionable-status-card" aria-labelledby="profile-readiness-heading">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h2 id="dossier-status-heading" style={{ margin: 0, fontSize: '1.15rem' }}>
-                    Dossier status
+                  <h2 id="profile-readiness-heading" style={{ margin: 0, fontSize: '1.15rem' }}>
+                    Profile readiness
                   </h2>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
                     Grounded verification requirements for matching and applications.
@@ -685,7 +685,7 @@ export function Profile() {
                   <span>
                     {fullName.trim() && headline.trim()
                       ? 'Core identity & professional headline provided'
-                      : 'Add full name and professional headline · Identifies your dossier'}
+                      : 'Add full name and professional headline · Identifies your profile'}
                   </span>
                 </div>
                 <div className="checklist-line">
@@ -747,8 +747,8 @@ export function Profile() {
             </div>
 
             {/* 3. Career Preferences Card */}
-            <section className="dossier-card" aria-labelledby="preferences-card-heading">
-              <div className="dossier-card-header">
+            <section className="profile-card" aria-labelledby="preferences-card-heading">
+              <div className="profile-card-header">
                 <h2 id="preferences-card-heading">Career preferences</h2>
               </div>
 
@@ -816,12 +816,12 @@ export function Profile() {
                   </span>
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
                     {targetCountries.length === 0 ? (
-                      <span className="dossier-chip">No markets selected yet</span>
+                      <span className="evidence-chip">No markets selected yet</span>
                     ) : (
                       targetCountries.map((c) => {
                         const market = CURATED_MARKETS.find((m) => m.code === c);
                         return (
-                          <span key={c} className="dossier-chip dossier-chip--verified">
+                          <span key={c} className="evidence-chip evidence-chip--verified">
                             {market ? `${market.flag} ${market.name}` : c}
                           </span>
                         );

@@ -32,8 +32,8 @@ Whether you are a **Software Engineer**, **Product Manager**, **Business Analyst
 
 ---
 
-![Career Strike Candidate Profile Dossier](docs/assets/screenshots/candidate-profile-desktop.png)
-*Figure 1: The Career Strike Candidate Profile Dossier. A single, evidence-backed source of truth for your summary, skills, experience, and mobility preferences.*
+![Career Strike Candidate Profile Workspace](docs/assets/screenshots/candidate-profile-desktop.png)
+*Figure 1: The Career Strike Candidate Profile Workspace. A single, evidence-backed source of truth for your summary, skills, experience, and mobility preferences.*
 
 ---
 
@@ -46,7 +46,7 @@ Starting a job search can feel overwhelming. Career Strike includes a dedicated 
 | **Step 1** | **What do you do?** | Select your IT discipline (e.g. Business Analyst, Software Engineer, Product Manager, QA) or enter your exact headline. | Tailors the keywords and skill requirements used during job discovery and match evaluation. |
 | **Step 2** | **Where would you like to work?** | Choose your working arrangement (Remote, Local, or Relocation) and select target countries (e.g. Germany, Netherlands, Ireland, Singapore, Japan). | Eliminates roles with incompatible residency, sponsorship, or location constraints. |
 | **Step 3** | **What would you like help with?** | Identify your immediate priority: finding verified openings, reviewing resume claims, exploring visa pathways, or preparing tailored applications. | Directs your initial focus so you make steady progress without unnecessary distraction. |
-| **Step 4** | **Get your personalized plan** | Generate a customized job-search dossier with target roles, curated employer feeds, statutory visa realities, and next steps. | Provides a clear starting plan and a ready-to-use prompt for your chosen AI assistant. |
+| **Step 4** | **Get your personalized plan** | Generate a customized job-search strategy plan with target roles, curated employer feeds, statutory visa realities, and next steps. | Provides a clear starting plan and a ready-to-use prompt for your chosen AI assistant. |
 
 > [!TIP]
 > **Try the Interactive Welcome in Your Browser**: You can explore the interactive 4-step welcome experience right now with sample data. Open [`docs/candidate-welcome.html`](docs/candidate-welcome.html) in any browser. It runs 100% locally with zero installation.
@@ -65,7 +65,7 @@ Every stage is built around candidate agency and factual transparency:
 
 | Stage | What You Do | What Career Strike Does | Required Information | AI Involvement | Candidate Approval |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Profile** | Add your skills, work history, target roles, and location preferences. | Organizes your background into an evidence-backed dossier. Highlights gaps. | Resume (optional), core skills, past titles. | None by default. | You approve every saved fact. |
+| **1. Profile** | Add your skills, work history, target roles, and location preferences. | Organizes your background into an evidence-backed career record. Highlights gaps. | Resume (optional), core skills, past titles. | None by default. | You approve every saved fact. |
 | **2. Discover** | Add public employer career pages (Greenhouse, Lever, Ashby) to monitor. | Automatically retrieves active postings directly from the employer's official feed. | Board URL or employer name. | None. | You decide which boards to follow. |
 | **3. Match** | Review postings and filter by location, remote policy, and fit tier. | Compares job requirements against your confirmed profile facts and quotes employer text. | Stored profile facts + posting text. | None (deterministic rules). | You decide to Shortlist or Exclude. |
 | **4. Prepare** | Open a shortlisted role and generate tailored resume/cover letter drafts. | Aligns your actual accomplishments to the role's requirements without inventing claims. | Target job + your approved experience. | Optional local drafting. | You review and cryptographically sign the package. |
@@ -81,7 +81,7 @@ We believe in complete product truth. The table below outlines the exact impleme
 | Capability | Status | Implementation Details & Evidence |
 | :--- | :---: | :--- |
 | **Local-First Privacy** | `AVAILABLE` | Service and SQLite database bind strictly to `127.0.0.1`. No telemetry, analytics, or cloud accounts ([`docs/privacy.md`](docs/privacy.md)). |
-| **Candidate Profile Dossier** | `AVAILABLE` | Human-crafted dossier view with inline editing, headline, summary, links, and evidence tags ([`Profile.tsx`](src/web/pages/Profile.tsx)). |
+| **Candidate Profile Workspace** | `AVAILABLE` | Human-crafted career profile view with inline editing, headline, summary, links, and evidence tags ([`Profile.tsx`](src/web/pages/Profile.tsx)). |
 | **Resume Document Storage** | `AVAILABLE` | Upload and local storage for PDF and DOCX files in the user's private data folder ([`docs/job-hunt-guide.md`](docs/job-hunt-guide.md)). |
 | **LinkedIn Archive (Zip/CSV) Import** | `AVAILABLE` | Client-side parsing of candidate-provided LinkedIn export files (`Positions.csv`, `Skills.csv`, `Education.csv`) with conflict review. |
 | **Direct Employer Job Discovery** | `AVAILABLE` | Automated polling of official public Greenhouse, Lever, and Ashby career feeds ([`docs/install.md`](docs/install.md)). |
@@ -91,7 +91,7 @@ We believe in complete product truth. The table below outlines the exact impleme
 | **Tailored Document Studio** | `AVAILABLE` | Evidence-backed resume and cover-letter draft generation with side-by-side claim comparison ([`docs/document-personalization.md`](docs/document-personalization.md)). |
 | **Cryptographic Application Approval** | `AVAILABLE` | HMAC-SHA256 signature locks the exact approved application version; any edit invalidates approval. |
 | **Automated Real-Employer Submissions** | `PLANNED` | **Intentionally disabled.** Candidates submit on official employer portals. Automated submission is tested *only* against the local practice ATS ([`docs/limitations.md`](docs/limitations.md)). |
-| **Interview Prep Dossier & STAR Coaching** | `AVAILABLE` | STAR behavioral prompt generator based on role requirements and confirmed candidate accomplishments. |
+| **Interview Prep & STAR Coaching** | `AVAILABLE` | STAR behavioral prompt generator based on role requirements and confirmed candidate accomplishments. |
 | **Interview iCalendar (.ics) Export** | `AVAILABLE` | Generates RFC-5545 compliant `.ics` calendar files for scheduled interview stages. |
 | **Outreach Draft Studio** | `AVAILABLE` | Contextual follow-up email drafts for status checks, post-interview thank-you notes, and offer next steps. |
 | **Global Market Explorer Matrix** | `AVAILABLE` | 16-country research matrix with statutory visa pathways, language expectations, and official policy citations. |
@@ -104,9 +104,9 @@ We believe in complete product truth. The table below outlines the exact impleme
 
 ## Feature Showcase
 
-### 1. Candidate Profile Dossier
+### 1. Candidate Career Profile
 
-The default profile view is designed as a calm, professional dossier rather than an intimidating registration form.
+The default profile view is designed as a calm, professional career workspace rather than an intimidating registration form.
 
 - **Identity & Summary**: Maintain your professional headline, narrative summary, and primary competencies.
 - **Verified Skills**: Distinguish skills confirmed by your experience from unconfirmed suggestions.
@@ -214,7 +214,7 @@ Career Strike provides dedicated research and discovery guides for major global 
 
 Career Strike treats LinkedIn as a complementary source of candidate-provided facts, not an invasive data pipeline:
 
-1. **Adding Your LinkedIn URL**: You can record your public LinkedIn profile link (`https://linkedin.com/in/your-profile`) in your profile dossier. Career Strike validates the URL syntax for formatting; it **never** claims this verifies profile ownership.
+1. **Adding Your LinkedIn URL**: You can record your public LinkedIn profile link (`https://linkedin.com/in/your-profile`) in your profile. Career Strike validates the URL syntax for formatting; it **never** claims this verifies profile ownership.
 2. **Importing Your Profile Archive**: You can download your official data archive from LinkedIn (Settings → Data Privacy → Get a copy of your data) and import `Positions.csv`, `Skills.csv`, and `Education.csv` directly into Career Strike.
 3. **Candidate Review & Confirmation**: Imported records appear as *proposed suggestions*. Career Strike displays conflicts with your existing facts and requires your explicit approval before adding any item to your canonical profile.
 4. **Zero Scraping, Zero Credential Risk**: Career Strike **never** asks for your LinkedIn username or password, never runs background scraping bots, and never violates platform terms.
@@ -246,7 +246,7 @@ career-strike dashboard
 
 `career-strike dashboard` starts the local background service if needed and opens your private, authenticated dashboard in your default browser. The sign-in link is single-use, protecting your session even if someone inspects your browser history.
 
-### 3. Build Your Profile Dossier
+### 3. Build Your Professional Profile
 
 Open **Profile** in the navigation bar. Enter your headline, narrative summary, target roles, and location preferences. Upload an existing resume (PDF or DOCX) to extract and confirm your core skills and past experience.
 
@@ -414,12 +414,6 @@ npx playwright test
 - [**Tailored Résumé and Cover-Letter Drafts**](docs/document-personalization.md): Personalization engine and factual alignment rules.
 - [**Known Limitations**](docs/limitations.md): Clear documentation of current platform boundaries and verified source limits.
 - [**Interactive Candidate Welcome**](docs/candidate-welcome.html): Standalone browser onboarding guide and plan generator.
-
----
-
-## Acknowledgments & Inspiration
-
-Career Strike's editorial career workspace and dossier design were inspired by the thoughtful, human-crafted design principles of [Dossier](https://dossier.aien.me). We admire their dedication to calm, distinctive digital product experiences. *(Career Strike is an independent open-source project and is not affiliated with Dossier).*
 
 ---
 

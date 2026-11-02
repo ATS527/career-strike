@@ -386,7 +386,7 @@ export function Markets() {
       <div className="market-research-workspace">
         {/* Rail 1: Filters & Saved Targets */}
         <div className="workspace-stack" style={{ gap: '1.25rem' }}>
-          <section className="dossier-card" aria-labelledby="filters-heading" style={{ padding: '1.25rem' }}>
+          <section className="market-panel" aria-labelledby="filters-heading" style={{ padding: '1.25rem' }}>
             <h2 id="filters-heading" style={{ fontSize: '1.05rem', margin: '0 0 1rem' }}>
               Filters & Search
             </h2>
@@ -439,7 +439,7 @@ export function Markets() {
             </div>
           </section>
 
-          <section className="dossier-card" aria-labelledby="target-markets-heading" style={{ padding: '1.25rem' }}>
+          <section className="market-panel" aria-labelledby="target-markets-heading" style={{ padding: '1.25rem' }}>
             <h2 id="target-markets-heading" style={{ fontSize: '1.05rem', margin: '0 0 0.75rem' }}>
               Targeted Markets ({selectedCountries.length})
             </h2>
@@ -501,7 +501,7 @@ export function Markets() {
                 Click any market row to review detailed visa pathways and language expectations.
               </p>
             </div>
-            <span className="dossier-chip">
+            <span className="market-chip">
               {filteredMarkets.length} market{filteredMarkets.length === 1 ? '' : 's'}
             </span>
           </div>
@@ -551,7 +551,7 @@ export function Markets() {
                         </td>
                         <td>
                           <span
-                            className="dossier-chip"
+                            className="market-chip"
                             style={{
                               fontSize: '0.75rem',
                               background:
@@ -598,21 +598,21 @@ export function Markets() {
           )}
         </section>
 
-        {/* Rail 3: Active Market Dossier / Intelligence Panel */}
-        <aside className="market-intelligence-dossier" aria-labelledby="active-market-dossier-title">
+        {/* Rail 3: Active Market Intelligence Panel */}
+        <aside className="market-intelligence-panel" aria-labelledby="active-market-intel-title">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--rule)', paddingBottom: '0.85rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <span style={{ fontSize: '2.2rem', lineHeight: 1 }} aria-hidden="true">
                 {activeMarket.flag}
               </span>
               <div>
-                <h3 id="active-market-dossier-title" style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
+                <h3 id="active-market-intel-title" style={{ margin: 0, fontSize: '1.25rem', fontFamily: 'var(--font-display)', fontWeight: 600 }}>
                   {activeMarket.name}
                 </h3>
                 <span style={{ fontSize: '0.85rem', color: 'var(--ink-soft)' }}>{activeMarket.cities}</span>
               </div>
             </div>
-            <span className="dossier-chip dossier-chip--verified">{activeMarket.tier}</span>
+            <span className="market-chip evidence-chip--verified">{activeMarket.tier}</span>
           </div>
 
           <div>
