@@ -60,36 +60,36 @@ test.describe('Candidate Workspace & Global Career Explorer', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Discover international tech markets' })).toBeVisible();
 
     // 16 curated markets loaded
-    const cards = page.locator('.market-cards-grid article');
-    await expect(cards).toHaveCount(16);
+    const rows = page.locator('.market-table tbody tr');
+    await expect(rows).toHaveCount(16);
 
     // Filter by search keyword
     const searchInput = page.getByRole('searchbox', { name: 'Search countries or cities' });
     await searchInput.fill('Tokyo');
-    await expect(cards).toHaveCount(1);
-    await expect(page.getByRole('heading', { level: 3, name: 'Japan' })).toBeVisible();
+    await expect(rows).toHaveCount(1);
+    await expect(page.locator('.market-table tbody tr', { hasText: 'Japan' })).toBeVisible();
 
     // Clear search and filter by region
     await searchInput.fill('');
     await page.getByRole('combobox', { name: 'Filter by region' }).selectOption('Asia');
-    await expect(cards).toHaveCount(4); // JP, SG, TH, MY
+    await expect(rows).toHaveCount(4); // JP, SG, TH, MY
 
     // Toggle English pathways only
     await page.getByLabel('More English-friendly pathways').check();
-    await expect(cards).toHaveCount(2); // SG, MY
+    await expect(rows).toHaveCount(2); // SG, MY
 
     // Reset filters
     await page.getByRole('button', { name: 'Reset filters' }).click();
-    await expect(cards).toHaveCount(16);
+    await expect(rows).toHaveCount(16);
 
     // Target Germany and Ireland
-    const deCard = page.locator('article', { hasText: 'Germany' });
-    await deCard.getByRole('button', { name: '+ Target' }).click();
-    await expect(deCard.getByRole('button', { name: '✓ Selected' })).toBeVisible();
+    const deRow = page.locator('.market-table tbody tr', { hasText: 'Germany' });
+    await deRow.getByRole('button', { name: '+ Target' }).click();
+    await expect(deRow.getByRole('button', { name: '✓ Selected' })).toBeVisible();
 
-    const ieCard = page.locator('article', { hasText: 'Ireland' });
-    await ieCard.getByRole('button', { name: '+ Target' }).click();
-    await expect(ieCard.getByRole('button', { name: '✓ Selected' })).toBeVisible();
+    const ieRow = page.locator('.market-table tbody tr', { hasText: 'Ireland' });
+    await ieRow.getByRole('button', { name: '+ Target' }).click();
+    await expect(ieRow.getByRole('button', { name: '✓ Selected' })).toBeVisible();
 
     // Navigate to profile and verify target badges in the sidebar
     await page.getByRole('link', { name: /Back to profile/i }).click();

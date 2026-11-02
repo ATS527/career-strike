@@ -115,7 +115,7 @@ export function Home() {
           </section>
 
           <aside className="status" aria-labelledby="status-title">
-            <h2 id="status-title">System</h2>
+            <h2 id="status-title">Workspace & Privacy</h2>
             <dl>
               <div>
                 <dt>Local service</dt>

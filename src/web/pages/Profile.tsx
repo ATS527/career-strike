@@ -35,7 +35,7 @@ const SECTIONS: {
   {
     kind: 'skill',
     title: 'Skills',
-    intro: 'Skills you can demonstrate. Common names like “k8s” are matched as “Kubernetes”.',
+    intro: 'Demonstrated skills grounded in past projects and code. Names like “k8s” resolve canonically as “Kubernetes”.',
     fields: [
       { name: 'name', label: 'Skill', type: 'text', required: true },
       { name: 'years', label: 'Years using it', type: 'number' },
@@ -56,7 +56,7 @@ const SECTIONS: {
   {
     kind: 'role',
     title: 'Experience',
-    intro: 'Roles you have held. Years of experience are counted from these, with overlapping roles counted once.',
+    intro: 'Past and current employment history. Overlapping tenures are counted once for total experience calculation.',
     fields: [
       { name: 'title', label: 'Job title', type: 'text', required: true },
       { name: 'employer', label: 'Employer', type: 'text' },
@@ -68,7 +68,7 @@ const SECTIONS: {
   {
     kind: 'education',
     title: 'Education',
-    intro: '',
+    intro: 'Academic credentials and degrees.',
     fields: [
       { name: 'qualification', label: 'Qualification', type: 'text', required: true },
       { name: 'institution', label: 'Institution', type: 'text' },
@@ -79,7 +79,7 @@ const SECTIONS: {
   {
     kind: 'certification',
     title: 'Certifications',
-    intro: '',
+    intro: 'Industry certifications and professional credentials.',
     fields: [
       { name: 'name', label: 'Certification', type: 'text', required: true },
       { name: 'issuer', label: 'Issuer', type: 'text' },
@@ -90,7 +90,7 @@ const SECTIONS: {
   {
     kind: 'language',
     title: 'Languages',
-    intro: '',
+    intro: 'Languages used for international communication and local engineering delivery.',
     fields: [
       { name: 'name', label: 'Language', type: 'text', required: true },
       {
@@ -172,12 +172,19 @@ export function Profile() {
       if (settingsRes?.settings) {
         const s = settingsRes.settings;
         setSavedSettings(s);
-        setFullName(typeof s['identity.fullName'] === 'string' ? s['identity.fullName'] : '');
-        setHeadline(typeof s['identity.headline'] === 'string' ? s['identity.headline'] : '');
-        setSummary(typeof s['identity.summary'] === 'string' ? s['identity.summary'] : '');
-        setLinkedinUrl(typeof s['candidate.linkedinUrl'] === 'string' ? s['candidate.linkedinUrl'] : '');
-        setGithubUrl(typeof s['candidate.githubUrl'] === 'string' ? s['candidate.githubUrl'] : '');
-        setPortfolioUrl(typeof s['candidate.portfolioUrl'] === 'string' ? s['candidate.portfolioUrl'] : '');
+        const nameVal = typeof s['identity.fullName'] === 'string' ? s['identity.fullName'] : '';
+        const headVal = typeof s['identity.headline'] === 'string' ? s['identity.headline'] : '';
+        const sumVal = typeof s['identity.summary'] === 'string' ? s['identity.summary'] : '';
+        const liVal = typeof s['candidate.linkedinUrl'] === 'string' ? s['candidate.linkedinUrl'] : '';
+        const ghVal = typeof s['candidate.githubUrl'] === 'string' ? s['candidate.githubUrl'] : '';
+        const pfVal = typeof s['candidate.portfolioUrl'] === 'string' ? s['candidate.portfolioUrl'] : '';
+
+        setFullName(nameVal);
+        setHeadline(headVal);
+        setSummary(sumVal);
+        setLinkedinUrl(liVal);
+        setGithubUrl(ghVal);
+        setPortfolioUrl(pfVal);
 
         if (Array.isArray(s['search.preferredRoles'])) {
           setPreferredRoles(s['search.preferredRoles'].map(String));
@@ -263,44 +270,30 @@ export function Profile() {
 
   const candidateCountry = typeof savedSettings['candidate.country'] === 'string' ? savedSettings['candidate.country'] : null;
 
-  // Completeness score
-  const completenessScore = useMemo(() => {
-    let count = 0;
-    if (fullName.trim()) count++;
-    if (headline.trim()) count++;
-    if (summary.trim()) count++;
-    if (linkedinUrl.trim() || githubUrl.trim() || portfolioUrl.trim()) count++;
-    if (targetCountries.length > 0) count++;
-    if (facts && facts.some((f) => f.kind === 'role' && f.approved)) count++;
-    if (facts && facts.some((f) => f.kind === 'skill' && f.approved)) count++;
-    if (documents.length > 0) count++;
-    return Math.round((count / 8) * 100);
-  }, [fullName, headline, summary, linkedinUrl, githubUrl, portfolioUrl, targetCountries, facts, documents]);
-
   const nextActionAdvice = useMemo(() => {
     if (targetCountries.length === 0) {
       return {
-        text: 'Start by choosing your international target job markets to align role recommendations.',
+        text: 'Choose your international target hiring markets to align opportunity recommendations.',
         btnText: 'Explore matching markets ↗',
         btnHref: '/markets',
       };
     }
     if (!linkedinUrl.trim() && documents.length === 0) {
       return {
-        text: 'Add your LinkedIn profile link or upload a résumé to ground your candidate evidence.',
+        text: 'Attach a résumé document or add your LinkedIn URL to ground your candidate evidence.',
         btnText: 'Upload résumé document ↗',
         btnHref: '#documents',
       };
     }
     if (facts && facts.some((f) => !f.approved)) {
       return {
-        text: 'Review and approve your suggested skills and experience below to unlock verified matches.',
+        text: 'Confirm or discard your extracted skills and experience below to unlock verified matches.',
         btnText: 'Review imported facts ↗',
         btnHref: '#profile-role',
       };
     }
     return {
-      text: 'Your profile is ready. Discover verified opportunities across your target markets.',
+      text: 'Your dossier is grounded and verified. Discover verified opportunities across your target markets.',
       btnText: 'Explore open opportunities ↗',
       btnHref: '/opportunities',
     };
@@ -314,7 +307,7 @@ export function Profile() {
           <div>
             <h1>Your career profile</h1>
             <p className="lede" style={{ maxWidth: '75ch' }}>
-              One verified profile powering job matching, applications and approved AI assistants.
+              One verified professional dossier powering job discovery, tailored applications, and approved AI assistants.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -344,7 +337,7 @@ export function Profile() {
               disabled={isSaving}
               onClick={() => void saveProfileDraft()}
             >
-              {isSaving ? 'Saving...' : isDirty ? 'Save draft (unsaved)' : 'Save profile'}
+              {isSaving ? 'Saving...' : 'Save profile draft'}
             </button>
           </div>
         </div>
@@ -375,153 +368,231 @@ export function Profile() {
         <div className="candidate-workspace-layout">
           {/* Main Left Column (2/3) */}
           <div className="workspace-stack">
-            {/* 1. Professional Overview Card */}
-            <section className="workspace-card" id="overview-section" aria-labelledby="overview-heading">
-              <div className="workspace-card-header">
-                <h2 id="overview-heading">Professional overview</h2>
-                <span className="badge" style={{ background: 'var(--accent-wash)', color: 'var(--accent)' }}>
-                  Single source of truth
+            {/* 1. Professional Overview Dossier Card */}
+            <section className="dossier-card" id="overview-section" aria-labelledby="overview-heading">
+              <div className="dossier-card-header">
+                <div>
+                  <h2 id="overview-heading">Professional overview</h2>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                    Your candidate identity, headline, and core engineering summary.
+                  </p>
+                </div>
+                <span className="dossier-chip dossier-chip--verified">
+                  Verified dossier
                 </span>
               </div>
 
-              <div className="workspace-hero">
-                <div className="workspace-avatar" aria-label="Candidate avatar">
+              {/* Dignified Dossier Hero */}
+              <div className="workspace-hero dossier-hero">
+                <div className="workspace-avatar dossier-avatar" aria-label="Candidate avatar">
                   {getInitials(fullName)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.25rem', fontWeight: 600 }}>
+                  <h3 style={{ margin: '0 0 0.25rem', fontFamily: 'var(--font-display)', fontSize: '1.35rem', fontWeight: 600 }}>
                     {fullName.trim() || 'Your Name'}
                   </h3>
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.95rem', color: 'var(--ink-soft)' }}>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.98rem', color: 'var(--ink-soft)' }}>
                     {headline.trim() || 'Add a professional headline below'}
                   </p>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span className="badge">
-                      📍 {candidateCountry ? `Country: ${candidateCountry}` : 'Current country not set'}
+                  <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
+                    <span className="dossier-chip">
+                      📍 {candidateCountry ? `Country: ${candidateCountry}` : 'Location unconfirmed'}
                     </span>
-                    <span className="badge" style={{ background: 'var(--ok-wash)', color: 'var(--ok)' }}>
+                    <span className="dossier-chip dossier-chip--verified">
                       Open to relocation
                     </span>
-                    <span className="badge">
+                    <span className="dossier-chip">
                       {remotePref === 'remote_only' ? 'Remote only' : remotePref === 'hybrid_ok' ? 'Remote or hybrid' : 'On-site or hybrid'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div style={{ borderTop: '1px solid var(--rule)', margin: '1.25rem 0' }} />
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="record__part">
-                  <label htmlFor="candidate-fullname">Full name</label>
-                  <input
-                    id="candidate-fullname"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Sample Candidate"
-                    autoComplete="name"
-                  />
-                </div>
-                <div className="record__part">
-                  <label htmlFor="candidate-headline">Professional headline</label>
-                  <input
-                    id="candidate-headline"
-                    type="text"
-                    value={headline}
-                    onChange={(e) => setHeadline(e.target.value)}
-                    placeholder="e.g. Software Engineer · Mobile & Platform Systems"
-                  />
-                </div>
+              {/* Dossier Summary Narrative */}
+              <div style={{ marginTop: '1.25rem' }}>
+                <p style={{ margin: 0, fontSize: '0.94rem', color: 'var(--ink)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {summary.trim() || 'No professional summary added yet. Click edit overview below to describe your engineering background, systems delivered, and current focus.'}
+                </p>
               </div>
 
-              <div className="record__part">
-                <label htmlFor="candidate-summary">About you</label>
-                <textarea
-                  id="candidate-summary"
-                  rows={4}
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  placeholder="Summarize your engineering background, key systems delivered, and what you are looking for next."
-                />
-                <span className="muted field-note">
-                  Only confirmed information is shared with employers or approved AI assistants.
-                </span>
-              </div>
-            </section>
-
-            {/* 2. Professional Links Card */}
-            <section className="workspace-card" id="links-section" aria-labelledby="links-heading">
-              <div className="workspace-card-header">
-                <div>
-                  <h2 id="links-heading">Professional links</h2>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
-                    Give recruiters trusted places to learn more about your work.
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="record__part">
-                  <label htmlFor="candidate-linkedin">LinkedIn profile address</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {/* Structured Edit Form */}
+              <div className="dossier-edit-panel" style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--rule)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                  <div className="record__part">
+                    <label htmlFor="candidate-fullname">Full name</label>
                     <input
-                      id="candidate-linkedin"
-                      type="url"
-                      style={{ flex: '1 1 260px' }}
-                      value={linkedinUrl}
-                      onChange={(e) => setLinkedinUrl(e.target.value)}
-                      placeholder="https://www.linkedin.com/in/your-profile"
-                      autoComplete="off"
+                      id="candidate-fullname"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="e.g. Sarah Chen"
+                      autoComplete="name"
                     />
-                    <button
-                      type="button"
-                      className="button button--quiet"
-                      onClick={() => {
-                        if (!linkedinUrl.trim()) setSaveStatus('Enter a LinkedIn URL first.');
-                        else if (validLinkedin(linkedinUrl.trim())) setSaveStatus('✓ Valid HTTPS LinkedIn profile URL.');
-                        else setSaveStatus('Use an HTTPS linkedin.com/in/your-profile URL.');
-                      }}
-                    >
-                      Verify URL
-                    </button>
-                    {linkedinUrl.trim() && validLinkedin(linkedinUrl.trim()) && (
-                      <ExternalLink href={linkedinUrl.trim()} className="button button--quiet">
-                        Open profile ↗
-                      </ExternalLink>
-                    )}
                   </div>
+                  <div className="record__part">
+                    <label htmlFor="candidate-headline">Professional headline</label>
+                    <input
+                      id="candidate-headline"
+                      type="text"
+                      value={headline}
+                      onChange={(e) => setHeadline(e.target.value)}
+                      placeholder="e.g. Staff Platform Architect · Distributed Systems & Cloud Infrastructure"
+                    />
+                  </div>
+                </div>
+
+                <div className="record__part">
+                  <label htmlFor="candidate-summary">About you</label>
+                  <textarea
+                    id="candidate-summary"
+                    rows={4}
+                    value={summary}
+                    onChange={(e) => setSummary(e.target.value)}
+                    placeholder="Summarize your engineering background, key systems delivered, and what you are looking for next."
+                  />
                   <span className="muted field-note">
-                    URL validation only; importing profile history requires an authorized or candidate-provided export below.
+                    Only confirmed information is shared with employers or approved AI assistants.
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                  <div className="record__part">
-                    <label htmlFor="candidate-github">GitHub profile</label>
-                    <input
-                      id="candidate-github"
-                      type="url"
-                      value={githubUrl}
-                      onChange={(e) => setGithubUrl(e.target.value)}
-                      placeholder="https://github.com/username"
-                    />
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', alignItems: 'center' }}>
+                  <button type="button" className="button button--secondary" onClick={() => void saveProfileDraft()} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Apply overview changes'}
+                  </button>
+                  {isDirty && (
+                    <span style={{ fontSize: '0.82rem', color: 'var(--attention)', fontWeight: 500 }}>
+                      ● Unsaved changes
+                    </span>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* 2. Professional Links Dossier Card */}
+            <section className="dossier-card" id="links-section" aria-labelledby="links-heading">
+              <div className="dossier-card-header">
+                <div>
+                  <h2 id="links-heading">Professional links</h2>
+                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                    Recruiter-verifiable portfolios, repositories, and professional profiles.
+                  </p>
+                </div>
+                <span className="dossier-chip">External evidence</span>
+              </div>
+
+              {/* View Mode Links */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.65rem 0.85rem', background: 'var(--paper-subtle)', borderRadius: 'var(--radius)', border: '1px solid var(--rule)' }}>
+                  <div>
+                    <strong style={{ fontSize: '0.88rem', color: 'var(--ink)' }}>LinkedIn: </strong>
+                    {linkedinUrl.trim() ? (
+                      <span style={{ fontSize: '0.88rem', color: 'var(--ink-soft)' }}>{linkedinUrl}</span>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>Not provided</span>
+                    )}
                   </div>
+                  {linkedinUrl.trim() && validLinkedin(linkedinUrl.trim()) && (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span className="dossier-chip dossier-chip--verified" style={{ fontSize: '0.78rem' }}>
+                        ✓ Valid URL syntax
+                      </span>
+                      <ExternalLink href={linkedinUrl.trim()} className="button button--quiet" style={{ fontSize: '0.82rem' }}>
+                        Open profile ↗
+                      </ExternalLink>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div style={{ padding: '0.65rem 0.85rem', background: 'var(--paper-subtle)', borderRadius: 'var(--radius)', border: '1px solid var(--rule)' }}>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--ink)' }}>GitHub</strong>
+                    {githubUrl.trim() ? (
+                      <ExternalLink href={githubUrl.trim()} className="external-link" style={{ fontSize: '0.85rem' }}>
+                        {githubUrl} ↗
+                      </ExternalLink>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>Not provided</span>
+                    )}
+                  </div>
+
+                  <div style={{ padding: '0.65rem 0.85rem', background: 'var(--paper-subtle)', borderRadius: 'var(--radius)', border: '1px solid var(--rule)' }}>
+                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--ink)' }}>Portfolio</strong>
+                    {portfolioUrl.trim() ? (
+                      <ExternalLink href={portfolioUrl.trim()} className="external-link" style={{ fontSize: '0.85rem' }}>
+                        {portfolioUrl} ↗
+                      </ExternalLink>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>Not provided</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Mode Links Form */}
+              <div className="dossier-edit-panel" style={{ marginTop: '1.25rem', paddingTop: '1.15rem', borderTop: '1px solid var(--rule)' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div className="record__part">
-                    <label htmlFor="candidate-portfolio">Portfolio or personal website</label>
-                    <input
-                      id="candidate-portfolio"
-                      type="url"
-                      value={portfolioUrl}
-                      onChange={(e) => setPortfolioUrl(e.target.value)}
-                      placeholder="https://example.com"
-                    />
+                    <label htmlFor="candidate-linkedin">LinkedIn profile address</label>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <input
+                        id="candidate-linkedin"
+                        type="url"
+                        style={{ flex: '1 1 260px' }}
+                        value={linkedinUrl}
+                        onChange={(e) => setLinkedinUrl(e.target.value)}
+                        placeholder="https://www.linkedin.com/in/your-profile"
+                        autoComplete="off"
+                      />
+                      <button
+                        type="button"
+                        className="button button--quiet"
+                        onClick={() => {
+                          if (!linkedinUrl.trim()) setSaveStatus('Enter a LinkedIn URL first.');
+                          else if (validLinkedin(linkedinUrl.trim())) setSaveStatus('Valid HTTPS LinkedIn profile URL format.');
+                          else setSaveStatus('Use an HTTPS linkedin.com/in/your-profile URL.');
+                        }}
+                      >
+                        Verify URL
+                      </button>
+                    </div>
+                    <span className="muted field-note">
+                      URL validation only; importing profile history requires an authorized export below.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+                    <div className="record__part">
+                      <label htmlFor="candidate-github">GitHub profile</label>
+                      <input
+                        id="candidate-github"
+                        type="url"
+                        value={githubUrl}
+                        onChange={(e) => setGithubUrl(e.target.value)}
+                        placeholder="https://github.com/username"
+                      />
+                    </div>
+                    <div className="record__part">
+                      <label htmlFor="candidate-portfolio">Portfolio or personal website</label>
+                      <input
+                        id="candidate-portfolio"
+                        type="url"
+                        value={portfolioUrl}
+                        onChange={(e) => setPortfolioUrl(e.target.value)}
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button type="button" className="button button--secondary" onClick={() => void saveProfileDraft()} disabled={isSaving}>
+                      {isSaving ? 'Saving...' : 'Apply link changes'}
+                    </button>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* 3. Experience Section */}
+            {/* 3. Experience Timeline */}
             {SECTIONS.filter((s) => s.kind === 'role').map((section) => (
               <FactSection
                 key={section.kind}
@@ -531,7 +602,7 @@ export function Profile() {
               />
             ))}
 
-            {/* 4. Projects & Evidence Section */}
+            {/* 4. Projects & Evidence */}
             {evidence && (
               <EvidenceSection
                 evidence={evidence}
@@ -540,7 +611,7 @@ export function Profile() {
               />
             )}
 
-            {/* 5. Skills Section */}
+            {/* 5. Skills & Expertise */}
             {SECTIONS.filter((s) => s.kind === 'skill').map((section) => (
               <FactSection
                 key={section.kind}
@@ -570,40 +641,49 @@ export function Profile() {
 
           {/* Right Sidebar Column (1/3) */}
           <div className="workspace-stack">
-            {/* 1. Readiness Meter Card */}
-            <section className="workspace-card" aria-labelledby="readiness-meter-heading">
+            {/* 1. Actionable Dossier Status Card (Replacing arbitrary 88% gamification) */}
+            <section className="actionable-status-card" aria-labelledby="dossier-status-heading">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <h2 id="readiness-meter-heading" style={{ margin: 0, fontSize: '1.15rem' }}>
-                    Profile readiness
+                  <h2 id="dossier-status-heading" style={{ margin: 0, fontSize: '1.15rem' }}>
+                    Dossier status
                   </h2>
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
-                    Based on verified facts and details.
+                    Grounded verification requirements for matching and applications.
                   </p>
                 </div>
-                <strong style={{ fontSize: '1.6rem', color: 'var(--accent)', letterSpacing: '-0.02em' }}>
-                  {completenessScore}%
-                </strong>
               </div>
 
-              <div
-                className="meter-bar"
-                role="progressbar"
-                aria-label="Profile readiness"
-                aria-valuenow={completenessScore}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div className="meter-bar-fill" style={{ width: `${completenessScore}%` }} />
+              <div className="actionable-status-pillars">
+                <div className="status-pillar">
+                  <span className="status-pillar__label">Job Matching</span>
+                  <span className="status-pillar__state">
+                    <span className="checklist-ok">✓</span> {facts && facts.some(f => f.kind === 'role' && f.approved) && facts.some(f => f.kind === 'skill' && f.approved) ? 'Ready' : 'Roles & skills needed'}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', display: 'block', marginTop: '0.2rem' }}>
+                    {facts ? `${facts.filter(f => f.kind === 'role' && f.approved).length} roles, ${facts.filter(f => f.kind === 'skill' && f.approved).length} skills confirmed` : '0 confirmed'}
+                  </span>
+                </div>
+                <div className="status-pillar">
+                  <span className="status-pillar__label">Applications</span>
+                  <span className="status-pillar__state">
+                    {savedSettings['identity.email'] ? <span className="checklist-ok">✓ Ready</span> : <span className="checklist-warn">○ Contact needed</span>}
+                  </span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', display: 'block', marginTop: '0.2rem' }}>
+                    {savedSettings['identity.email'] ? 'Contact details ready' : 'Add email in settings to apply'}
+                  </span>
+                </div>
               </div>
 
-              <div>
+              <div className="actionable-checklist">
                 <div className="checklist-line">
                   <span className={fullName.trim() && headline.trim() ? 'checklist-ok' : 'checklist-warn'}>
                     {fullName.trim() && headline.trim() ? '✓' : '○'}
                   </span>
                   <span>
-                    {fullName.trim() && headline.trim() ? 'Core identity & headline added' : 'Add full name and professional headline'}
+                    {fullName.trim() && headline.trim()
+                      ? 'Core identity & professional headline provided'
+                      : 'Add full name and professional headline · Identifies your dossier'}
                   </span>
                 </div>
                 <div className="checklist-line">
@@ -612,8 +692,8 @@ export function Profile() {
                   </span>
                   <span>
                     {targetCountries.length > 0
-                      ? `${targetCountries.length} target country market(s) selected`
-                      : 'Choose international target markets'}
+                      ? `${targetCountries.length} target hiring market(s) selected`
+                      : 'Choose international target markets · Focuses discovery'}
                   </span>
                 </div>
                 <div className="checklist-line">
@@ -621,7 +701,9 @@ export function Profile() {
                     {documents.length > 0 ? '✓' : '○'}
                   </span>
                   <span>
-                    {documents.length > 0 ? `${documents.length} document(s) in private vault` : 'Add a résumé for fact extraction'}
+                    {documents.length > 0
+                      ? `${documents.length} document(s) in private vault`
+                      : 'Upload a résumé · Grounds fact extraction without scraping'}
                   </span>
                 </div>
                 <div className="checklist-line">
@@ -629,7 +711,9 @@ export function Profile() {
                     {linkedinUrl.trim() || githubUrl.trim() ? '✓' : '○'}
                   </span>
                   <span>
-                    {linkedinUrl.trim() || githubUrl.trim() ? 'Professional links added' : 'Add LinkedIn or GitHub profile link'}
+                    {linkedinUrl.trim() || githubUrl.trim()
+                      ? 'Professional links added'
+                      : 'Add LinkedIn or GitHub profile address · Provides recruiter verification'}
                   </span>
                 </div>
                 <div className="checklist-line">
@@ -637,15 +721,17 @@ export function Profile() {
                     {facts.some((f) => f.kind === 'role' && f.approved) ? '✓' : '○'}
                   </span>
                   <span>
-                    {facts.some((f) => f.kind === 'role' && f.approved) ? 'Confirmed role history' : 'Add and confirm past roles'}
+                    {facts.some((f) => f.kind === 'role' && f.approved)
+                      ? 'Confirmed work history'
+                      : 'Add and confirm past roles · Used to verify years of experience'}
                   </span>
                 </div>
               </div>
             </section>
 
-            {/* 2. Your Next Best Action Card */}
+            {/* 2. Focused Action Card */}
             <div className="workspace-focus-card">
-              <h3>Your next best action</h3>
+              <h3>Actionable recommendation</h3>
               <p>{nextActionAdvice.text}</p>
               {nextActionAdvice.btnHref.startsWith('#') ? (
                 <a href={nextActionAdvice.btnHref} className="button">
@@ -659,8 +745,8 @@ export function Profile() {
             </div>
 
             {/* 3. Career Preferences Card */}
-            <section className="workspace-card" aria-labelledby="preferences-card-heading">
-              <div className="workspace-card-header">
+            <section className="dossier-card" aria-labelledby="preferences-card-heading">
+              <div className="dossier-card-header">
                 <h2 id="preferences-card-heading">Career preferences</h2>
               </div>
 
@@ -728,12 +814,12 @@ export function Profile() {
                   </span>
                   <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
                     {targetCountries.length === 0 ? (
-                      <span className="badge">No markets selected yet</span>
+                      <span className="dossier-chip">No markets selected yet</span>
                     ) : (
                       targetCountries.map((c) => {
                         const market = CURATED_MARKETS.find((m) => m.code === c);
                         return (
-                          <span key={c} className="badge" style={{ background: 'var(--accent-wash)', color: 'var(--accent)' }}>
+                          <span key={c} className="dossier-chip dossier-chip--verified">
                             {market ? `${market.flag} ${market.name}` : c}
                           </span>
                         );
@@ -752,7 +838,7 @@ export function Profile() {
               style={{
                 fontSize: '0.82rem',
                 color: 'var(--ink-soft)',
-                background: 'var(--paper-raised)',
+                background: 'var(--canvas)',
                 border: '1px solid var(--rule)',
                 borderRadius: 'var(--radius)',
                 padding: '0.9rem',
