@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Career Strike — Interactive Candidate Welcome & Job Search Planner</title>
+  <style>
+    :root {
+      --paper: #f7f6f2;
+      --canvas: #ffffff;
+      --ink: #1d2930;
+      --secondary: #657078;
+      --accent: #17695f;
+      --accent-hover: #115048;
+      --accent-soft: #e8f3f1;
+      --border: #dddcd6;
+      --border-subtle: #eceae3;
+      --surface-subtle: #f0eee8;
+      --focus-ring: #17695f;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--paper);
+      color: var(--ink);
+      font-family: var(--font-body);
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      padding: 0 16px 64px 16px;
+    }
+
+    a { color: var(--accent); text-decoration: none; font-weight: 500; }
+    a:hover { text-decoration: underline; }
+
+    button, input, select, textarea {
+      font: inherit;
+      color: inherit;
+    }
+
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .site-header {
+      padding: 32px 0 24px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      color: #ffffff;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-text h1 {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+
+    .brand-text p {
+      font-size: 12px;
+      color: var(--secondary);
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--secondary);
+      font-weight: 500;
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #199462;
+    }
+
+    /* Hero */
+    .hero {
+      margin-bottom: 36px;
+    }
+
+    .hero-eyebrow {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .hero-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.6px;
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .hero-desc {
+      font-size: 15px;
+      color: var(--secondary);
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
+    /* Wizard Card */
+    .wizard-card {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      margin-bottom: 36px;
+    }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 20px;
+      margin-bottom: 28px;
+    }
+
+    .step-indicator {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      cursor: pointer;
+      background: none;
+      border: none;
+      text-align: left;
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .step-indicator:hover {
+      background: var(--paper);
+    }
+
+    .step-num {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--secondary);
+    }
+
+    .step-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--secondary);
+    }
+
+    .step-indicator.active .step-num {
+      color: var(--accent);
+    }
+
+    .step-indicator.active .step-name {
+      color: var(--ink);
+    }
+
+    .step-indicator.completed .step-num {
+      color: #199462;
+    }
+
+    .step-indicator.completed .step-num::after {
+      content: " ✓";
+    }
+
+    /* Step content */
+    .step-pane {
+      display: none;
+    }
+
+    .step-pane.active {
+      display: block;
+    }
+
+    .step-heading {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      margin-bottom: 6px;
+    }
+
+    .step-sub {
+      font-size: 14px;
+      color: var(--secondary);
+      margin-bottom: 22px;
+    }
+
+    /* Grid options */
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .option-card {
+      border: 1px solid var(--border);
+      background: var(--canvas);
+      padding: 14px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .option-card:hover {
+      border-color: var(--accent);
+      background: var(--paper);
+    }
+
+    .option-card.selected {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .option-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .option-desc {
+      font-size: 11px;
+      color: var(--secondary);
+      line-height: 1.4;
+    }
+
+    .custom-input-group {
+      margin-top: 14px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .custom-input-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .input-field {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #ffffff;
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent);
+      outline: none;
+    }
+
+    /* Action bar */
+    .step-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 20px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--canvas);
+      color: var(--ink);
+      transition: background-color 0.12s, border-color 0.12s;
+    }
+
+    .btn:hover {
+      background: var(--surface-subtle);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+    }
+
+    /* Generated Plan Presentation */
+    .plan-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .plan-section {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      background: var(--canvas);
+    }
+
+    .plan-section.highlight {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+
+    .plan-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .plan-section-title.neutral {
+      color: var(--secondary);
+    }
+
+    .plan-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .plan-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.45;
+    }
+
+    .plan-bullet {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    .prompt-box {
+      background: #1d2930;
+      color: #f0f4f8;
+      border-radius: var(--radius-md);
+      padding: 18px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .prompt-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #9cb1c2;
+      font-weight: 600;
+    }
+
+    .prompt-content {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      max-height: 180px;
+      overflow-y: auto;
+      color: #d1dde8;
+    }
+
+    /* Market Explorer Component */
+    .market-section {
+      margin-top: 48px;
+      border-top: 1px solid var(--border);
+      padding-top: 36px;
+    }
+
+    .market-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .market-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .market-item {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .market-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .market-country {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .market-tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--surface-subtle);
+      color: var(--secondary);
+    }
+
+    .market-tag.focus {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .market-cities {
+      font-size: 11px;
+      color: var(--secondary);
+    }
+
+    .market-pathway {
+      font-size: 12px;
+      color: var(--ink);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .market-note {
+      font-size: 11px;
+      color: var(--secondary);
+      line-height: 1.45;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    /* Production bridge */
+    .bridge-banner {
+      background: var(--canvas);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius-md);
+      padding: 20px 24px;
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .bridge-content h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .bridge-content p {
+      font-size: 13px;
+      color: var(--secondary);
+    }
+
+    .code-pill {
+      font-family: var(--font-mono);
+      background: var(--paper);
+      border: 1px solid var(--border);
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .stepper {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .plan-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-title {
+        font-size: 24px;
+      }
+      .wizard-card {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .stepper {
+        grid-template-columns: 1fr;
+      }
+      .option-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="site-header">
+      <a href="../README.md" class="brand">
+        <div class="brand-mark">CS</div>
+        <div class="brand-text">
+          <h1>Career Strike</h1>
+          <p>Candidate Welcome & Job Search Planner</p>
+        </div>
+      </a>
+      <div class="header-badge">
+        <span class="badge-dot"></span>
+        <span>Interactive Onboarding Prototype</span>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-eyebrow">Your Career Starting Point</div>
+      <h2 class="hero-title">Plan your next job search in four simple steps.</h2>
+      <p class="hero-desc">
+        Career Strike helps IT professionals navigate their entire job search with confidence. Answer four quick questions below to generate a tailored search strategy, discover relevant employer feeds, and get a ready-to-use plan.
+      </p>
+    </section>
+
+    <!-- Wizard Card -->
+    <main class="wizard-card" id="wizard">
+      <nav class="stepper" aria-label="Onboarding Steps">
+        <button class="step-indicator active" data-step="1" id="step-tab-1">
+          <span class="step-num">Step 1</span>
+          <span class="step-name">Your Role</span>
+        </button>
+        <button class="step-indicator" data-step="2" id="step-tab-2">
+          <span class="step-num">Step 2</span>
+          <span class="step-name">Target Location</span>
+        </button>
+        <button class="step-indicator" data-step="3" id="step-tab-3">
+          <span class="step-num">Step 3</span>
+          <span class="step-name">Your Goal</span>
+        </button>
+        <button class="step-indicator" data-step="4" id="step-tab-4">
+          <span class="step-num">Step 4</span>
+          <span class="step-name">Action Plan</span>
+        </button>
+      </nav>
+
+      <!-- Step 1: Role -->
+      <section class="step-pane active" id="pane-1" aria-labelledby="pane-1-title">
+        <h3 class="step-heading" id="pane-1-title">What is your primary professional focus?</h3>
+        <p class="step-sub">Career Strike supports both technical engineering roles and non-coding IT career paths.</p>
+
+        <div class="option-grid" id="role-grid">
+          <button class="option-card selected" data-role="Software Engineer" data-skills="TypeScript, Node.js, Python, Distributed Systems, Cloud Architecture">
+            <span class="option-title">Software Engineer</span>
+            <span class="option-desc">Backend, frontend, or full-stack software development.</span>
+          </button>
+          <button class="option-card" data-role="Product Manager" data-skills="Product Roadmapping, User Stories, Metrics Analysis, Cross-functional Leadership, Agile">
+            <span class="option-title">Product Manager</span>
+            <span class="option-desc">Product discovery, strategy, feature delivery & analytics.</span>
+          </button>
+          <button class="option-card" data-role="Business Analyst" data-skills="Requirements Gathering, Process Modeling, Stakeholder Management, SQL, Jira/Confluence">
+            <span class="option-title">Business Analyst</span>
+            <span class="option-desc">Bridging business needs, technical specs, and systems.</span>
+          </button>
+          <button class="option-card" data-role="QA & Test Engineer" data-skills="Test Automation, Cypress, Playwright, Regression Testing, API Testing, CI/CD">
+            <span class="option-title">QA & Test Engineer</span>
+            <span class="option-desc">Quality assurance, automated suites & validation.</span>
+          </button>
+          <button class="option-card" data-role="Data Analyst" data-skills="SQL, Python, Data Visualization, Tableau/PowerBI, Business Intelligence, Statistics">
+            <span class="option-title">Data Analyst</span>
+            <span class="option-desc">Exploratory analysis, dashboards, and metric modeling.</span>
+          </button>
+          <button class="option-card" data-role="Cloud & DevOps Engineer" data-skills="Kubernetes, Docker, Terraform, AWS/GCP, CI/CD Pipelines, Site Reliability">
+            <span class="option-title">DevOps & Cloud</span>
+            <span class="option-desc">Infrastructure, deployment automation, and reliability.</span>
+          </button>
+          <button class="option-card" data-role="UI/UX Designer" data-skills="Figma, User Research, Wireframing, Design Systems, Usability Testing, Prototyping">
+            <span class="option-title">UI/UX Designer</span>
+            <span class="option-desc">Product design, design systems, and user research.</span>
+          </button>
+          <button class="option-card" data-role="IT Support & Systems" data-skills="Identity Management, Networking, Hardware/SaaS Administration, Helpdesk Support, SSO">
+            <span class="option-title">IT Support Specialist</span>
+            <span class="option-desc">Systems administration, identity, and user support.</span>
+          </button>
+        </div>
+
+        <div class="custom-input-group">
+          <label for="custom-role">Or type your exact headline / target role:</label>
+          <input type="text" id="custom-role" class="input-field" placeholder="e.g. Senior Mobile iOS Engineer, Agile Scrum Master..." />
+        </div>
+
+        <div class="step-actions">
+          <span></span>
+          <button class="btn btn-primary" onclick="goToStep(2)">Continue to Location →</button>
+        </div>
+      </section>
+
+      <!-- Step 2: Location -->
+      <section class="step-pane" id="pane-2" aria-labelledby="pane-2-title">
+        <h3 class="step-heading" id="pane-2-title">Where would you like to work?</h3>
+        <p class="step-sub">Choose your preferred working arrangement and target countries.</p>
+
+        <div class="option-grid" id="workmode-grid">
+          <button class="option-card selected" data-mode="relocate">
+            <span class="option-title">International Relocation</span>
+            <span class="option-desc">Open to employer-sponsored relocation to global tech hubs.</span>
+          </button>
+          <button class="option-card" data-mode="remote">
+            <span class="option-title">Remote Only</span>
+            <span class="option-desc">Working remotely from your current country of residence.</span>
+          </button>
+          <button class="option-card" data-mode="local">
+            <span class="option-title">Domestic / Local</span>
+            <span class="option-desc">Opportunities within your domestic national market.</span>
+          </button>
+        </div>
+
+        <div style="margin-top: 18px; margin-bottom: 24px;">
+          <label style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px;">Select target countries to evaluate:</label>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;" id="country-chips">
+            <button class="btn btn-sm selected-chip" data-cc="DE">🇩🇪 Germany</button>
+            <button class="btn btn-sm selected-chip" data-cc="NL">🇳🇱 Netherlands</button>
+            <button class="btn btn-sm selected-chip" data-cc="IE">🇮🇪 Ireland</button>
+            <button class="btn btn-sm" data-cc="GB">🇬🇧 United Kingdom</button>
+            <button class="btn btn-sm" data-cc="SG">🇸🇬 Singapore</button>
+            <button class="btn btn-sm" data-cc="JP">🇯🇵 Japan</button>
+            <button class="btn btn-sm" data-cc="FI">🇫🇮 Finland</button>
+            <button class="btn btn-sm" data-cc="SE">🇸🇪 Sweden</button>
+            <button class="btn btn-sm" data-cc="AE">🇦🇪 UAE</button>
+            <button class="btn btn-sm" data-cc="IN">🇮🇳 India</button>
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn" onclick="goToStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(3)">Continue to Goal →</button>
+        </div>
+      </section>
+
+      <!-- Step 3: Goal -->
+      <section class="step-pane" id="pane-3" aria-labelledby="pane-3-title">
+        <h3 class="step-heading" id="pane-3-title">What is your immediate job-search priority?</h3>
+        <p class="step-sub">Career Strike will tailor your action checklist around this objective.</p>
+
+        <div class="option-grid" id="goal-grid">
+          <button class="option-card selected" data-goal="discover">
+            <span class="option-title">Discover Verified Roles</span>
+            <span class="option-desc">Find active openings directly from official employer career pages.</span>
+          </button>
+          <button class="option-card" data-goal="tailor">
+            <span class="option-title">Prepare Tailored Applications</span>
+            <span class="option-desc">Draft evidence-backed resumes & cover letters tailored to specific jobs.</span>
+          </button>
+          <button class="option-card" data-goal="interview">
+            <span class="option-title">Interview Coaching & Prep</span>
+            <span class="option-desc">Prepare STAR stories, practice behavioral questions, and sync calendar dates.</span>
+          </button>
+          <button class="option-card" data-goal="international">
+            <span class="option-title">Explore Global Markets</span>
+            <span class="option-desc">Evaluate visa pathways, language expectations, and international hiring feasibility.</span>
+          </button>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn" onclick="goToStep(2)">← Back</button>
+          <button class="btn btn-primary" onclick="goToStep(4); generatePlan();">Generate Your Plan →</button>
+        </div>
+      </section>
+
+      <!-- Step 4: Plan -->
+      <section class="step-pane" id="pane-4" aria-labelledby="pane-4-title">
+        <h3 class="step-heading" id="pane-4-title">Your Tailored Job-Search Dossier</h3>
+        <p class="step-sub">Based on your selections, here is your grounded starting plan and recommended next steps.</p>
+
+        <div class="plan-grid">
+          <div class="plan-section highlight">
+            <div class="plan-section-title">Target Profile & Search Parameters</div>
+            <ul class="plan-list">
+              <li><span class="plan-bullet">Role:</span> <strong id="plan-role">Software Engineer</strong></li>
+              <li><span class="plan-bullet">Arrangement:</span> <span id="plan-mode">International Relocation</span></li>
+              <li><span class="plan-bullet">Target Markets:</span> <span id="plan-countries">Germany, Netherlands, Ireland</span></li>
+              <li><span class="plan-bullet">Core Focus Skills:</span> <span id="plan-skills">TypeScript, Node.js, Python, Distributed Systems</span></li>
+            </ul>
+          </div>
+
+          <div class="plan-section">
+            <div class="plan-section-title neutral">Recommended Next Action</div>
+            <ul class="plan-list">
+              <li><span class="plan-bullet">1.</span> <strong>Import Profile Facts:</strong> Add your resume in the Career Strike Profile to verify core skills without inventing claims.</li>
+              <li><span class="plan-bullet">2.</span> <strong>Direct Feeds:</strong> Add official Greenhouse/Lever career feeds for target employers.</li>
+              <li><span class="plan-bullet">3.</span> <strong>Evaluate Match:</strong> Compare postings against your confirmed skills before preparing application packages.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="prompt-box">
+          <div class="prompt-box-header">
+            <span>READY-TO-USE AI ASSISTANT PROMPT (CLAUDE CODE / CODEX / CHATGPT)</span>
+            <button class="btn btn-sm" id="copy-prompt-btn" onclick="copyPrompt()">Copy Prompt</button>
+          </div>
+          <div class="prompt-content" id="prompt-text">
+          </div>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn" onclick="goToStep(1)">Start Over</button>
+          <button class="btn btn-primary" onclick="downloadPlan()">Download Plan (.md)</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Production Bridge Banner -->
+    <aside class="bridge-banner">
+      <div class="bridge-content">
+        <h3>Ready to manage your search privately?</h3>
+        <p>Career Strike runs entirely on your machine. Start the dashboard with <span class="code-pill">career-strike dashboard</span> to explore real postings, track applications, and store your profile safely.</p>
+      </div>
+      <div>
+        <a href="../README.md#get-started--no-coding-required" class="btn btn-primary">View Setup Guide →</a>
+      </div>
+    </aside>
+
+    <!-- Market Matrix Section -->
+    <section class="market-section">
+      <div class="market-header">
+        <div>
+          <div class="hero-eyebrow">International Research Matrix</div>
+          <h3 style="font-size: 20px; font-weight: 700;">Global Software & IT Career Ecosystems</h3>
+          <p style="font-size: 13px; color: var(--secondary); margin-top: 4px;">
+            Qualitative market research across key tech hubs. Official visa pathways and language expectations.
+          </p>
+        </div>
+        <div class="filter-bar">
+          <select id="market-filter-region" class="input-field" style="width: 140px; padding: 6px 10px; font-size: 12px;">
+            <option value="all">All Regions</option>
+            <option value="Europe">Europe</option>
+            <option value="Asia">Asia</option>
+            <option value="Middle East">Middle East</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="market-cards" id="market-cards-container">
+        <!-- Rendered via JS -->
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const MARKETS = [
+      { code: 'DE', name: 'Germany', flag: '🇩🇪', region: 'Europe', tier: 'Focus market', pathway: 'EU Blue Card / Skilled Immigration Act (FEG)', cities: 'Berlin · Munich · Hamburg', note: 'Largest EU ICT employment footprint (~2.3M specialists); English widely accepted in startups, German expected for enterprise.' },
+      { code: 'NL', name: 'Netherlands', flag: '🇳🇱', region: 'Europe', tier: 'Focus market', pathway: 'IND Highly Skilled Migrant (Kennismigrant)', cities: 'Amsterdam · Eindhoven', note: 'International tech hub; high English fluency; employer recognition required for skilled-migrant sponsorship.' },
+      { code: 'IE', name: 'Ireland', flag: '🇮🇪', region: 'Europe', tier: 'Focus market', pathway: 'Critical Skills Employment Permit (CSEP)', cities: 'Dublin · Cork · Galway', note: 'Native English-speaking market; European HQ for global SaaS and cloud infrastructure platforms.' },
+      { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', region: 'Europe', tier: 'Focus market', pathway: 'Skilled Worker Visa (Licensed Sponsor)', cities: 'London · Manchester', note: 'Deep venture, fintech, and AI ecosystems; sponsor licensing and strict minimum salary rules apply.' },
+      { code: 'SG', name: 'Singapore', flag: '🇸🇬', region: 'Asia', tier: 'Targeted market', pathway: 'MOM Employment Pass (COMPASS criteria)', cities: 'Singapore', note: 'Regional financial & software engineering hub; salary thresholds and COMPASS points system evaluate applications.' },
+      { code: 'JP', name: 'Japan', flag: '🇯🇵', region: 'Asia', tier: 'Targeted market', pathway: 'Engineer / Specialist in Humanities', cities: 'Tokyo · Osaka · Fukuoka', note: 'Strong software/hardware convergence; English-only roles concentrate in international scaleups; JLPT N2/N1 expands reach.' },
+      { code: 'FI', name: 'Finland', flag: '🇫🇮', region: 'Europe', tier: 'Targeted market', pathway: 'Migri Specialist Residence Permit', cities: 'Helsinki · Espoo · Tampere', note: 'Fast-track permit available for ICT specialists; strong gaming, telecom, and distributed systems footprint.' },
+      { code: 'SE', name: 'Sweden', flag: '🇸🇪', region: 'Europe', tier: 'Targeted market', pathway: 'Migrationsverket Specialist Work Permit', cities: 'Stockholm · Gothenburg', note: 'High ICT employment density; open-source and product-led engineering culture (Spotify, Klarna ecosystems).' },
+      { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', region: 'Middle East', tier: 'Targeted market', pathway: 'MoHRE Skilled Worker / Green Visa', cities: 'Dubai · Abu Dhabi', note: 'Growing MENA hub for enterprise SaaS, sovereign AI, and fintech; English is the universal business language.' },
+      { code: 'IN', name: 'India', flag: '🇮🇳', region: 'Asia', tier: 'Focus market', pathway: 'Domestic Employment / GIC GCC hubs', cities: 'Bengaluru · Hyderabad · Pune', note: 'Global innovation centers (GCCs) and product scaleups; deep engineering talent across backend, mobile and platform.' }
+    ];
+
+    let currentStep = 1;
+    let selectedRole = 'Software Engineer';
+    let selectedSkills = 'TypeScript, Node.js, Python, Distributed Systems, Cloud Architecture';
+    let selectedMode = 'International Relocation';
+    let selectedCountries = ['DE', 'NL', 'IE'];
+    let selectedGoal = 'Discover Verified Roles';
+
+    function init() {
+      // Role selection
+      document.querySelectorAll('#role-grid .option-card').forEach(card => {
+        card.addEventListener('click', () => {
+          document.querySelectorAll('#role-grid .option-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedRole = card.dataset.role;
+          selectedSkills = card.dataset.skills;
+          document.getElementById('custom-role').value = '';
+        });
+      });
+
+      document.getElementById('custom-role').addEventListener('input', (e) => {
+        if (e.target.value.trim()) {
+          document.querySelectorAll('#role-grid .option-card').forEach(c => c.classList.remove('selected'));
+          selectedRole = e.target.value.trim();
+        }
+      });
+
+      // Work mode selection
+      document.querySelectorAll('#workmode-grid .option-card').forEach(card => {
+        card.addEventListener('click', () => {
+          document.querySelectorAll('#workmode-grid .option-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedMode = card.querySelector('.option-title').textContent;
+        });
+      });
+
+      // Country chips
+      document.querySelectorAll('#country-chips .btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cc = btn.dataset.cc;
+          if (selectedCountries.includes(cc)) {
+            selectedCountries = selectedCountries.filter(c => c !== cc);
+            btn.classList.remove('btn-primary');
+          } else {
+            selectedCountries.push(cc);
+            btn.classList.add('btn-primary');
+          }
+        });
+      });
+      // Set initial chip state
+      document.querySelectorAll('#country-chips .btn').forEach(btn => {
+        if (selectedCountries.includes(btn.dataset.cc)) {
+          btn.classList.add('btn-primary');
+        }
+      });
+
+      // Goal selection
+      document.querySelectorAll('#goal-grid .option-card').forEach(card => {
+        card.addEventListener('click', () => {
+          document.querySelectorAll('#goal-grid .option-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          selectedGoal = card.querySelector('.option-title').textContent;
+        });
+      });
+
+      // Stepper nav
+      document.querySelectorAll('.step-indicator').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const step = parseInt(btn.dataset.step, 10);
+          if (step === 4) generatePlan();
+          goToStep(step);
+        });
+      });
+
+      renderMarkets();
+      document.getElementById('market-filter-region').addEventListener('change', renderMarkets);
+    }
+
+    function goToStep(step) {
+      currentStep = step;
+      document.querySelectorAll('.step-pane').forEach(p => p.classList.remove('active'));
+      const activePane = document.getElementById('pane-' + step);
+      if (activePane) activePane.classList.add('active');
+
+      document.querySelectorAll('.step-indicator').forEach(ind => {
+        const indStep = parseInt(ind.dataset.step, 10);
+        ind.classList.toggle('active', indStep === step);
+        ind.classList.toggle('completed', indStep < step);
+      });
+
+      window.scrollTo({ top: document.getElementById('wizard').offsetTop - 20, behavior: 'smooth' });
+    }
+
+    function generatePlan() {
+      document.getElementById('plan-role').textContent = selectedRole;
+      document.getElementById('plan-mode').textContent = selectedMode;
+      document.getElementById('plan-skills').textContent = selectedSkills;
+
+      const countryNames = selectedCountries.map(cc => {
+        const m = MARKETS.find(x => x.code === cc);
+        return m ? `${m.flag} ${m.name}` : cc;
+      }).join(', ');
+      document.getElementById('plan-countries').textContent = countryNames || 'Not specified';
+
+      const prompt = `I am preparing my job search as a ${selectedRole}.
+My preferences:
+- Working arrangement: ${selectedMode}
+- Target markets: ${countryNames || 'Flexible'}
+- Core skills & competencies: ${selectedSkills}
+- Immediate priority: ${selectedGoal}
+
+Please act as a career strategist. Help me:
+1. Identify 5 realistic job search terms and keywords matching employer expectations in these markets.
+2. Outline key statutory work visa or language expectations I should verify for ${countryNames || 'my target destinations'}.
+3. Draft a concise STAR accomplishment story template highlighting my experience in ${selectedSkills.split(',')[0] || 'core systems'}.
+4. Suggest how to structure my application evidence without exaggerating unverified claims.`;
+
+      document.getElementById('prompt-text').textContent = prompt;
+    }
+
+    function copyPrompt() {
+      const text = document.getElementById('prompt-text').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copy-prompt-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy Prompt'; }, 2000);
+      });
+    }
+
+    function downloadPlan() {
+      const role = selectedRole;
+      const mode = selectedMode;
+      const skills = selectedSkills;
+      const countries = selectedCountries.map(cc => {
+        const m = MARKETS.find(x => x.code === cc);
+        return m ? `${m.name} (${m.pathway})` : cc;
+      }).join('; ');
+
+      const md = `# Career Strike — Personalized Job Search Plan
+Generated: ${new Date().toLocaleDateString()}
+
+## 1. Candidate Profile Focus
+- **Target Role:** ${role}
+- **Arrangement:** ${mode}
+- **Target Markets:** ${countries}
+- **Key Skills:** ${skills}
+
+## 2. Immediate Objective
+- **Priority:** ${selectedGoal}
+
+## 3. Recommended Workflow in Career Strike
+1. Run \`career-strike dashboard\` to open your private local workspace.
+2. In **Profile**, import your resume to confirm verified facts.
+3. In **Opportunities → Job boards**, add public Greenhouse, Lever, or Ashby feeds.
+4. Review matched roles against your confirmed skills.
+5. In **Applications**, prepare and review tailored application packages before submitting on official employer sites.
+
+---
+*Created with Career Strike — Local-First Candidate Workspace.*
+`;
+
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `career-strike-plan-${role.toLowerCase().replace(/[^a-z0-9]/g, '-')}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function renderMarkets() {
+      const region = document.getElementById('market-filter-region').value;
+      const container = document.getElementById('market-cards-container');
+      container.innerHTML = '';
+
+      const filtered = MARKETS.filter(m => region === 'all' || m.region === region);
+      filtered.forEach(m => {
+        const div = document.createElement('article');
+        div.className = 'market-item';
+        div.innerHTML = `
+          <div class="market-top">
+            <span class="market-country">${m.flag} ${m.name}</span>
+            <span class="market-tag ${m.tier === 'Focus market' ? 'focus' : ''}">${m.tier}</span>
+          </div>
+          <div class="market-cities">${m.cities}</div>
+          <div class="market-pathway">${m.pathway}</div>
+          <div class="market-note">${m.note}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
