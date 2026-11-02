@@ -2334,6 +2334,638 @@ input[type='datetime-local'] {
   box-shadow: var(--shadow-1);
 }
 
+/* ---- Candidate Experience: Kanban Pipeline, Outreach Studio, Prep Brief & Quick Presets ---- */
+
+.view-toggle-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pipeline-stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.25rem 0 1rem;
+}
+
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-1);
+}
+
+.stat-pill strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--paper-sunk);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.stat-pill--accent {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+}
+
+.stat-pill--accent strong {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.stat-pill--highlight {
+  border-color: #8a4baf;
+  background: color-mix(in srgb, #8a4baf 12%, transparent);
+  color: #5a2677;
+}
+
+.stat-pill--highlight strong {
+  background: #8a4baf;
+  color: #fff;
+}
+
+.pipeline-search {
+  margin: 0.5rem 0 1.5rem;
+  max-width: 28rem;
+}
+
+.pipeline-search input {
+  width: 100%;
+}
+
+.pipeline-kanban {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(220px, 1fr));
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .pipeline-kanban {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 1.5rem;
+  }
+
+  .kanban-col {
+    min-width: 270px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+}
+
+.kanban-col {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: 0.85rem;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-col__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.kanban-col__header h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--ink);
+}
+
+.kanban-col__count {
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  color: var(--ink-soft);
+}
+
+.kanban-col__hint {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin-bottom: 0.85rem;
+  line-height: 1.3;
+}
+
+.kanban-col__cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.kanban-col__empty {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  font-style: italic;
+  padding: 1rem 0.5rem;
+  text-align: center;
+}
+
+.kanban-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  box-shadow: var(--shadow-1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+
+.kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+
+.kanban-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.kanban-card__employer {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.kanban-card__state-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  background: var(--paper-sunk);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.kanban-card__title {
+  font-size: 0.95rem;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.kanban-card__meta {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stale-alert {
+  color: var(--attention);
+  font-weight: 600;
+  font-size: 0.76rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.kanban-card__actions {
+  margin-top: 0.35rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.kanban-card__actions .button {
+  width: 100%;
+  text-align: center;
+  justify-content: center;
+}
+
+/* Outreach Studio */
+
+.outreach-studio {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-1);
+  margin-top: 1.5rem;
+}
+
+.outreach-tabs {
+  display: flex;
+  gap: 0.4rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.5rem;
+  margin: 0.85rem 0 1rem;
+}
+
+.outreach-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all var(--t-fast) var(--ease);
+}
+
+.outreach-tab:hover {
+  background: var(--paper-sunk);
+  color: var(--ink);
+}
+
+.outreach-tab--active {
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.outreach-inputs {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.outreach-inputs label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-bottom: -0.3rem;
+}
+
+.outreach-preview-box {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+}
+
+.outreach-preview-subject {
+  font-size: 0.88rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--rule-strong);
+  margin-bottom: 0.6rem;
+}
+
+.outreach-preview-body {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0 0 0.85rem 0;
+}
+
+.outreach-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Interview Prep & STAR Assistant */
+
+.prep-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.topic-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.topic-evidence__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.evidence-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.evidence-chip--skill {
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  border: 1px solid var(--accent);
+}
+
+.evidence-chip--role {
+  background: var(--ok-wash);
+  color: var(--ok);
+  border: 1px solid var(--ok);
+}
+
+.star-assistant-toggle {
+  margin: 0.5rem 0;
+}
+
+.star-guide {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.85rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.star-guide__intro {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.star-guide__steps {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin-bottom: 0.75rem;
+}
+
+/* Cheat Sheet Modal */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.cheat-sheet-dialog {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 760px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-3);
+  overflow: hidden;
+}
+
+.cheat-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+  background: var(--paper);
+  gap: 1rem;
+}
+
+.cheat-sheet-header h2 {
+  font-size: 1.35rem;
+  margin: 0.2rem 0 0.1rem;
+}
+
+.cheat-sheet-sub {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.cheat-sheet-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cheat-sheet-content {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cheat-sheet-section h3 {
+  font-size: 1.05rem;
+  margin: 0 0 0.6rem 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--rule);
+  color: var(--ink);
+}
+
+.cheat-sheet-section ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.cheat-sheet-section--gaps {
+  background: var(--attention-wash);
+  border: 1px solid var(--attention);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.cheat-sheet-section--gaps h3 {
+  border-color: color-mix(in srgb, var(--attention) 30%, transparent);
+  color: var(--attention);
+}
+
+.cheat-sheet-quote {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.cheat-sheet-prompt {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.star-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+
+.star-col {
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 0.6rem;
+  font-size: 0.82rem;
+}
+
+.star-col strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--accent);
+}
+
+.star-col p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  line-height: 1.3;
+}
+
+/* Quick Presets Strip & Top Match Spotlight */
+
+.quick-presets-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 1.25rem 0 1rem;
+  padding: 0.5rem 0.85rem;
+  background: var(--paper-sunk);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-lg);
+}
+
+.quick-presets__label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-right: 0.35rem;
+}
+
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-raised);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all var(--t-fast) var(--ease);
+}
+
+.preset-chip:hover {
+  background: var(--paper);
+  border-color: var(--accent);
+}
+
+.preset-chip--active {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent-strong);
+  font-weight: 600;
+}
+
+.top-match-card {
+  background: linear-gradient(135deg, var(--paper-raised) 0%, var(--accent-wash) 100%);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.35rem;
+  margin: 1.25rem 0 1.5rem;
+  box-shadow: var(--shadow-2);
+}
+
+.top-match-card__badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-strong);
+  margin-bottom: 0.35rem;
+}
+
+.top-match-card__content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.top-match-card__title {
+  font-size: 1.18rem;
+  margin: 0 0 0.25rem 0;
+  font-weight: 700;
+}
+
+.top-match-card__meta {
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.4rem 0;
+}
+
+.top-match-card__skills {
+  font-size: 0.82rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .cheat-sheet-dialog,
+  .cheat-sheet-dialog * {
+    visibility: visible;
+  }
+  .cheat-sheet-dialog {
+    position: absolute;
+    inset: 0;
+    max-width: 100%;
+    max-height: 100%;
+    border: none;
+    box-shadow: none;
+  }
+  .cheat-sheet-actions {
+    display: none !important;
+  }
+}
+
 /* ---- high contrast preference ---- */
 
 @media (prefers-contrast: more) {

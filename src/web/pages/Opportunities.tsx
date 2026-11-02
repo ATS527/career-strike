@@ -118,6 +118,20 @@ export function Opportunities() {
     update('q', query.trim());
   };
 
+  const applyPreset = (patch: Record<string, string | null>): void => {
+    const p = new URLSearchParams(search);
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === '') {
+        p.delete(k);
+      } else {
+        p.set(k, v);
+      }
+    }
+    if (patch.country !== undefined) p.delete('city');
+    setLimit(PAGE);
+    navigate(`/opportunities${p.toString() ? `?${p.toString()}` : ''}`, { replace: true });
+  };
+
   const toggleCompare = (id: string): void =>
     setCompare((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : ids.length < MAX_COMPARE ? [...ids, id] : ids));
 
@@ -143,6 +157,66 @@ export function Opportunities() {
       </div>
 
       {settings.state === 'ready' && <CountryFocusViews countries={configuredCountries(settings.data.settings['search.preferredCountries'])} />}
+
+      <div className="quick-presets-strip" role="region" aria-label="Quick focus filters">
+        <span className="quick-presets__label">⚡ Focus:</span>
+        <button
+          type="button"
+          className={`preset-chip ${!params.get('tier') && !params.get('remote') && !params.get('status') && !params.get('country') ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ tier: null, remote: null, status: null, country: null, sort: null })}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('tier') === 'strong' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ tier: 'strong', sort: 'best_fit' })}
+        >
+          ⭐ Strong Fit
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('remote') === 'remote' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ remote: 'remote' })}
+        >
+          🌐 Remote
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('status') === 'OPEN' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ status: 'OPEN', sort: 'newest' })}
+        >
+          ⏱️ Verified (&lt; 72h)
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('country') === 'DE' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ country: 'DE' })}
+        >
+          🇩🇪 Germany
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('country') === 'IN' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ country: 'IN' })}
+        >
+          🇮🇳 India
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('country') === 'SG' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ country: 'SG' })}
+        >
+          🇸🇬 Singapore
+        </button>
+        <button
+          type="button"
+          className={`preset-chip ${params.get('country') === 'GB' ? 'preset-chip--active' : ''}`}
+          onClick={() => applyPreset({ country: 'GB' })}
+        >
+          🇬🇧 UK
+        </button>
+      </div>
 
       <form className="filters" role="search" onSubmit={submitSearch} aria-label="Search and filter opportunities">
         <div className="filters__search">
@@ -292,6 +366,7 @@ export function Opportunities() {
       {list.state === 'error' && <ErrorPanel message="Opportunities could not be loaded." onRetry={() => setReload((n) => n + 1)} />}
       {list.state === 'ready' && (
         <>
+          <TopMatchSpotlight jobs={list.data.jobs} />
           <p className="result-count" role="status" aria-live="polite">
             {list.data.total === 0 ? 'No opportunities match.' : `${list.data.total} ${list.data.total === 1 ? 'opportunity' : 'opportunities'}`}
           </p>
@@ -385,6 +460,44 @@ function EmptyHint({ filtered }: { filtered: boolean }) {
     <p className="empty">
       Nothing here yet. <Link href="/opportunities/sources">Monitor a job board</Link> or <Link href="/opportunities/new">add a job you found</Link>.
     </p>
+  );
+}
+
+function TopMatchSpotlight({ jobs }: { jobs: JobSummary[] }) {
+  const topMatch = jobs.find((j) => j.fit?.tier === 'strong' && j.disposition !== 'excluded');
+  if (!topMatch) return null;
+
+  return (
+    <aside className="top-match-card" aria-label="Top match recommendation">
+      <div className="top-match-card__badge">⭐ High-Signal Match for Your Profile</div>
+      <div className="top-match-card__content">
+        <div className="top-match-card__details">
+          <h3 className="top-match-card__title">
+            <Link href={`/jobs/${topMatch.id}`}>{topMatch.title}</Link>
+          </h3>
+          <p className="top-match-card__meta">
+            <strong>{topMatch.employer}</strong> · {topMatch.locationText || 'Location unstated'} ·{' '}
+            <span>{REMOTE_LABEL[topMatch.remotePolicy]}</span>
+            {topMatch.salary && ` · ${formatSalary(topMatch.salary)}`}
+          </p>
+          {topMatch.fit && topMatch.fit.matchedSkills.length > 0 && (
+            <div className="top-match-card__skills">
+              <span className="muted">Your verified skills: </span>
+              {topMatch.fit.matchedSkills.slice(0, 5).map((s) => (
+                <span key={s} className="evidence-chip evidence-chip--skill">
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="top-match-card__action">
+          <Link href={`/jobs/${topMatch.id}`} className="button button--small button--primary">
+            Review Role & Prep
+          </Link>
+        </div>
+      </div>
+    </aside>
   );
 }
 

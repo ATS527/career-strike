@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type Interview, type PayloadField, type PersonalizationView, type StoredDocument } from '../api';
+import { buildOutreachDraft, downloadInterviewIcs, type OutreachKind } from '../candidateExperience';
 import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
 import { ExternalLink, Link, useNavigateTo } from '../router';
 import { ErrorPanel, Loading } from './states';
@@ -98,6 +99,7 @@ export function ApplicationPage({ id }: { id: string }) {
           <Actions view={view} busy={busy} post={post} run={run} />
           <Interviews view={view} onChange={() => void load()} />
           <FollowUps view={view} onChange={() => void load()} />
+          <FollowUpStudio view={view} />
           <History view={view} />
         </aside>
       </div>
@@ -760,6 +762,14 @@ function Interviews({ view, onChange }: { view: ApplicationView; onChange: () =>
           {list.map((i) => (
             <li key={i.id}>
               {i.stage} · {formatDateTime(i.scheduledAt)} · {i.format.replace('_', '-')} ·{' '}
+              <button
+                type="button"
+                className="button button--small button--quiet"
+                onClick={() => downloadInterviewIcs({ interview: i, employer: view.job.employer, jobTitle: view.job.title })}
+                title="Download .ics calendar file"
+              >
+                📅 .ics
+              </button>{' '}
               <label className="visually-hidden" htmlFor={`int-${i.id}`}>
                 Outcome of {i.stage}
               </label>
@@ -822,6 +832,125 @@ function Interviews({ view, onChange }: { view: ApplicationView; onChange: () =>
       ) : (
         <p className="muted">Interviews can be added once the application has been submitted.</p>
       )}
+    </section>
+  );
+}
+
+function FollowUpStudio({ view }: { view: ApplicationView }) {
+  const [kind, setKind] = useState<OutreachKind>(
+    view.state === 'INTERVIEW'
+      ? 'post_interview_thanks'
+      : view.state === 'OFFER'
+        ? 'offer_next_steps'
+        : 'status_inquiry',
+  );
+  const [contactName, setContactName] = useState('');
+  const [highlight, setHighlight] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const candidateName = useMemo(() => {
+    const f = view.payload.fields.find((field) => ['full_name', 'name', 'candidate_name'].includes(field.key.toLowerCase()));
+    return typeof f?.value === 'string' && f.value.trim() ? f.value.trim() : 'Candidate';
+  }, [view.payload.fields]);
+
+  const draft = useMemo(() => {
+    return buildOutreachDraft({
+      kind,
+      employer: view.job.employer,
+      title: view.job.title,
+      candidateName,
+      contactName,
+      discussionHighlight: highlight,
+    });
+  }, [kind, view.job.employer, view.job.title, candidateName, contactName, highlight]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.body}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback
+    }
+  };
+
+  return (
+    <section className="follow-ups outreach-studio" aria-labelledby="outreach-title">
+      <h3 id="outreach-title">✉️ Professional Follow-Up Studio</h3>
+      <p className="help">Draft thoughtful, stage-appropriate correspondence with one-click copy.</p>
+
+      <div className="outreach-tabs" role="tablist" aria-label="Follow-up draft types">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === 'status_inquiry'}
+          className={`outreach-tab ${kind === 'status_inquiry' ? 'outreach-tab--active' : ''}`}
+          onClick={() => setKind('status_inquiry')}
+        >
+          Check-in
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === 'post_interview_thanks'}
+          className={`outreach-tab ${kind === 'post_interview_thanks' ? 'outreach-tab--active' : ''}`}
+          onClick={() => setKind('post_interview_thanks')}
+        >
+          Thank You
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={kind === 'offer_next_steps'}
+          className={`outreach-tab ${kind === 'offer_next_steps' ? 'outreach-tab--active' : ''}`}
+          onClick={() => setKind('offer_next_steps')}
+        >
+          Offer
+        </button>
+      </div>
+
+      <div className="outreach-inputs">
+        <label htmlFor="outreach-contact">Contact or recruiter name (optional)</label>
+        <input
+          id="outreach-contact"
+          type="text"
+          placeholder="e.g. Sarah Miller"
+          value={contactName}
+          onChange={(e) => setContactName(e.target.value)}
+        />
+
+        {kind === 'post_interview_thanks' && (
+          <>
+            <label htmlFor="outreach-highlight">Discussion highlight (optional)</label>
+            <input
+              id="outreach-highlight"
+              type="text"
+              placeholder="e.g. system reliability during peak traffic"
+              value={highlight}
+              onChange={(e) => setHighlight(e.target.value)}
+            />
+          </>
+        )}
+      </div>
+
+      <div className="outreach-preview-box">
+        <div className="outreach-preview-subject">
+          <strong>Subject:</strong> {draft.subject}
+        </div>
+        <pre
+          className="outreach-preview-body"
+          tabIndex={0}
+          role="region"
+          aria-label="Email draft preview"
+        >
+          {draft.body}
+        </pre>
+        <div className="outreach-preview-actions">
+          <button type="button" className="button button--small button--secondary" onClick={handleCopy}>
+            {copied ? '✓ Copied to Clipboard!' : '📋 Copy Outreach Draft'}
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
