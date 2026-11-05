@@ -18,8 +18,10 @@ export function SettingField({ def, value }: { def: SettingDefinition; value: un
 
   if (!kind) {
     return (
-      <div className="field" data-setting={def.key} id={def.key}>
-        <p className="banner banner--danger">This dashboard cannot edit “{def.label}” yet. Update Career Strike.</p>
+      <div className="space-y-2 py-4 border-b border-border/60 last:border-0" data-setting={def.key} id={def.key}>
+        <p className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+          This dashboard cannot edit “{def.label}” yet. Update Career Strike.
+        </p>
       </div>
     );
   }
@@ -53,7 +55,13 @@ export function SettingField({ def, value }: { def: SettingDefinition; value: un
   };
 
   return (
-    <form className="field" data-setting={def.key} id={def.key} onSubmit={(e) => void submit(e)} noValidate>
+    <form
+      className="space-y-2 py-4 border-b border-border/60 last:border-0"
+      data-setting={def.key}
+      id={def.key}
+      onSubmit={(e) => void submit(e)}
+      noValidate
+    >
       <FieldControl
         def={def}
         kind={kind}
@@ -64,7 +72,7 @@ export function SettingField({ def, value }: { def: SettingDefinition; value: un
         }}
         describedBy={`${helpId} ${statusId}`}
       />
-      <p className="help" id={helpId}>
+      <p className="text-sm text-muted-foreground mt-1" id={helpId}>
         {def.help}
         {def.classification === 'SENSITIVE' && (
           <Badge variant="secondary" className="ml-2">
@@ -72,7 +80,7 @@ export function SettingField({ def, value }: { def: SettingDefinition; value: un
           </Badge>
         )}
       </p>
-      <div className="field__actions field__actions--flush">
+      <div className="flex items-center gap-2 pt-1">
         <Button type="submit" size="sm" disabled={!dirty || save.status === 'saving'}>
           {save.status === 'saving' ? 'Saving…' : 'Save'}
         </Button>
@@ -89,7 +97,18 @@ export function SettingField({ def, value }: { def: SettingDefinition; value: un
             Discard changes
           </Button>
         )}
-        <span id={statusId} role="status" aria-live="polite" className={`save-status save-status--${save.status}`}>
+        <span
+          id={statusId}
+          role="status"
+          aria-live="polite"
+          className={`text-xs font-medium ${
+            save.status === 'saved'
+              ? 'text-teal-600 dark:text-teal-400'
+              : save.status === 'error'
+                ? 'text-destructive'
+                : 'text-muted-foreground'
+          }`}
+        >
           {save.status === 'saved' && 'Saved'}
           {save.status === 'error' && save.messages.join(' ')}
         </span>
@@ -118,11 +137,18 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
     case 'choice':
       return (
         <fieldset aria-describedby={describedBy}>
-          <legend>{def.label}</legend>
-          <div className="choices">
+          <legend className="text-sm font-medium text-foreground block mb-2">{def.label}</legend>
+          <div className="flex flex-wrap gap-4">
             {kind.values.map((v) => (
-              <label key={v} className="choice">
-                <input type="radio" name={def.key} value={v} checked={draft === v} onChange={() => onChange(v)} />
+              <label key={v} className="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                <input
+                  type="radio"
+                  name={def.key}
+                  value={v}
+                  checked={draft === v}
+                  onChange={() => onChange(v)}
+                  className="accent-primary"
+                />
                 <span>{label(v)}</span>
               </label>
             ))}
@@ -133,10 +159,10 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
       const selected = draft as string[];
       return (
         <fieldset aria-describedby={describedBy}>
-          <legend>{def.label}</legend>
-          <div className="choices">
+          <legend className="text-sm font-medium text-foreground block mb-2">{def.label}</legend>
+          <div className="flex flex-wrap gap-4">
             {kind.values.map((v) => (
-              <label key={v} className="choice">
+              <label key={v} className="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   value={v}
@@ -148,6 +174,7 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
                         : selected.filter((x) => x !== v),
                     )
                   }
+                  className="accent-primary rounded"
                 />
                 <span>{label(v)}</span>
               </label>
@@ -159,12 +186,13 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
     case 'lines':
       return (
         <>
-          <label htmlFor={inputId} className="field__label">
+          <label htmlFor={inputId} className="block text-sm font-medium text-foreground mb-1">
             {def.label}
           </label>
           <textarea
             id={inputId}
             rows={4}
+            className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={draft as string}
             onChange={(e) => onChange(e.target.value)}
             aria-describedby={describedBy}
@@ -174,12 +202,13 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
     case 'country-authorizations':
       return (
         <>
-          <label htmlFor={inputId} className="field__label">
+          <label htmlFor={inputId} className="block text-sm font-medium text-foreground mb-1">
             {def.label}
           </label>
           <textarea
             id={inputId}
             rows={4}
+            className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             value={draft as string}
             onChange={(e) => onChange(e.target.value)}
             aria-describedby={describedBy}
@@ -190,13 +219,15 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
     case 'optional-text':
       return (
         <>
-          <label htmlFor={inputId} className="field__label">
+          <label htmlFor={inputId} className="block text-sm font-medium text-foreground mb-1">
             {def.label}
           </label>
           <input
             id={inputId}
             type="text"
-            className={kind.pattern && /^\^\[A-Z\]\{\d\}\$$/.test(kind.pattern) ? 'input--short' : undefined}
+            className={`flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              kind.pattern && /^\^\[A-Z\]\{\d\}\$$/.test(kind.pattern) ? 'max-w-[120px]' : ''
+            }`}
             value={draft as string}
             onChange={(e) => onChange(e.target.value)}
             aria-describedby={describedBy}
@@ -209,15 +240,22 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
       const set = (name: string, v: string): void => onChange({ ...record, [name]: v });
       return (
         <fieldset aria-describedby={describedBy}>
-          <legend>{def.label}</legend>
-          <div className="record">
+          <legend className="text-sm font-medium text-foreground block mb-2">{def.label}</legend>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
             {kind.properties.map(([name, schema]) => {
               const id = `${def.key}-${name}`;
               return (
-                <div key={name} className="record__part">
-                  <label htmlFor={id}>{recordLabel(name)}</label>
+                <div key={name} className="space-y-1">
+                  <label htmlFor={id} className="block text-xs font-medium text-foreground">
+                    {recordLabel(name)}
+                  </label>
                   {schema.enum ? (
-                    <select id={id} value={record[name] ?? ''} onChange={(e) => set(name, e.target.value)}>
+                    <select
+                      id={id}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={record[name] ?? ''}
+                      onChange={(e) => set(name, e.target.value)}
+                    >
                       <option value="">—</option>
                       {schema.enum.map((v) => (
                         <option key={v} value={v}>
@@ -230,6 +268,7 @@ function FieldControl({ def, kind, draft, onChange, describedBy }: ControlProps)
                       id={id}
                       type={schema.type === 'integer' ? 'number' : 'text'}
                       inputMode={schema.type === 'integer' ? 'numeric' : undefined}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={record[name] ?? ''}
                       onChange={(e) => set(name, e.target.value)}
                       autoComplete="off"

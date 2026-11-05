@@ -38,15 +38,18 @@ export function AddBoardForm({ onAdded }: { onAdded: (task: Task | null) => void
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="add-board mb-6">
-        <label htmlFor="board-url" className="field__label block text-sm font-medium mb-1">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6"
+      >
+        <label htmlFor="board-url" className="block text-sm font-medium text-foreground mb-1">
           Careers page link
         </label>
-        <p className="help text-xs text-muted-foreground mb-3" id="board-url-help">
+        <p className="text-xs text-muted-foreground mb-3" id="board-url-help">
           For example <code>https://jobs.lever.co/company</code>, <code>https://job-boards.greenhouse.io/company</code>{' '}
           or <code>https://jobs.ashbyhq.com/company</code>.
         </p>
-        <div className="add-board__row flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <FormField
             control={form.control}
             name="url"
@@ -72,7 +75,7 @@ export function AddBoardForm({ onAdded }: { onAdded: (task: Task | null) => void
           id="board-url-status"
           role="status"
           aria-live="polite"
-          className={`save-status mt-2 text-sm ${status.kind === 'error' ? 'text-destructive save-status--error' : 'text-primary save-status--saved'}`}
+          className={`mt-2 text-xs font-medium ${status.kind === 'error' ? 'text-destructive' : 'text-teal-600 dark:text-teal-400'}`}
         >
           {status.kind === 'error' && status.message}
           {status.kind === 'added' && `Added ${status.name}. Fetching its postings now.`}

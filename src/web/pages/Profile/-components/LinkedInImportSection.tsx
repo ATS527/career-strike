@@ -53,19 +53,28 @@ export function LinkedInImportSection({ onChange }: { onChange: () => void }) {
   };
 
   return (
-    <section className="settings-group" aria-labelledby="linkedin-import-title" id="linkedin-import">
-      <h2 id="linkedin-import-title">Import from LinkedIn export</h2>
-      <p className="help">
+    <section
+      className="rounded-xl border border-border bg-card p-6 shadow-xs"
+      aria-labelledby="linkedin-import-title"
+      id="linkedin-import"
+    >
+      <h2 id="linkedin-import-title" className="text-lg font-semibold tracking-tight text-foreground mb-1">
+        Import from LinkedIn export
+      </h2>
+      <p className="text-sm text-muted-foreground mb-4">
         Upload your LinkedIn data export archive (.zip) or individual CSV file (e.g. <code>Positions.csv</code>,{' '}
         <code>Skills.csv</code>, <code>Education.csv</code>, <code>Projects.csv</code>). Career Strike extracts facts
         locally on this computer; each item is suggested for your review below and is never used until you approve it.
       </p>
-      <div className="fact-form">
-        <div className="record__part">
-          <label htmlFor="linkedin-export-file">LinkedIn export file (.zip or .csv)</label>
+      <div className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3">
+        <div className="space-y-1">
+          <label htmlFor="linkedin-export-file" className="block text-xs font-medium text-foreground">
+            LinkedIn export file (.zip or .csv)
+          </label>
           <input
             id="linkedin-export-file"
             type="file"
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             accept=".zip,.csv,application/zip,text/csv"
             disabled={loading}
             onChange={(e) => {
@@ -78,9 +87,11 @@ export function LinkedInImportSection({ onChange }: { onChange: () => void }) {
           />
         </div>
       </div>
-      <p role="status" aria-live="polite" className="save-status">
-        {status}
-      </p>
+      {status && (
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2">
+          {status}
+        </p>
+      )}
     </section>
   );
 }

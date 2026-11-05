@@ -63,51 +63,61 @@ export function Activity() {
   };
 
   return (
-    <>
+    <div>
       <PageHeader
         eyebrow="Activity"
         title="What Career Strike is doing"
         lede="Only real work appears here. A task shows as running only while the service is actually doing it."
       />
 
-      <section className="settings-group mb-6" aria-labelledby="running-title">
-        <h2 id="running-title">Running now</h2>
+      <section className="mb-8 p-5 bg-card rounded-lg border border-border shadow-xs" aria-labelledby="running-title">
+        <h2 id="running-title" className="text-lg font-bold text-foreground mb-4">
+          Running now
+        </h2>
         {data.running.length === 0 ? (
-          <p className="empty">Nothing is running.</p>
+          <p className="text-sm text-muted-foreground italic my-2">Nothing is running.</p>
         ) : (
-          <ul className="job-list space-y-3" data-testid="running">
+          <ul className="space-y-3 p-0 m-0 list-none" data-testid="running">
             {data.running.map((t) => (
               <RunningTaskRow key={t.id} task={t} boards={data.boards} onCancel={handleCancel} />
             ))}
           </ul>
         )}
         {message && (
-          <p role="status" aria-live="polite" className="save-status mt-2">
+          <p role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2">
             {message}
           </p>
         )}
       </section>
 
-      <section className="settings-group mb-6" aria-labelledby="sched-title">
-        <h2 id="sched-title">Scheduled</h2>
-        <ul className="disclosures" data-testid="schedules">
+      <section className="mb-8 p-5 bg-card rounded-lg border border-border shadow-xs" aria-labelledby="sched-title">
+        <h2 id="sched-title" className="text-lg font-bold text-foreground mb-4">
+          Scheduled
+        </h2>
+        <ul className="space-y-2.5 p-0 m-0 list-none text-sm text-muted-foreground" data-testid="schedules">
           {data.schedules.map((s) => (
-            <li key={s.id}>
-              {s.label}:{' '}
+            <li key={s.id} className="p-2.5 rounded bg-muted/40 border border-border/60">
+              <strong className="text-foreground">{s.label}</strong>:{' '}
               {s.enabled ? (
-                <>
+                <span>
                   every {s.intervalHours} hours · next {s.nextRunAt ? formatDateTime(s.nextRunAt) : '—'}
                   {s.lastSlotAt ? ` · last ${ago(s.lastSlotAt)}` : ''}
-                </>
+                </span>
               ) : (
-                <>
-                  off — <Link href="/settings#monitoring.discoveryIntervalHours">turn on in Settings</Link>
-                </>
+                <span>
+                  off —{' '}
+                  <Link href="/settings#monitoring.discoveryIntervalHours" className="text-primary hover:underline">
+                    turn on in Settings
+                  </Link>
+                </span>
               )}
             </li>
           ))}
           {backoff.map((b) => (
-            <li key={b.id}>
+            <li
+              key={b.id}
+              className="p-2.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200"
+            >
               Board “{b.board}” failed {b.consecutiveFailures} time{b.consecutiveFailures === 1 ? '' : 's'}; scheduled
               checks wait until {formatDateTime(b.nextAttemptAt!)}
               {b.lastError ? ` (${b.lastError})` : ''}.
@@ -116,35 +126,52 @@ export function Activity() {
         </ul>
       </section>
 
-      <section className="settings-group mb-6" aria-labelledby="recent-title">
-        <h2 id="recent-title">Recent</h2>
+      <section className="mb-8 p-5 bg-card rounded-lg border border-border shadow-xs" aria-labelledby="recent-title">
+        <h2 id="recent-title" className="text-lg font-bold text-foreground mb-4">
+          Recent
+        </h2>
         {data.recent.length === 0 ? (
-          <p className="empty">No activity yet.</p>
+          <p className="text-sm text-muted-foreground italic my-2">No activity yet.</p>
         ) : (
-          <div className="table-scroll" tabIndex={0} role="region" aria-label="Recent activity">
-            <table className="compare" data-testid="recent">
+          <div
+            className="overflow-x-auto rounded-md border border-border"
+            tabIndex={0}
+            role="region"
+            aria-label="Recent activity"
+          >
+            <table className="w-full text-left text-sm border-collapse" data-testid="recent">
               <thead>
-                <tr>
-                  <th scope="col">Task</th>
-                  <th scope="col">Result</th>
-                  <th scope="col">When</th>
-                  <th scope="col">Details</th>
+                <tr className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <th scope="col" className="p-3">
+                    Task
+                  </th>
+                  <th scope="col" className="p-3">
+                    Result
+                  </th>
+                  <th scope="col" className="p-3">
+                    When
+                  </th>
+                  <th scope="col" className="p-3">
+                    Details
+                  </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border">
                 {data.recent.map((t) => (
-                  <tr key={t.id}>
-                    <td>
-                      {describeTask(t, data.boards)}
+                  <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                    <td className="p-3">
+                      <span className="font-medium text-foreground">{describeTask(t, data.boards)}</span>
                       <br />
-                      <span className="muted">
+                      <span className="text-xs text-muted-foreground">
                         {TRIGGER[t.trigger] ?? t.trigger}
                         {t.attempt > 1 ? ` · attempt ${t.attempt}` : ''}
                       </span>
                     </td>
-                    <td>{t.live ? 'Running' : (STATE_LABEL[t.state] ?? t.state)}</td>
-                    <td>{ago(t.endedAt ?? t.startedAt ?? t.createdAt)}</td>
-                    <td>
+                    <td className="p-3 text-sm">{t.live ? 'Running' : (STATE_LABEL[t.state] ?? t.state)}</td>
+                    <td className="p-3 text-sm text-muted-foreground">
+                      {ago(t.endedAt ?? t.startedAt ?? t.createdAt)}
+                    </td>
+                    <td className="p-3 text-xs text-muted-foreground">
                       {t.error ??
                         (t.result && typeof (t.result as { fetched?: unknown }).fetched === 'number'
                           ? `${String((t.result as { fetched: number }).fetched)} postings, ${String((t.result as { added: number }).added)} new, ${String((t.result as { closed: number }).closed)} closed`
@@ -159,7 +186,7 @@ export function Activity() {
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 }
 

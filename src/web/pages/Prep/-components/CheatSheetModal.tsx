@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Prep as PrepData, ProfileFact } from '../../../api';
+import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { formatDateTime } from '../../../format';
 
@@ -67,28 +68,34 @@ export function CheatSheetModal({
   };
 
   return (
-    <div className="modal-backdrop" onClick={onClose} role="presentation">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
-        className="modal-card cheat-sheet-dialog"
+        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-card text-card-foreground rounded-xl border border-border shadow-2xl p-6 sm:p-8 space-y-6"
         role="dialog"
         aria-modal="true"
         aria-labelledby="cs-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="cheat-sheet-header">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-4 pb-4 border-b border-border">
           <div>
-            <p className="eyebrow">1-Page Interview Brief</p>
-            <h2 id="cs-title">
+            <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+              1-Page Interview Brief
+            </p>
+            <h2 id="cs-title" className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               {data.application.title} · {data.application.employer}
             </h2>
             {next && (
-              <p className="cheat-sheet-sub">
-                Upcoming: <strong>{next.stage}</strong> · {formatDateTime(next.scheduledAt)} (
-                {next.format.replace('_', '-')})
+              <p className="text-sm text-muted-foreground mt-1">
+                Upcoming: <strong className="text-foreground">{next.stage}</strong> · {formatDateTime(next.scheduledAt)}{' '}
+                ({next.format.replace('_', '-')})
               </p>
             )}
           </div>
-          <div className="cheat-sheet-actions flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Button type="button" size="sm" variant="secondary" onClick={handleCopy}>
               {copied ? '✓ Copied' : '📋 Copy Brief'}
             </Button>
@@ -101,42 +108,43 @@ export function CheatSheetModal({
           </div>
         </div>
 
-        <div className="cheat-sheet-body">
-          <div className="cheat-sheet-section">
-            <h3>Posting Requirements &amp; Focus</h3>
-            <ul className="disclosures">
+        <div className="space-y-6">
+          <div className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3">
+            <h3 className="text-base font-semibold text-foreground">Posting Requirements &amp; Focus</h3>
+            <ul className="divide-y divide-border/60 text-sm">
               {postingTopics.map((t) => (
-                <li key={t.id}>
-                  <strong>{t.title}</strong>
-                  {t.quote && <span className="muted"> — “{t.quote}”</span>}
+                <li key={t.id} className="py-2.5 first:pt-0 last:pb-0">
+                  <strong className="text-foreground">{t.title}</strong>
+                  {t.quote && <span className="text-muted-foreground"> — “{t.quote}”</span>}
                 </li>
               ))}
             </ul>
           </div>
 
-          <div className="cheat-sheet-section">
-            <h3>Gap Defense Strategy</h3>
+          <div className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3">
+            <h3 className="text-base font-semibold text-foreground">Gap Defense Strategy</h3>
             {gaps.length > 0 ? (
-              <ul className="disclosures">
+              <ul className="divide-y divide-border/60 text-sm">
                 {gaps.map((g) => (
-                  <li key={g.id}>
-                    <span className="badge">Gap</span> <strong>{g.title}</strong>
-                    <p className="help" style={{ margin: '0.2rem 0 0' }}>
+                  <li key={g.id} className="py-2.5 first:pt-0 last:pb-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="destructive">Gap</Badge>
+                      <strong className="text-foreground">{g.title}</strong>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Acknowledge frankly if asked; point to adjacent competencies and past fast-learning evidence.
                     </p>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="muted" style={{ fontSize: '0.88rem' }}>
-                ✓ No critical skill gaps identified against this posting.
-              </p>
+              <p className="text-sm text-muted-foreground">✓ No critical skill gaps identified against this posting.</p>
             )}
           </div>
 
-          <div className="cheat-sheet-section">
-            <h3>Your Anchored Verified Strengths</h3>
-            <div className="topic-evidence" style={{ marginTop: '0.4rem' }}>
+          <div className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3">
+            <h3 className="text-base font-semibold text-foreground">Your Anchored Verified Strengths</h3>
+            <div className="flex flex-wrap gap-1.5 pt-1">
               {facts
                 .filter((f) => f.approved)
                 .slice(0, 10)
@@ -148,7 +156,10 @@ export function CheatSheetModal({
                         ? f.value.title
                         : '';
                   return label ? (
-                    <span key={f.id} className="evidence-chip evidence-chip--skill">
+                    <span
+                      key={f.id}
+                      className="inline-flex items-center rounded-md border border-border bg-secondary/60 px-2.5 py-1 text-xs font-medium text-secondary-foreground"
+                    >
                       {label}
                     </span>
                   ) : null;
@@ -156,24 +167,32 @@ export function CheatSheetModal({
             </div>
           </div>
 
-          <div className="cheat-sheet-section cheat-sheet-star">
-            <h3>STAR Method Quick Reference</h3>
-            <div className="star-grid">
-              <div>
-                <strong>S · Situation</strong>
-                <p>1-2 sentences setting scope, architecture, scale, and business urgency.</p>
+          <div className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3">
+            <h3 className="text-base font-semibold text-foreground">STAR Method Quick Reference</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="rounded-md border border-border/50 bg-background/50 p-3">
+                <strong className="text-foreground">S · Situation</strong>
+                <p className="text-xs text-muted-foreground mt-1">
+                  1-2 sentences setting scope, architecture, scale, and business urgency.
+                </p>
               </div>
-              <div>
-                <strong>T · Task</strong>
-                <p>The specific deliverable you individually owned and were accountable for.</p>
+              <div className="rounded-md border border-border/50 bg-background/50 p-3">
+                <strong className="text-foreground">T · Task</strong>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The specific deliverable you individually owned and were accountable for.
+                </p>
               </div>
-              <div>
-                <strong>A · Action</strong>
-                <p>Technical decisions, tradeoffs considered, how you unblocked collaborators.</p>
+              <div className="rounded-md border border-border/50 bg-background/50 p-3">
+                <strong className="text-foreground">A · Action</strong>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Technical decisions, tradeoffs considered, how you unblocked collaborators.
+                </p>
               </div>
-              <div>
-                <strong>R · Result</strong>
-                <p>Quantitative outcome: latency reduced, uptime increased, revenue unlocked.</p>
+              <div className="rounded-md border border-border/50 bg-background/50 p-3">
+                <strong className="text-foreground">R · Result</strong>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Quantitative outcome: latency reduced, uptime increased, revenue unlocked.
+                </p>
               </div>
             </div>
           </div>

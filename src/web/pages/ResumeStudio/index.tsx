@@ -268,13 +268,17 @@ export function ResumeStudio() {
   };
 
   return (
-    <div className="resume-studio">
+    <div className="space-y-6">
       <PageHeader
         eyebrow="Document Workspace"
         title="Resume Studio"
         lede="Evidence-backed tailoring: your confirmed career facts organized in one truthful master profile, tailored with zero fabrication and verified against role requirements."
         actions={
-          <div className="choice-group flex gap-1" role="group" aria-label="Studio View Mode">
+          <div
+            className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1 gap-1"
+            role="group"
+            aria-label="Studio View Mode"
+          >
             <Button
               type="button"
               variant={viewMode === 'master' ? 'default' : 'ghost'}
@@ -297,7 +301,7 @@ export function ResumeStudio() {
 
       {readiness && (
         <section
-          className={`readiness-banner readiness-banner--${readiness.state.toLowerCase()} mb-6 p-4 bg-card border border-border rounded-xl`}
+          className="p-4 bg-card border border-border rounded-xl shadow-xs"
           aria-labelledby="readiness-studio-title"
         >
           <div className="flex justify-between items-center flex-wrap gap-3">
@@ -305,9 +309,15 @@ export function ResumeStudio() {
               <Badge variant={allPassed ? 'teal' : 'warning'} className="mr-2">
                 {readiness.title}
               </Badge>
-              <strong id="readiness-studio-title">Profile Status:</strong> {readiness.summary}
+              <strong id="readiness-studio-title" className="text-foreground">
+                Profile Status:
+              </strong>{' '}
+              <span className="text-muted-foreground text-sm">{readiness.summary}</span>
             </div>
-            <Link href={readiness.actionHref} className="button button--quiet text-xs">
+            <Link
+              href={readiness.actionHref}
+              className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+            >
               {readiness.actionLabel}
             </Link>
           </div>
@@ -315,14 +325,17 @@ export function ResumeStudio() {
       )}
 
       {/* ATS Validation Evidence Bar */}
-      <section className="settings-group mb-6" aria-labelledby="ats-health-title">
+      <section aria-labelledby="ats-health-title">
         <AtsScorecard atsChecks={atsChecks} />
       </section>
 
       {viewMode === 'master' ? (
-        <section className="settings-group" aria-labelledby="master-preview-title">
+        <section
+          className="rounded-xl border border-border bg-card p-6 shadow-xs"
+          aria-labelledby="master-preview-title"
+        >
           <div className="flex justify-between items-center flex-wrap gap-4 mb-3">
-            <h2 id="master-preview-title" className="m-0">
+            <h2 id="master-preview-title" className="text-lg font-semibold tracking-tight text-foreground m-0">
               Master Resume Document
             </h2>
             <div className="flex gap-2">
@@ -334,42 +347,48 @@ export function ResumeStudio() {
               >
                 Download Plain Text (.txt)
               </Button>
-              <Link href="/profile" className="button button--quiet text-xs">
+              <Link
+                href="/profile"
+                className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+              >
                 Edit Facts in Profile
               </Link>
             </div>
           </div>
-          <p className="help mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Automatically compiled from your confirmed profile facts ({confirmedRoles.length} roles,{' '}
             {confirmedSkills.length} skills, {confirmedProjects.length} projects).
           </p>
           <div
             tabIndex={0}
+            role="region"
             aria-label="Master Resume content"
-            className="font-mono text-sm leading-relaxed bg-card border border-border rounded-xl p-6 whitespace-pre-wrap max-h-[600px] overflow-y-auto"
+            className="font-mono text-sm leading-relaxed bg-background border border-border rounded-xl p-6 whitespace-pre-wrap max-h-[600px] overflow-y-auto"
           >
             {masterResumeContent}
           </div>
         </section>
       ) : (
-        <section className="settings-group" aria-labelledby="compare-title">
+        <section className="rounded-xl border border-border bg-card p-6 shadow-xs" aria-labelledby="compare-title">
           <div className="flex justify-between items-center flex-wrap gap-4 mb-4">
             <div>
-              <h2 id="compare-title" className="m-0">
+              <h2 id="compare-title" className="text-lg font-semibold tracking-tight text-foreground m-0">
                 Side-by-Side Tailored Document Comparison
               </h2>
-              <p className="help mt-1">Compare your canonical Master Resume with job-specific tailored documents.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Compare your canonical Master Resume with job-specific tailored documents.
+              </p>
             </div>
             {applications.length > 0 && (
               <div className="flex items-center gap-2">
-                <label htmlFor="select-app" className="field__label m-0">
+                <label htmlFor="select-app" className="text-xs font-medium text-foreground m-0">
                   Application:
                 </label>
                 <select
                   id="select-app"
                   value={selectedAppId}
                   onChange={(e) => setSelectedAppId(e.target.value)}
-                  className="p-1 px-2 rounded-md border border-input bg-background text-sm"
+                  className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {applications.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -382,15 +401,22 @@ export function ResumeStudio() {
           </div>
 
           {applications.length === 0 ? (
-            <p className="empty">
-              No applications prepared yet. Open any role in <Link href="/opportunities">Opportunities</Link> and click
-              “Prepare an application”.
+            <p className="text-sm text-muted-foreground italic py-4">
+              No applications prepared yet. Open any role in{' '}
+              <Link href="/opportunities" className="text-primary hover:underline">
+                Opportunities
+              </Link>{' '}
+              and click “Prepare an application”.
             </p>
           ) : (
             <>
               {activeApp && (
                 <div className="mb-4 flex gap-3 items-center flex-wrap">
-                  <div className="choice-group flex gap-1" role="group" aria-label="Variant kind selector">
+                  <div
+                    className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1 gap-1"
+                    role="group"
+                    aria-label="Variant kind selector"
+                  >
                     <Button
                       type="button"
                       variant={selectedVariantKind === 'resume' ? 'default' : 'ghost'}
@@ -416,25 +442,28 @@ export function ResumeStudio() {
                       Tailored Cover Letter
                     </Button>
                   </div>
-                  <Link href={`/applications/${activeApp.id}`} className="button button--quiet text-xs">
+                  <Link
+                    href={`/applications/${activeApp.id}`}
+                    className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+                  >
                     Open Full Application →
                   </Link>
                 </div>
               )}
 
               {personalization?.requirements && personalization.requirements.length > 0 && (
-                <details className="mb-4 p-3 bg-card border border-border rounded-xl">
-                  <summary className="cursor-pointer font-semibold text-sm">
+                <details className="mb-4 p-4 bg-muted/30 border border-border rounded-xl">
+                  <summary className="cursor-pointer font-semibold text-sm text-foreground">
                     Evidence Mapping for this Job ({personalization.requirements.length} requirements inspected)
                   </summary>
-                  <ul className="fact-list mt-3">
+                  <ul className="divide-y divide-border/60 text-sm mt-3">
                     {personalization.requirements.map((req) => (
-                      <li key={req.requirement} className="flex flex-col gap-1">
-                        <div>
-                          <strong>{req.requirement}</strong> —{' '}
+                      <li key={req.requirement} className="flex flex-col gap-1 py-2.5 first:pt-1 last:pb-0">
+                        <div className="flex items-center gap-2">
+                          <strong className="text-foreground">{req.requirement}</strong>
                           <Badge variant="secondary">{req.classification.replaceAll('_', ' ')}</Badge>
                         </div>
-                        <span className="muted text-xs">{req.explanation}</span>
+                        <span className="text-xs text-muted-foreground">{req.explanation}</span>
                       </li>
                     ))}
                   </ul>
@@ -443,15 +472,20 @@ export function ResumeStudio() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left: Master Reference */}
-                <div className="bg-card border border-border rounded-xl p-4">
+                <div className="bg-card border border-border rounded-xl p-5 shadow-xs">
                   <div className="flex justify-between items-center mb-3">
                     <div>
-                      <strong className="text-sm">Canonical Master Profile</strong>
-                      <span className="muted block text-xs">Truthful source of truth</span>
+                      <strong className="text-sm font-semibold text-foreground">Canonical Master Profile</strong>
+                      <span className="block text-xs text-muted-foreground">Truthful source of truth</span>
                     </div>
                     <Badge variant="outline">Ground Truth</Badge>
                   </div>
-                  <div className="font-mono text-xs leading-relaxed bg-background border border-border rounded-md p-3 whitespace-pre-wrap max-h-[500px] overflow-y-auto">
+                  <div
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Canonical Master Profile content"
+                    className="font-mono text-xs leading-relaxed bg-background border border-border rounded-md p-3 whitespace-pre-wrap max-h-[500px] overflow-y-auto"
+                  >
                     {masterResumeContent}
                   </div>
                 </div>

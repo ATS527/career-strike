@@ -36,9 +36,11 @@ export function SuggestSkillsSection({ onChange }: { onChange: () => void }) {
   };
 
   return (
-    <section className="settings-group" aria-labelledby="suggest-title">
-      <h2 id="suggest-title">Suggest skills from your résumé</h2>
-      <p className="help">
+    <section className="rounded-xl border border-border bg-card p-6 shadow-xs" aria-labelledby="suggest-title">
+      <h2 id="suggest-title" className="text-lg font-semibold tracking-tight text-foreground mb-1">
+        Suggest skills from your résumé
+      </h2>
+      <p className="text-sm text-muted-foreground mb-4">
         Paste the text of your résumé. Career Strike looks for skills it recognises, on this computer, and lists them
         for you to approve or discard. The pasted text is not saved.
       </p>
@@ -48,7 +50,7 @@ export function SuggestSkillsSection({ onChange }: { onChange: () => void }) {
             control={form.control}
             name="text"
             render={({ field }) => (
-              <FormItem className="record__part">
+              <FormItem className="space-y-1">
                 <FormLabel htmlFor="resume-text">Résumé text</FormLabel>
                 <FormControl>
                   <Textarea
@@ -64,16 +66,18 @@ export function SuggestSkillsSection({ onChange }: { onChange: () => void }) {
               </FormItem>
             )}
           />
-          <div className="field__actions">
+          <div className="flex justify-end pt-1">
             <Button type="submit" size="sm" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? 'Analyzing…' : 'Suggest skills'}
             </Button>
           </div>
         </form>
       </Form>
-      <p role="status" aria-live="polite" className="save-status">
-        {status}
-      </p>
+      {status && (
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2">
+          {status}
+        </p>
+      )}
     </section>
   );
 }

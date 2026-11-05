@@ -62,27 +62,35 @@ export function Interviews({ view, onChange }: { view: ApplicationView; onChange
   };
 
   return (
-    <section className="follow-ups" aria-labelledby="int-title">
-      <h3 id="int-title">Interviews</h3>
-      <p>
-        <Link href={`/applications/${view.id}/prep`}>Prepare for interviews</Link>
+    <section className="space-y-4" aria-labelledby="int-title">
+      <h3 id="int-title" className="text-base font-semibold text-foreground m-0">
+        Interviews
+      </h3>
+      <p className="text-xs text-muted-foreground m-0">
+        <Link href={`/applications/${view.id}/prep`} className="text-primary hover:underline font-medium">
+          Prepare for interviews →
+        </Link>
       </p>
       {list.length > 0 && (
-        <ul className="disclosures" data-testid="interviews">
+        <ul className="space-y-2 p-0 m-0 list-none text-sm text-muted-foreground" data-testid="interviews">
           {list.map((i) => (
-            <li key={i.id}>
-              {i.stage} · {formatDateTime(i.scheduledAt)} · {i.format.replace('_', '-')} ·{' '}
-              <button
+            <li key={i.id} className="flex items-center gap-2 flex-wrap">
+              <span>
+                {i.stage} · {formatDateTime(i.scheduledAt)} · {i.format.replace('_', '-')}
+              </span>
+              <Button
                 type="button"
-                className="button button--small button--quiet"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
                 onClick={() =>
                   downloadInterviewIcs({ interview: i, employer: view.job.employer, jobTitle: view.job.title })
                 }
                 title="Download .ics calendar file"
               >
                 📅 .ics
-              </button>{' '}
-              <label className="visually-hidden" htmlFor={`int-${i.id}`}>
+              </Button>
+              <label className="sr-only" htmlFor={`int-${i.id}`}>
                 Outcome of {i.stage}
               </label>
               <select
@@ -94,6 +102,7 @@ export function Interviews({ view, onChange }: { view: ApplicationView; onChange
                   );
                   void reload();
                 }}
+                className="h-7 text-xs rounded border border-input bg-background px-2"
               >
                 {Object.entries(OUTCOME_TEXT).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -107,15 +116,17 @@ export function Interviews({ view, onChange }: { view: ApplicationView; onChange
       )}
       {canSchedule ? (
         <Form {...form}>
-          <form className="fu-form space-y-2" onSubmit={form.handleSubmit(onSubmit)}>
+          <form className="space-y-3 pt-2" onSubmit={form.handleSubmit(onSubmit)}>
             <FormField
               control={form.control}
               name="stage"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="int-stage">Stage</FormLabel>
+                <FormItem className="space-y-1">
+                  <FormLabel htmlFor="int-stage" className="text-xs font-medium">
+                    Stage
+                  </FormLabel>
                   <FormControl>
-                    <Input id="int-stage" placeholder="e.g. phone screen" {...field} />
+                    <Input id="int-stage" placeholder="e.g. phone screen" className="h-8 text-xs" {...field} />
                   </FormControl>
                 </FormItem>
               )}
@@ -125,12 +136,14 @@ export function Interviews({ view, onChange }: { view: ApplicationView; onChange
               control={form.control}
               name="format"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="int-format">Format</FormLabel>
+                <FormItem className="space-y-1">
+                  <FormLabel htmlFor="int-format" className="text-xs font-medium">
+                    Format
+                  </FormLabel>
                   <FormControl>
                     <select
                       id="int-format"
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+                      className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       {...field}
                     >
                       <option value="phone">Phone</option>
@@ -148,28 +161,34 @@ export function Interviews({ view, onChange }: { view: ApplicationView; onChange
               control={form.control}
               name="scheduledAt"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="int-when">Date and time</FormLabel>
+                <FormItem className="space-y-1">
+                  <FormLabel htmlFor="int-when" className="text-xs font-medium">
+                    Date and time
+                  </FormLabel>
                   <FormControl>
-                    <Input id="int-when" type="datetime-local" required {...field} />
+                    <Input id="int-when" type="datetime-local" required className="h-8 text-xs" {...field} />
                   </FormControl>
                 </FormItem>
               )}
             />
 
-            <Button type="submit" variant="ghost" size="sm">
+            <Button type="submit" variant="ghost" size="sm" className="h-8 text-xs">
               Add interview
             </Button>
             {error && (
-              <span role="alert" className="save-status--error block text-xs text-destructive">
+              <span role="alert" className="block text-xs text-destructive">
                 {error}
               </span>
             )}
           </form>
         </Form>
       ) : (
-        <p className="muted">Interviews can be added once the application has been submitted.</p>
+        <p className="text-xs text-muted-foreground italic m-0">
+          Interviews can be added once the application has been submitted.
+        </p>
       )}
     </section>
   );
 }
+
+export default Interviews;

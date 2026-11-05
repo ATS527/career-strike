@@ -7,27 +7,46 @@ interface CampaignSummaryTableProps {
 
 export function CampaignSummaryTable({ summaries }: CampaignSummaryTableProps) {
   return (
-    <div className="table-scroll" tabIndex={0} role="region" aria-label="Weekly campaign summary">
-      <table className="compare" data-testid="campaign-summary">
+    <div
+      className="overflow-x-auto rounded-lg border border-border shadow-xs"
+      tabIndex={0}
+      role="region"
+      aria-label="Weekly campaign summary"
+    >
+      <table className="w-full text-left text-sm border-collapse bg-card" data-testid="campaign-summary">
         <thead>
-          <tr>
-            <th scope="col">Week</th>
-            <th scope="col">Discovered</th>
-            <th scope="col">Shortlisted</th>
-            <th scope="col">Submitted</th>
-            <th scope="col">Responses</th>
-            <th scope="col">Interviews</th>
+          <tr className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <th scope="col" className="p-3">
+              Week
+            </th>
+            <th scope="col" className="p-3">
+              Discovered
+            </th>
+            <th scope="col" className="p-3">
+              Shortlisted
+            </th>
+            <th scope="col" className="p-3">
+              Submitted
+            </th>
+            <th scope="col" className="p-3">
+              Responses
+            </th>
+            <th scope="col" className="p-3">
+              Interviews
+            </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-border">
           {summaries.map((w) => (
-            <tr key={w.weekStart}>
-              <th scope="row">Week of {formatDate(w.weekStart)}</th>
-              <td>{w.discovered}</td>
-              <td>{w.shortlisted}</td>
-              <td>{w.submitted}</td>
-              <td>{w.responses}</td>
-              <td>{w.interviews}</td>
+            <tr key={w.weekStart} className="hover:bg-muted/20 transition-colors">
+              <th scope="row" className="p-3 font-semibold text-foreground text-xs">
+                Week of {formatDate(w.weekStart)}
+              </th>
+              <td className="p-3 text-muted-foreground">{w.discovered}</td>
+              <td className="p-3 text-muted-foreground">{w.shortlisted}</td>
+              <td className="p-3 text-muted-foreground">{w.submitted}</td>
+              <td className="p-3 text-muted-foreground">{w.responses}</td>
+              <td className="p-3 text-muted-foreground">{w.interviews}</td>
             </tr>
           ))}
         </tbody>
@@ -35,3 +54,5 @@ export function CampaignSummaryTable({ summaries }: CampaignSummaryTableProps) {
     </div>
   );
 }
+
+export default CampaignSummaryTable;

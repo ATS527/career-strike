@@ -232,7 +232,7 @@ export function Profile() {
           role="status"
           aria-live="polite"
           data-testid="profile-save-status"
-          className="save-status mb-4 text-sm font-medium"
+          className="mb-4 text-sm font-medium text-foreground"
         >
           {saveStatus}
         </p>
@@ -243,40 +243,67 @@ export function Profile() {
 
       {facts && (
         <nav aria-label="Profile workspace quick navigation" className="flex flex-wrap gap-2 mb-6">
-          <a href="#overview-section" className="button button--quiet">
+          <a
+            href="#overview-section"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Overview
           </a>
-          <a href="#links-section" className="button button--quiet">
+          <a
+            href="#links-section"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Links
           </a>
-          <a href="#profile-role" className="button button--quiet">
+          <a
+            href="#profile-role"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Experience ({facts.filter((f) => f.kind === 'role' && f.approved).length})
           </a>
-          <a href="#profile-skill" className="button button--quiet">
+          <a
+            href="#profile-skill"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Skills ({facts.filter((f) => f.kind === 'skill' && f.approved).length})
           </a>
-          <a href="#evidence-title" className="button button--quiet">
+          <a
+            href="#evidence-title"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Projects & Evidence ({evidence?.length ?? 0})
           </a>
-          <a href="#documents" className="button button--quiet">
+          <a
+            href="#documents"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Documents ({documents.length})
           </a>
-          <a href="#linkedin-import" className="button button--quiet">
+          <a
+            href="#linkedin-import"
+            className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-1.5 transition-colors"
+          >
             Import Export
           </a>
         </nav>
       )}
 
       {facts && (
-        <div className="candidate-workspace-layout">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.75fr)_minmax(290px,0.95fr)] gap-6 items-start">
           {/* Main Left Column (2/3) */}
-          <div className="workspace-stack">
+          <div className="flex flex-col gap-6">
             {/* 1. Professional Overview Profile Card */}
-            <section className="profile-card" id="overview-section" aria-labelledby="overview-heading">
-              <div className="profile-card-header">
+            <section
+              className="rounded-xl border border-border bg-card p-6 shadow-xs"
+              id="overview-section"
+              aria-labelledby="overview-heading"
+            >
+              <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 id="overview-heading">Professional overview</h2>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                  <h2 id="overview-heading" className="text-lg font-semibold tracking-tight text-foreground">
+                    Professional overview
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     Your candidate identity, headline, and core engineering summary.
                   </p>
                 </div>
@@ -284,30 +311,28 @@ export function Profile() {
               </div>
 
               {/* Dignified Profile Hero */}
-              <div className="workspace-hero profile-hero">
-                <div className="workspace-avatar profile-avatar" aria-label="Candidate avatar">
+              <div className="flex items-center gap-5">
+                <div
+                  className="w-16 h-16 rounded-xl bg-muted/60 text-primary border border-border flex items-center justify-center font-bold text-xl shrink-0"
+                  aria-label="Candidate avatar"
+                >
                   {getInitials(fullName)}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h3
-                    style={{
-                      margin: '0 0 0.25rem',
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '1.35rem',
-                      fontWeight: 600,
-                    }}
-                  >
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold tracking-tight text-foreground mb-1">
                     {fullName.trim() || 'Your Name'}
                   </h3>
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.98rem', color: 'var(--ink-soft)' }}>
+                  <p className="text-sm text-muted-foreground mb-2">
                     {headline.trim() || 'Add a professional headline below'}
                   </p>
-                  <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-                    <span className="evidence-chip">
+                  <div className="flex gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/60 border border-border text-xs font-medium text-secondary-foreground">
                       📍 {candidateCountry ? `Country: ${candidateCountry}` : 'Location unconfirmed'}
                     </span>
-                    <span className="evidence-chip evidence-chip--verified">Open to relocation</span>
-                    <span className="evidence-chip">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-500/10 border border-teal-500/30 text-xs font-medium text-teal-700 dark:text-teal-300">
+                      Open to relocation
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/60 border border-border text-xs font-medium text-secondary-foreground">
                       {remotePref === 'remote_only'
                         ? 'Remote only'
                         : remotePref === 'hybrid_ok'
@@ -319,50 +344,38 @@ export function Profile() {
               </div>
 
               {/* Profile Summary Narrative */}
-              <div style={{ marginTop: '1.25rem' }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: '0.94rem',
-                    color: 'var(--ink)',
-                    lineHeight: 1.6,
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
+              <div className="mt-5">
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
                   {summary.trim() ||
                     'No professional summary added yet. Click edit overview below to describe your engineering background, systems delivered, and current focus.'}
                 </p>
               </div>
 
               {/* Structured Edit Form */}
-              <div
-                className="profile-edit-panel"
-                style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--rule)' }}
-              >
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                    gap: '1rem',
-                    marginBottom: '1rem',
-                  }}
-                >
-                  <div className="record__part">
-                    <label htmlFor="candidate-fullname">Full name</label>
+              <div className="border-t border-border mt-6 pt-5 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label htmlFor="candidate-fullname" className="block text-xs font-medium text-foreground">
+                      Full name
+                    </label>
                     <input
                       id="candidate-fullname"
                       type="text"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       placeholder="e.g. Sarah Chen"
                       autoComplete="name"
                     />
                   </div>
-                  <div className="record__part">
-                    <label htmlFor="candidate-headline">Professional headline</label>
+                  <div className="space-y-1">
+                    <label htmlFor="candidate-headline" className="block text-xs font-medium text-foreground">
+                      Professional headline
+                    </label>
                     <input
                       id="candidate-headline"
                       type="text"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       value={headline}
                       onChange={(e) => setHeadline(e.target.value)}
                       placeholder="e.g. Staff Platform Architect · Distributed Systems & Cloud Infrastructure"
@@ -370,21 +383,24 @@ export function Profile() {
                   </div>
                 </div>
 
-                <div className="record__part">
-                  <label htmlFor="candidate-summary">About you</label>
+                <div className="space-y-1">
+                  <label htmlFor="candidate-summary" className="block text-xs font-medium text-foreground">
+                    About you
+                  </label>
                   <textarea
                     id="candidate-summary"
                     rows={4}
+                    className="flex min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={summary}
                     onChange={(e) => setSummary(e.target.value)}
                     placeholder="Summarize your engineering background, key systems delivered, and what you are looking for next."
                   />
-                  <span className="muted field-note">
+                  <span className="block text-xs text-muted-foreground mt-1">
                     Only confirmed information is shared with employers or approved AI assistants.
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', alignItems: 'center' }}>
+                <div className="flex gap-3 items-center pt-2">
                   <Button
                     type="button"
                     variant="secondary"
@@ -395,56 +411,49 @@ export function Profile() {
                     {isSaving ? 'Saving...' : 'Apply overview changes'}
                   </Button>
                   {isDirty && (
-                    <span style={{ fontSize: '0.82rem', color: 'var(--attention)', fontWeight: 500 }}>
-                      ● Unsaved changes
-                    </span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">● Unsaved changes</span>
                   )}
                 </div>
               </div>
             </section>
 
             {/* 2. Professional Links Profile Card */}
-            <section className="profile-card" id="links-section" aria-labelledby="links-heading">
-              <div className="profile-card-header">
+            <section
+              className="rounded-xl border border-border bg-card p-6 shadow-xs"
+              id="links-section"
+              aria-labelledby="links-heading"
+            >
+              <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 id="links-heading">Professional links</h2>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.88rem', color: 'var(--ink-soft)' }}>
+                  <h2 id="links-heading" className="text-lg font-semibold tracking-tight text-foreground">
+                    Professional links
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     Recruiter-verifiable portfolios, repositories, and professional profiles.
                   </p>
                 </div>
-                <span className="evidence-chip">External evidence</span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/60 border border-border text-xs font-medium text-secondary-foreground">
+                  External evidence
+                </span>
               </div>
 
               {/* View Mode Links */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '0.65rem 0.85rem',
-                    background: 'var(--paper-subtle)',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--rule)',
-                  }}
-                >
+              <div className="flex flex-col gap-3">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-muted/40 border border-border">
                   <div>
-                    <strong style={{ fontSize: '0.88rem', color: 'var(--ink)' }}>LinkedIn: </strong>
+                    <strong className="text-sm text-foreground">LinkedIn: </strong>
                     {linkedinUrl.trim() ? (
-                      <span style={{ fontSize: '0.88rem', color: 'var(--ink-soft)' }}>{linkedinUrl}</span>
+                      <span className="text-sm text-muted-foreground">{linkedinUrl}</span>
                     ) : (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>Not provided</span>
+                      <span className="text-sm text-muted-foreground/60 italic">Not provided</span>
                     )}
                   </div>
                   {linkedinUrl.trim() && validLinkedin(linkedinUrl.trim()) && (
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <Badge variant="teal" className="text-xs">
-                        ✓ Valid URL syntax
-                      </Badge>
+                    <div className="flex gap-2 items-center">
+                      <Badge variant="teal">✓ Valid URL syntax</Badge>
                       <ExternalLink
                         href={linkedinUrl.trim()}
-                        className="button button--quiet"
-                        style={{ fontSize: '0.82rem' }}
+                        className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-2.5 py-1 transition-colors"
                       >
                         Open profile ↗
                       </ExternalLink>
@@ -452,126 +461,105 @@ export function Profile() {
                   )}
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div
-                    style={{
-                      padding: '0.65rem 0.85rem',
-                      background: 'var(--paper-subtle)',
-                      borderRadius: 'var(--radius)',
-                      border: '1px solid var(--rule)',
-                    }}
-                  >
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--ink)' }}>GitHub</strong>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-muted/40 border border-border">
+                    <strong className="text-xs font-semibold text-foreground block mb-1">GitHub</strong>
                     {githubUrl.trim() ? (
-                      <ExternalLink href={githubUrl.trim()} className="external-link" style={{ fontSize: '0.85rem' }}>
+                      <ExternalLink href={githubUrl.trim()} className="text-xs text-primary hover:underline">
                         {githubUrl} ↗
                       </ExternalLink>
                     ) : (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>Not provided</span>
+                      <span className="text-xs text-muted-foreground/60 italic">Not provided</span>
                     )}
                   </div>
 
-                  <div
-                    style={{
-                      padding: '0.65rem 0.85rem',
-                      background: 'var(--paper-subtle)',
-                      borderRadius: 'var(--radius)',
-                      border: '1px solid var(--rule)',
-                    }}
-                  >
-                    <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--ink)' }}>Portfolio</strong>
+                  <div className="p-3 rounded-lg bg-muted/40 border border-border">
+                    <strong className="text-xs font-semibold text-foreground block mb-1">Portfolio</strong>
                     {portfolioUrl.trim() ? (
-                      <ExternalLink
-                        href={portfolioUrl.trim()}
-                        className="external-link"
-                        style={{ fontSize: '0.85rem' }}
-                      >
+                      <ExternalLink href={portfolioUrl.trim()} className="text-xs text-primary hover:underline">
                         {portfolioUrl} ↗
                       </ExternalLink>
                     ) : (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-faint)' }}>Not provided</span>
+                      <span className="text-xs text-muted-foreground/60 italic">Not provided</span>
                     )}
                   </div>
                 </div>
               </div>
 
               {/* Edit Mode Links Form */}
-              <div
-                className="profile-edit-panel"
-                style={{ marginTop: '1.25rem', paddingTop: '1.15rem', borderTop: '1px solid var(--rule)' }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div className="record__part">
-                    <label htmlFor="candidate-linkedin">LinkedIn profile address</label>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <input
-                        id="candidate-linkedin"
-                        type="url"
-                        style={{ flex: '1 1 260px' }}
-                        value={linkedinUrl}
-                        onChange={(e) => setLinkedinUrl(e.target.value)}
-                        placeholder="https://www.linkedin.com/in/your-profile"
-                        autoComplete="off"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (!linkedinUrl.trim()) setSaveStatus('Enter a LinkedIn URL first.');
-                          else if (validLinkedin(linkedinUrl.trim()))
-                            setSaveStatus('Valid HTTPS LinkedIn profile URL format.');
-                          else setSaveStatus('Use an HTTPS linkedin.com/in/your-profile URL.');
-                        }}
-                      >
-                        Verify URL
-                      </Button>
-                    </div>
-                    <span className="muted field-note">
-                      URL validation only; importing profile history requires an authorized export below.
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                      gap: '1rem',
-                    }}
-                  >
-                    <div className="record__part">
-                      <label htmlFor="candidate-github">GitHub profile</label>
-                      <input
-                        id="candidate-github"
-                        type="url"
-                        value={githubUrl}
-                        onChange={(e) => setGithubUrl(e.target.value)}
-                        placeholder="https://github.com/username"
-                      />
-                    </div>
-                    <div className="record__part">
-                      <label htmlFor="candidate-portfolio">Portfolio or personal website</label>
-                      <input
-                        id="candidate-portfolio"
-                        type="url"
-                        value={portfolioUrl}
-                        onChange={(e) => setPortfolioUrl(e.target.value)}
-                        placeholder="https://example.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+              <div className="border-t border-border mt-5 pt-4 space-y-4">
+                <div className="space-y-1">
+                  <label htmlFor="candidate-linkedin" className="block text-xs font-medium text-foreground">
+                    LinkedIn profile address
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    <input
+                      id="candidate-linkedin"
+                      type="url"
+                      className="flex h-9 flex-1 min-w-[240px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      placeholder="https://www.linkedin.com/in/your-profile"
+                      autoComplete="off"
+                    />
                     <Button
                       type="button"
-                      variant="secondary"
+                      variant="ghost"
                       size="sm"
-                      onClick={() => void saveProfileDraft()}
-                      disabled={isSaving}
+                      onClick={() => {
+                        if (!linkedinUrl.trim()) setSaveStatus('Enter a LinkedIn URL first.');
+                        else if (validLinkedin(linkedinUrl.trim()))
+                          setSaveStatus('Valid HTTPS LinkedIn profile URL format.');
+                        else setSaveStatus('Use an HTTPS linkedin.com/in/your-profile URL.');
+                      }}
                     >
-                      {isSaving ? 'Saving...' : 'Apply link changes'}
+                      Verify URL
                     </Button>
                   </div>
+                  <span className="block text-xs text-muted-foreground mt-1">
+                    URL validation only; importing profile history requires an authorized export below.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label htmlFor="candidate-github" className="block text-xs font-medium text-foreground">
+                      GitHub profile
+                    </label>
+                    <input
+                      id="candidate-github"
+                      type="url"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      placeholder="https://github.com/username"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="candidate-portfolio" className="block text-xs font-medium text-foreground">
+                      Portfolio or personal website
+                    </label>
+                    <input
+                      id="candidate-portfolio"
+                      type="url"
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={portfolioUrl}
+                      onChange={(e) => setPortfolioUrl(e.target.value)}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void saveProfileDraft()}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? 'Saving...' : 'Apply link changes'}
+                  </Button>
                 </div>
               </div>
             </section>
@@ -624,59 +612,68 @@ export function Profile() {
           </div>
 
           {/* Right Sidebar Column (1/3) */}
-          <div className="workspace-stack">
+          <div className="flex flex-col gap-6">
             {/* 1. Actionable Profile Readiness Card */}
-            <section className="actionable-status-card" aria-labelledby="profile-readiness-heading">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <section
+              className="rounded-xl border border-border bg-card p-5 shadow-xs"
+              aria-labelledby="profile-readiness-heading"
+            >
+              <div className="flex justify-between items-center">
                 <div>
-                  <h2 id="profile-readiness-heading" style={{ margin: 0, fontSize: '1.15rem' }}>
+                  <h2 id="profile-readiness-heading" className="text-base font-semibold tracking-tight text-foreground">
                     Profile readiness
                   </h2>
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--ink-soft)' }}>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Grounded verification requirements for matching and applications.
                   </p>
                 </div>
               </div>
 
-              <div className="actionable-status-pillars">
-                <div className="status-pillar">
-                  <span className="status-pillar__label">Job Matching</span>
-                  <span className="status-pillar__state">
-                    <span className="checklist-ok">✓</span>{' '}
+              <div className="grid grid-cols-2 gap-3 my-4">
+                <div className="p-3 rounded-lg bg-muted/40 border border-border">
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground block mb-1">
+                    Job Matching
+                  </span>
+                  <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    <span className="text-teal-600 dark:text-teal-400 font-bold">✓</span>{' '}
                     {facts &&
                     facts.some((f) => f.kind === 'role' && f.approved) &&
                     facts.some((f) => f.kind === 'skill' && f.approved)
                       ? 'Ready'
                       : 'Roles & skills needed'}
                   </span>
-                  <span
-                    style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', display: 'block', marginTop: '0.2rem' }}
-                  >
+                  <span className="text-xs text-muted-foreground block mt-1">
                     {facts
                       ? `${facts.filter((f) => f.kind === 'role' && f.approved).length} roles, ${facts.filter((f) => f.kind === 'skill' && f.approved).length} skills confirmed`
                       : '0 confirmed'}
                   </span>
                 </div>
-                <div className="status-pillar">
-                  <span className="status-pillar__label">Applications</span>
-                  <span className="status-pillar__state">
+                <div className="p-3 rounded-lg bg-muted/40 border border-border">
+                  <span className="text-[11px] uppercase tracking-wider font-semibold text-muted-foreground block mb-1">
+                    Applications
+                  </span>
+                  <span className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                     {savedSettings['identity.email'] ? (
-                      <span className="checklist-ok">✓ Ready</span>
+                      <span className="text-teal-600 dark:text-teal-400 font-bold">✓ Ready</span>
                     ) : (
-                      <span className="checklist-warn">○ Contact needed</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">○ Contact needed</span>
                     )}
                   </span>
-                  <span
-                    style={{ fontSize: '0.78rem', color: 'var(--ink-soft)', display: 'block', marginTop: '0.2rem' }}
-                  >
+                  <span className="text-xs text-muted-foreground block mt-1">
                     {savedSettings['identity.email'] ? 'Contact details ready' : 'Add email in settings to apply'}
                   </span>
                 </div>
               </div>
 
-              <div className="actionable-checklist">
-                <div className="checklist-line">
-                  <span className={fullName.trim() && headline.trim() ? 'checklist-ok' : 'checklist-warn'}>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-start gap-2.5 text-xs py-2 border-b border-border/60 leading-relaxed text-foreground">
+                  <span
+                    className={
+                      fullName.trim() && headline.trim()
+                        ? 'text-teal-600 dark:text-teal-400 font-bold'
+                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                    }
+                  >
                     {fullName.trim() && headline.trim() ? '✓' : '○'}
                   </span>
                   <span>
@@ -685,8 +682,14 @@ export function Profile() {
                       : 'Add full name and professional headline · Identifies your profile'}
                   </span>
                 </div>
-                <div className="checklist-line">
-                  <span className={targetCountries.length > 0 ? 'checklist-ok' : 'checklist-warn'}>
+                <div className="flex items-start gap-2.5 text-xs py-2 border-b border-border/60 leading-relaxed text-foreground">
+                  <span
+                    className={
+                      targetCountries.length > 0
+                        ? 'text-teal-600 dark:text-teal-400 font-bold'
+                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                    }
+                  >
                     {targetCountries.length > 0 ? '✓' : '○'}
                   </span>
                   <span>
@@ -695,8 +698,14 @@ export function Profile() {
                       : 'Choose international target markets · Focuses discovery'}
                   </span>
                 </div>
-                <div className="checklist-line">
-                  <span className={documents.length > 0 ? 'checklist-ok' : 'checklist-warn'}>
+                <div className="flex items-start gap-2.5 text-xs py-2 border-b border-border/60 leading-relaxed text-foreground">
+                  <span
+                    className={
+                      documents.length > 0
+                        ? 'text-teal-600 dark:text-teal-400 font-bold'
+                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                    }
+                  >
                     {documents.length > 0 ? '✓' : '○'}
                   </span>
                   <span>
@@ -705,8 +714,14 @@ export function Profile() {
                       : 'Upload a résumé · Grounds fact extraction without scraping'}
                   </span>
                 </div>
-                <div className="checklist-line">
-                  <span className={linkedinUrl.trim() || githubUrl.trim() ? 'checklist-ok' : 'checklist-warn'}>
+                <div className="flex items-start gap-2.5 text-xs py-2 border-b border-border/60 leading-relaxed text-foreground">
+                  <span
+                    className={
+                      linkedinUrl.trim() || githubUrl.trim()
+                        ? 'text-teal-600 dark:text-teal-400 font-bold'
+                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                    }
+                  >
                     {linkedinUrl.trim() || githubUrl.trim() ? '✓' : '○'}
                   </span>
                   <span>
@@ -715,9 +730,13 @@ export function Profile() {
                       : 'Add LinkedIn or GitHub profile address · Provides recruiter verification'}
                   </span>
                 </div>
-                <div className="checklist-line">
+                <div className="flex items-start gap-2.5 text-xs py-2 leading-relaxed text-foreground">
                   <span
-                    className={facts.some((f) => f.kind === 'role' && f.approved) ? 'checklist-ok' : 'checklist-warn'}
+                    className={
+                      facts.some((f) => f.kind === 'role' && f.approved)
+                        ? 'text-teal-600 dark:text-teal-400 font-bold'
+                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                    }
                   >
                     {facts.some((f) => f.kind === 'role' && f.approved) ? '✓' : '○'}
                   </span>
@@ -731,31 +750,45 @@ export function Profile() {
             </section>
 
             {/* 2. Focused Action Card */}
-            <div className="workspace-focus-card">
-              <h3>Actionable recommendation</h3>
-              <p>{nextActionAdvice.text}</p>
+            <div className="rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 text-slate-100 p-5 shadow-md border border-slate-700/60">
+              <h3 className="text-base font-semibold text-white mb-1.5">Actionable recommendation</h3>
+              <p className="text-xs text-slate-300 mb-4 leading-relaxed">{nextActionAdvice.text}</p>
               {nextActionAdvice.btnHref.startsWith('#') ? (
-                <a href={nextActionAdvice.btnHref} className="button">
+                <a
+                  href={nextActionAdvice.btnHref}
+                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 h-8 px-3 shadow-xs"
+                >
                   {nextActionAdvice.btnText}
                 </a>
               ) : (
-                <Link href={nextActionAdvice.btnHref} className="button">
+                <Link
+                  href={nextActionAdvice.btnHref}
+                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 h-8 px-3 shadow-xs"
+                >
                   {nextActionAdvice.btnText}
                 </Link>
               )}
             </div>
 
             {/* 3. Career Preferences Card */}
-            <section className="profile-card" aria-labelledby="preferences-card-heading">
-              <div className="profile-card-header">
-                <h2 id="preferences-card-heading">Career preferences</h2>
+            <section
+              className="rounded-xl border border-border bg-card p-6 shadow-xs"
+              aria-labelledby="preferences-card-heading"
+            >
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 id="preferences-card-heading" className="text-base font-semibold tracking-tight text-foreground">
+                  Career preferences
+                </h2>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
-                <div className="record__part">
-                  <label htmlFor="pref-roles-select">Target role</label>
+              <div className="flex flex-col gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="pref-roles-select" className="block text-xs font-medium text-foreground">
+                    Target role
+                  </label>
                   <select
                     id="pref-roles-select"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={preferredRoles[0] ?? ''}
                     onChange={(e) => {
                       const val = e.target.value ? [e.target.value] : [];
@@ -772,10 +805,13 @@ export function Profile() {
                   </select>
                 </div>
 
-                <div className="record__part">
-                  <label htmlFor="pref-workmode-select">Working arrangement</label>
+                <div className="space-y-1">
+                  <label htmlFor="pref-workmode-select" className="block text-xs font-medium text-foreground">
+                    Working arrangement
+                  </label>
                   <select
                     id="pref-workmode-select"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={remotePref}
                     onChange={(e) => {
                       setRemotePref(e.target.value);
@@ -788,10 +824,13 @@ export function Profile() {
                   </select>
                 </div>
 
-                <div className="record__part">
-                  <label htmlFor="pref-auth-select">Work authorization situation</label>
+                <div className="space-y-1">
+                  <label htmlFor="pref-auth-select" className="block text-xs font-medium text-foreground">
+                    Work authorization situation
+                  </label>
                   <select
                     id="pref-auth-select"
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     value={authSituation}
                     onChange={(e) => {
                       const val = e.target.value as typeof authSituation;
@@ -811,24 +850,30 @@ export function Profile() {
                 </div>
 
                 <div>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block', marginBottom: '0.4rem' }}>
-                    Target countries
-                  </span>
-                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
+                  <span className="text-xs font-semibold text-foreground block mb-2">Target countries</span>
+                  <div className="flex gap-1.5 flex-wrap mb-3">
                     {targetCountries.length === 0 ? (
-                      <span className="evidence-chip">No markets selected yet</span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/60 border border-border text-xs font-medium text-secondary-foreground">
+                        No markets selected yet
+                      </span>
                     ) : (
                       targetCountries.map((c) => {
                         const market = CURATED_MARKETS.find((m) => m.code === c);
                         return (
-                          <span key={c} className="evidence-chip evidence-chip--verified">
+                          <span
+                            key={c}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-500/10 border border-teal-500/30 text-xs font-medium text-teal-700 dark:text-teal-300"
+                          >
                             {market ? `${market.flag} ${market.name}` : c}
                           </span>
                         );
                       })
                     )}
                   </div>
-                  <Link href="/markets" className="button button--quiet" style={{ width: '100%', textAlign: 'center' }}>
+                  <Link
+                    href="/markets"
+                    className="inline-flex w-full items-center justify-center rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground px-3 py-2 transition-colors text-center"
+                  >
                     Explore markets →
                   </Link>
                 </div>
@@ -836,18 +881,8 @@ export function Profile() {
             </section>
 
             {/* 4. Privacy Notice Card */}
-            <div
-              style={{
-                fontSize: '0.82rem',
-                color: 'var(--ink-soft)',
-                background: 'var(--canvas)',
-                border: '1px solid var(--rule)',
-                borderRadius: 'var(--radius)',
-                padding: '0.9rem',
-                lineHeight: 1.5,
-              }}
-            >
-              <strong style={{ color: 'var(--ink)', display: 'block', marginBottom: '0.2rem' }}>Privacy first.</strong>
+            <div className="text-xs text-muted-foreground bg-card border border-border rounded-xl p-4 leading-relaxed">
+              <strong className="text-foreground block mb-1">Privacy first.</strong>
               In Career Strike, each AI connection receives only permitted profile fields. A resume import never
               silently overwrites verified information.
             </div>

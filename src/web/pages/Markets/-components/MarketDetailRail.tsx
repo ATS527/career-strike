@@ -1,6 +1,7 @@
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
+import { cn } from '../../../helpers/cn';
 import { ExternalLink, Link } from '../../../router';
 import type { MarketInfo } from '../-helpers/curatedMarkets';
 
@@ -14,7 +15,7 @@ interface MarketDetailRailProps {
 export function MarketDetailRail({ activeMarket, isSelected, isSaving, onToggleTarget }: MarketDetailRailProps) {
   return (
     <aside
-      className="market-intelligence-panel rounded-lg border border-border bg-card p-5 space-y-4 shadow-xs flex flex-col justify-between"
+      className="rounded-lg border border-border bg-card p-5 space-y-4 shadow-xs flex flex-col justify-between"
       aria-labelledby="active-market-intel-title"
     >
       <div className="flex justify-between items-start border-b border-border pb-3.5">
@@ -54,10 +55,7 @@ export function MarketDetailRail({ activeMarket, isSelected, isSaving, onToggleT
           <strong className="text-sm font-semibold text-foreground block">{activeMarket.statutoryPathway}</strong>
           <p className="text-xs text-muted-foreground leading-relaxed m-0">{activeMarket.note}</p>
           <div className="pt-1">
-            <ExternalLink
-              href={activeMarket.officialUrl}
-              className="external-link text-xs text-primary hover:underline"
-            >
+            <ExternalLink href={activeMarket.officialUrl} className="text-xs text-primary hover:underline">
               Official statutory guidance ↗
             </ExternalLink>
           </div>
@@ -76,7 +74,7 @@ export function MarketDetailRail({ activeMarket, isSelected, isSaving, onToggleT
         </Button>
         <Link
           href={`/opportunities?market=${activeMarket.code}`}
-          className="button button--quiet w-full text-center text-xs"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'w-full text-center text-xs')}
         >
           Explore vacancies in {activeMarket.name} →
         </Link>
@@ -84,3 +82,5 @@ export function MarketDetailRail({ activeMarket, isSelected, isSaving, onToggleT
     </aside>
   );
 }
+
+export default MarketDetailRail;

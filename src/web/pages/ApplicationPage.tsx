@@ -3,13 +3,17 @@ import {
   ApiError,
   type ApplicationView,
   api,
-  currentCsrfToken,
   type PayloadField,
   type PersonalizationView,
   type StoredDocument,
 } from '../api';
 import { buildOutreachDraft, type OutreachKind } from '../candidateExperience';
-import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
+import { Badge } from '../components/ui/badge';
+import { Button, buttonVariants } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { APP_STATE_LABEL, formatDateTime, shortHash } from '../format';
+import { cn } from '../helpers/cn';
 import { uploadDocument } from '../helpers/documents';
 import { ExternalLink, Link, useNavigateTo } from '../router';
 import { FollowUps } from './ApplicationPage/-components/FollowUps';
@@ -46,6 +50,7 @@ export function ApplicationPage({ id }: { id: string }) {
       setLoadError(true);
     }
   }, [id]);
+
   useEffect(() => void load(), [load]);
   // While an automated submission is being sent, follow it until it settles.
   useEffect(() => {
@@ -77,33 +82,47 @@ export function ApplicationPage({ id }: { id: string }) {
     api<{ application: ApplicationView }>(`/api/applications/${view.id}/${path}`, { method: 'POST', body: body ?? {} });
 
   return (
-    <article className="application">
-      <p className="eyebrow">
-        <Link href="/applications">Applications</Link> / <Link href={`/jobs/${view.jobId}`}>{view.job.title}</Link>
-      </p>
-      <header className="job__head">
-        <div>
-          <h1>{view.job.title}</h1>
-          <p className="job__employer">{view.job.employer}</p>
-          <p>
-            <span className={`chip chip--app chip--app-${view.state.toLowerCase()}`}>
-              <strong>{APP_STATE_LABEL[view.state]}</strong>
-            </span>{' '}
-            <span className="muted">Version {view.version}</span>
-          </p>
-        </div>
-      </header>
+    <article className="space-y-6">
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+          <Link href="/applications" className="hover:underline">
+            Applications
+          </Link>{' '}
+          /{' '}
+          <Link href={`/jobs/${view.jobId}`} className="hover:underline">
+            {view.job.title}
+          </Link>
+        </p>
+        <header className="flex flex-col gap-2 pb-4 border-b border-border">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif text-foreground m-0">{view.job.title}</h1>
+            <p className="text-lg font-medium text-foreground mt-0.5">{view.job.employer}</p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="outline" className="text-xs font-semibold">
+                {APP_STATE_LABEL[view.state]}
+              </Badge>
+              <span className="text-xs text-muted-foreground">Version {view.version}</span>
+            </div>
+          </div>
+        </header>
+      </div>
 
-      <p
-        role="status"
-        aria-live="polite"
-        className={`save-status save-status--${message?.kind === 'error' ? 'error' : 'saved'} app-message`}
-      >
-        {message?.text}
-      </p>
+      {message && (
+        <p
+          role="status"
+          aria-live="polite"
+          className={`text-xs p-3 rounded-md border ${
+            message.kind === 'error'
+              ? 'border-destructive/30 bg-destructive/10 text-destructive'
+              : 'border-teal-500/30 bg-teal-50 dark:bg-teal-950/20 text-teal-900 dark:text-teal-200'
+          }`}
+        >
+          {message.text}
+        </p>
+      )}
 
-      <div className="job__grid app-grid">
-        <div className="job__main">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2 space-y-6">
           {editable ? (
             <Editor
               key={`${view.version}`}
@@ -118,12 +137,17 @@ export function ApplicationPage({ id }: { id: string }) {
               onUploaded={() => void load()}
             />
           ) : (
-            <p className="muted">This application can no longer be edited.</p>
+            <p className="text-sm text-muted-foreground italic">This application can no longer be edited.</p>
           )}
           <PersonalizationPanel application={view} editable={editable} onChanged={() => void load()} />
         </div>
-        <aside className="package" aria-labelledby="package-title">
-          <h2 id="package-title">Exactly what would be sent</h2>
+        <aside
+          className="bg-card p-5 rounded-lg border border-border shadow-xs space-y-6"
+          aria-labelledby="package-title"
+        >
+          <h2 id="package-title" className="text-lg font-bold text-foreground m-0">
+            Exactly what would be sent
+          </h2>
           <Package view={view} />
           <Actions view={view} busy={busy} post={post} run={run} />
           <Interviews view={view} onChange={() => void load()} />
@@ -148,6 +172,7 @@ function PersonalizationPanel({
   const [data, setData] = useState<PersonalizationView | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     try {
       const result = await api<{ personalization: PersonalizationView }>(
@@ -159,6 +184,7 @@ function PersonalizationPanel({
       setError('Could not load tailored documents.');
     }
   }, [application.id]);
+
   useEffect(() => void load(), [load, application.version]);
 
   const generate = async (): Promise<void> => {
@@ -179,31 +205,43 @@ function PersonalizationPanel({
   };
 
   return (
-    <section className="settings-group" aria-labelledby="tailored-documents-title">
-      <h2 id="tailored-documents-title">Tailored documents</h2>
-      <p className="help">
+    <section
+      className="p-5 bg-card rounded-lg border border-border shadow-xs space-y-4"
+      aria-labelledby="tailored-documents-title"
+    >
+      <h2 id="tailored-documents-title" className="text-lg font-bold text-foreground m-0">
+        Tailored documents
+      </h2>
+      <p className="text-xs text-muted-foreground m-0">
         Generated locally from confirmed profile facts and this job’s saved description. Review every claim before
         approval.
       </p>
-      {error && <p className="banner banner--attention">{error}</p>}
+      {error && (
+        <p className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs">
+          {error}
+        </p>
+      )}
       {data?.warnings.map((warning) => (
-        <p className="banner banner--attention" key={warning}>
+        <p
+          className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs"
+          key={warning}
+        >
           {warning}
         </p>
       ))}
       {editable && (
-        <button type="button" className="button button--secondary" disabled={busy} onClick={() => void generate()}>
+        <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void generate()}>
           {data?.variants.length ? 'Regenerate tailored documents' : 'Prepare tailored documents'}
-        </button>
+        </Button>
       )}
       {data?.requirements.length ? (
-        <details>
-          <summary>Job requirements and evidence</summary>
-          <ul className="fact-list">
+        <details className="text-xs space-y-2">
+          <summary className="font-semibold cursor-pointer text-foreground">Job requirements and evidence</summary>
+          <ul className="space-y-1.5 p-0 m-0 list-none text-muted-foreground pt-2">
             {data.requirements.map((item) => (
-              <li key={item.requirement}>
-                <strong>{item.requirement}</strong> — {item.classification.replaceAll('_', ' ').toLowerCase()}:{' '}
-                {item.explanation}
+              <li key={item.requirement} className="p-2 rounded bg-muted/40 border border-border/60">
+                <strong className="text-foreground">{item.requirement}</strong> —{' '}
+                {item.classification.replaceAll('_', ' ').toLowerCase()}: {item.explanation}
               </li>
             ))}
           </ul>
@@ -239,6 +277,7 @@ function DocumentVariantEditor({
   const [content, setContent] = useState(variant.content);
   const [busy, setBusy] = useState(false);
   const changed = content !== variant.content;
+
   const save = async (): Promise<void> => {
     setBusy(true);
     try {
@@ -251,21 +290,25 @@ function DocumentVariantEditor({
       setBusy(false);
     }
   };
+
   return (
-    <div className="field">
-      <label className="field__label" htmlFor={`variant-${variant.id}`}>
+    <div className="space-y-2 pt-2 border-t border-border">
+      <label className="text-sm font-semibold text-foreground block" htmlFor={`variant-${variant.id}`}>
         {variant.kind === 'resume' ? 'Tailored résumé source' : 'Tailored cover letter'}{' '}
-        <span className="muted">({variant.status.replaceAll('_', ' ').toLowerCase()})</span>
+        <span className="text-xs font-normal text-muted-foreground">
+          ({variant.status.replaceAll('_', ' ').toLowerCase()})
+        </span>
       </label>
-      <textarea
+      <Textarea
         id={`variant-${variant.id}`}
         rows={variant.kind === 'resume' ? 18 : 12}
         value={content}
         readOnly={!editable}
         onChange={(event) => setContent(event.target.value)}
+        className="font-mono text-xs"
       />
       {variant.evidence.length > 0 && (
-        <p className="help">
+        <p className="text-xs text-muted-foreground">
           Evidence:{' '}
           {variant.evidence
             .map((item) => `${item.requirement} (${item.classification.replaceAll('_', ' ').toLowerCase()})`)
@@ -274,9 +317,9 @@ function DocumentVariantEditor({
         </p>
       )}
       {editable && changed && (
-        <button type="button" className="button button--secondary" disabled={busy} onClick={() => void save()}>
+        <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void save()}>
           Save document edit
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -316,22 +359,35 @@ function Editor({
   };
 
   return (
-    <section aria-labelledby="answers-title">
-      <h2 id="answers-title">Answers and documents</h2>
+    <section
+      aria-labelledby="answers-title"
+      className="p-5 bg-card rounded-lg border border-border shadow-xs space-y-4"
+    >
+      <h2 id="answers-title" className="text-lg font-bold text-foreground m-0">
+        Answers and documents
+      </h2>
       {view.state === 'APPROVED' && (
-        <p className="banner banner--attention">Changing anything creates a new version and cancels your approval.</p>
+        <p className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs">
+          Changing anything creates a new version and cancels your approval.
+        </p>
       )}
       {view.missingRequired.length > 0 && (
-        <p className="banner banner--attention" role="note">
+        <p
+          className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs"
+          role="note"
+        >
           Still needed: {view.missingRequired.join(', ')}.
         </p>
       )}
       {view.warnings.length > 0 && (
-        <div className="banner banner--attention" role="note">
-          <p>
-            <strong>Check these statements.</strong> They are not supported by your approved profile:
+        <div
+          className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs space-y-1"
+          role="note"
+        >
+          <p className="font-semibold text-foreground m-0">
+            Check these statements. They are not supported by your approved profile:
           </p>
-          <ul>
+          <ul className="list-disc list-inside space-y-0.5 m-0 pl-1">
             {view.warnings.map((w) => (
               <li key={w.message}>{w.message}</li>
             ))}
@@ -339,7 +395,7 @@ function Editor({
         </div>
       )}
       <form
-        className="app-form"
+        className="space-y-4 pt-2"
         onSubmit={(e) => {
           e.preventDefault();
           save();
@@ -348,16 +404,20 @@ function Editor({
         {view.payload.fields.map((f) => {
           const id = `field-${f.key}`;
           const label = (
-            <label htmlFor={id} className="field__label">
+            <label htmlFor={id} className="text-sm font-medium text-foreground block mb-1">
               {f.label}
-              {f.required ? <span className="req"> (required)</span> : <span className="muted"> (optional)</span>}
+              {f.required ? (
+                <span className="text-destructive text-xs"> (required)</span>
+              ) : (
+                <span className="text-muted-foreground text-xs"> (optional)</span>
+              )}
             </label>
           );
           if (f.kind === 'file' && !/resume|cv/i.test(`${f.key} ${f.label}`)) {
             return (
-              <div className="field" key={f.key}>
-                <p className="field__label">{f.label}</p>
-                <p className="help">
+              <div className="space-y-1" key={f.key}>
+                <p className="text-sm font-medium text-foreground m-0">{f.label}</p>
+                <p className="text-xs text-muted-foreground m-0">
                   Career Strike attaches only your résumé. Attach this file yourself on the employer’s site.
                 </p>
               </div>
@@ -365,9 +425,14 @@ function Editor({
           }
           if (f.kind === 'file') {
             return (
-              <div className="field" key={f.key}>
+              <div className="space-y-1.5" key={f.key}>
                 {label}
-                <select id={id} value={resume} onChange={(e) => setResume(e.target.value)}>
+                <select
+                  id={id}
+                  value={resume}
+                  onChange={(e) => setResume(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+                >
                   <option value="">No file</option>
                   {docs.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -375,18 +440,22 @@ function Editor({
                     </option>
                   ))}
                 </select>
-                <p className="help">
-                  Files come from your <Link href="/profile#documents">documents</Link>.
+                <p className="text-xs text-muted-foreground m-0">
+                  Files come from your{' '}
+                  <Link href="/profile#documents" className="text-primary hover:underline">
+                    documents
+                  </Link>
+                  .
                 </p>
                 <UploadInline onUploaded={onUploaded} />
               </div>
             );
           }
           return (
-            <div className="field" key={f.key}>
+            <div className="space-y-1.5" key={f.key}>
               {label}
               {f.kind === 'long_text' ? (
-                <textarea
+                <Textarea
                   id={id}
                   rows={f.key === 'cover_letter_text' ? 12 : 4}
                   value={values[f.key] ?? ''}
@@ -397,6 +466,7 @@ function Editor({
                   id={id}
                   value={values[f.key] ?? ''}
                   onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
                 >
                   <option value="">—</option>
                   {f.options.map((o) => (
@@ -406,27 +476,28 @@ function Editor({
                   ))}
                 </select>
               ) : (
-                <input
+                <Input
                   id={id}
                   type="text"
                   value={values[f.key] ?? ''}
                   onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
                 />
               )}
-              <p className="help">{SOURCE_NOTE[f.source]}</p>
+              <p className="text-xs text-muted-foreground m-0">{SOURCE_NOTE[f.source]}</p>
             </div>
           );
         })}
-        <div className="field">
-          <label htmlFor="change-reason" className="field__label">
-            What changed? <span className="muted">(optional, kept in the history)</span>
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          <label htmlFor="change-reason" className="text-sm font-medium text-foreground block">
+            What changed?{' '}
+            <span className="text-xs text-muted-foreground font-normal">(optional, kept in the history)</span>
           </label>
-          <input id="change-reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Input id="change-reason" type="text" value={reason} onChange={(e) => setReason(e.target.value)} />
         </div>
-        <div className="field__actions">
-          <button type="submit" disabled={!dirty || busy}>
+        <div className="flex items-center gap-3 pt-2">
+          <Button type="submit" disabled={!dirty || busy}>
             Save as a new version
-          </button>
+          </Button>
         </div>
       </form>
     </section>
@@ -436,11 +507,11 @@ function Editor({
 function UploadInline({ onUploaded }: { onUploaded: () => void }) {
   const [status, setStatus] = useState<string | null>(null);
   return (
-    <div className="upload-inline">
-      <label htmlFor="upload-resume" className="muted">
+    <div className="pt-1 space-y-1">
+      <label htmlFor="upload-resume" className="text-xs text-muted-foreground block">
         Or upload a new résumé
       </label>
-      <input
+      <Input
         id="upload-resume"
         type="file"
         accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
@@ -450,9 +521,10 @@ function UploadInline({ onUploaded }: { onUploaded: () => void }) {
           setStatus(await uploadDocument(file, 'resume'));
           onUploaded();
         }}
+        className="text-xs h-8 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-muted"
       />
       {status && (
-        <span role="status" className="field-note">
+        <span role="status" className="text-xs text-muted-foreground block">
           {status}
         </span>
       )}
@@ -463,9 +535,11 @@ function UploadInline({ onUploaded }: { onUploaded: () => void }) {
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button
+    <Button
       type="button"
-      className="quiet copy"
+      variant="ghost"
+      size="sm"
+      className="h-6 px-2 text-xs ml-2"
       onClick={async () => {
         await navigator.clipboard.writeText(text);
         setCopied(true);
@@ -473,21 +547,21 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       }}
     >
       {copied ? 'Copied' : 'Copy'}
-      <span className="visually-hidden"> {label}</span>
-    </button>
+      <span className="sr-only"> {label}</span>
+    </Button>
   );
 }
 
 function Package({ view }: { view: ApplicationView }) {
   const p = view.payload;
-  // While the candidate fills in the employer's form, every approved answer can be copied exactly.
   const copyable = view.state === 'APPROVED' || view.state === 'NEEDS_MANUAL_ACTION';
+
   return (
-    <div className="package__body" data-testid="package">
-      <dl className="facts">
+    <div className="space-y-4" data-testid="package">
+      <dl className="grid grid-cols-1 gap-2 p-3 rounded-lg bg-muted/30 border border-border text-xs">
         <div>
-          <dt>Destination</dt>
-          <dd>
+          <dt className="text-muted-foreground font-semibold">Destination</dt>
+          <dd className="text-foreground mt-0.5">
             {p.destination.method === 'manual'
               ? 'You submit it on the employer’s site'
               : p.destination.method === 'assisted'
@@ -495,69 +569,89 @@ function Package({ view }: { view: ApplicationView }) {
                 : 'Owned test endpoint'}
             <br />
             {p.destination.url ? (
-              <ExternalLink href={p.destination.url}>{new URL(p.destination.url).host}</ExternalLink>
+              <ExternalLink href={p.destination.url} className="text-primary hover:underline">
+                {new URL(p.destination.url).host}
+              </ExternalLink>
             ) : (
-              <span className="muted">No link</span>
+              <span className="text-muted-foreground">No link</span>
             )}
           </dd>
         </div>
         <div>
-          <dt>Version</dt>
-          <dd>
+          <dt className="text-muted-foreground font-semibold">Version</dt>
+          <dd className="text-foreground mt-0.5">
             {view.version} · <code title={view.payloadHash}>{shortHash(view.payloadHash)}</code>
           </dd>
         </div>
       </dl>
-      <h3>You would disclose</h3>
-      <ul className="disclosures">
-        {view.disclosures.map((d) => (
-          <li key={d}>{d}</li>
-        ))}
-      </ul>
-      <h3>Answers</h3>
-      <dl className="facts">
-        {p.fields
-          .filter((f) => f.key !== 'cover_letter_text')
-          .map((f) => (
-            <div key={f.key}>
-              <dt>{f.label}</dt>
-              <dd>
-                {f.value ?? <span className="muted">Not answered</span>}
-                {copyable && f.value && f.kind !== 'file' && <CopyButton text={f.value} label={f.label} />}
-              </dd>
-            </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-1.5">You would disclose</h3>
+        <ul className="space-y-1 p-0 m-0 list-none text-xs text-muted-foreground">
+          {view.disclosures.map((d) => (
+            <li key={d} className="p-1.5 rounded bg-muted/20 border border-border/50">
+              {d}
+            </li>
           ))}
-      </dl>
+        </ul>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-foreground mb-1.5">Answers</h3>
+        <dl className="space-y-2 text-xs">
+          {p.fields
+            .filter((f) => f.key !== 'cover_letter_text')
+            .map((f) => (
+              <div key={f.key} className="p-2 rounded bg-muted/20 border border-border/40">
+                <dt className="font-semibold text-foreground">{f.label}</dt>
+                <dd className="text-muted-foreground mt-0.5 flex items-center justify-between">
+                  <span>{f.value ?? <span className="italic">Not answered</span>}</span>
+                  {copyable && f.value && f.kind !== 'file' && <CopyButton text={f.value} label={f.label} />}
+                </dd>
+              </div>
+            ))}
+        </dl>
+      </div>
+
       {p.attachments.length > 0 && (
-        <>
-          <h3>Files</h3>
-          <ul className="disclosures">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1.5">Files</h3>
+          <ul className="space-y-1 p-0 m-0 list-none text-xs text-muted-foreground">
             {p.attachments.map((a) => (
-              <li key={a.documentId}>
+              <li key={a.documentId} className="p-1.5 rounded bg-muted/20 border border-border/50">
                 {a.filename} <code title={a.sha256}>sha256 {shortHash(a.sha256)}</code>
               </li>
             ))}
           </ul>
-        </>
+        </div>
       )}
+
       {p.coverLetter && (
-        <>
-          <h3>Cover letter {copyable && <CopyButton text={p.coverLetter} label="cover letter" />}</h3>
-          <pre className="letter">{p.coverLetter}</pre>
-        </>
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <h3 className="text-sm font-semibold text-foreground m-0">Cover letter</h3>
+            {copyable && <CopyButton text={p.coverLetter} label="cover letter" />}
+          </div>
+          <pre className="p-3 rounded-md bg-muted/40 border border-border text-xs whitespace-pre-wrap font-sans leading-relaxed max-h-60 overflow-y-auto">
+            {p.coverLetter}
+          </pre>
+        </div>
       )}
+
       {p.notAnswered.length > 0 && (
-        <>
-          <h3>Not answered by Career Strike</h3>
-          <p className="help">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground mb-1">Not answered by Career Strike</h3>
+          <p className="text-xs text-muted-foreground mb-2">
             Voluntary questions on the employer’s form. Answer them yourself on their site if you wish.
           </p>
-          <ul className="disclosures">
+          <ul className="space-y-1 p-0 m-0 list-none text-xs text-muted-foreground">
             {p.notAnswered.map((q) => (
-              <li key={q}>{q}</li>
+              <li key={q} className="p-1.5 rounded bg-muted/20 border border-border/40">
+                {q}
+              </li>
             ))}
           </ul>
-        </>
+        </div>
       )}
     </div>
   );
@@ -584,25 +678,31 @@ function Actions({
   };
 
   return (
-    <div className="app-actions">
+    <div className="space-y-3 pt-3 border-t border-border">
       {view.state === 'DRAFTED' && (
-        <button
+        <Button
           type="button"
           disabled={busy || view.missingRequired.length > 0}
           onClick={() => void run('Marked ready for review.', () => post('ready'))}
+          className="w-full"
         >
           Mark ready for review
-        </button>
+        </Button>
       )}
       {view.state === 'READY_FOR_REVIEW' && (
-        <>
+        <div className="space-y-3">
           {view.warnings.length > 0 && (
-            <label className="filter--check ack">
-              <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+            <label className="flex items-start gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={ack}
+                onChange={(e) => setAck(e.target.checked)}
+                className="mt-0.5 accent-primary"
+              />
               <span>I confirm the flagged statements are accurate.</span>
             </label>
           )}
-          <button
+          <Button
             type="button"
             disabled={busy || (view.warnings.length > 0 && !ack)}
             onClick={() =>
@@ -610,102 +710,127 @@ function Actions({
                 post('approve', { version: view.version, payloadHash: view.payloadHash, acknowledgeWarnings: ack }),
               )
             }
+            className="w-full"
           >
             Approve this exact application
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="quiet"
+            variant="ghost"
             disabled={busy}
             onClick={() => void run('Saved for later.', () => post('save-for-later'))}
+            className="w-full text-xs"
           >
             Save for later
-          </button>
-        </>
+          </Button>
+        </div>
       )}
       {view.duplicateRisk.length > 0 && (
-        <div className="banner banner--attention" role="note" data-testid="duplicate-risk">
+        <div
+          className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs"
+          role="note"
+          data-testid="duplicate-risk"
+        >
           <strong>Possible duplicate.</strong> You have{' '}
           {view.duplicateRisk.length === 1 ? 'another application' : `${view.duplicateRisk.length} other applications`}{' '}
           for this same role:{' '}
           {view.duplicateRisk.map((d, i) => (
             <span key={d.applicationId}>
               {i > 0 && ', '}
-              <Link href={`/applications/${d.applicationId}`}>{APP_STATE_LABEL[d.state]}</Link>
+              <Link href={`/applications/${d.applicationId}`} className="text-primary hover:underline">
+                {APP_STATE_LABEL[d.state]}
+              </Link>
             </span>
           ))}
           . Career Strike will not submit the same role twice.
         </div>
       )}
       {view.state === 'APPROVED' && view.payload.destination.method === 'test-ats' && (
-        <div className="banner" role="note">
-          <p>
-            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> —{' '}
-            {view.approval.reason}
+        <div className="p-3 rounded-md bg-muted/40 border border-border text-xs space-y-2" role="note">
+          <p className="m-0">
+            <strong className="text-foreground">
+              {view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}
+            </strong>{' '}
+            — {view.approval.reason}
           </p>
-          <p className="help">
+          <p className="text-muted-foreground m-0">
             This goes to the practice endpoint on this computer, not to an employer. It is sent once, with a receipt.
           </p>
-          <button
+          <Button
             type="button"
             disabled={busy || !view.approval.valid}
             onClick={() => void run('Sending to the practice endpoint…', () => post('submit'))}
+            className="w-full"
           >
             Submit to the practice endpoint
-          </button>
+          </Button>
         </div>
       )}
       {view.state === 'SUBMISSION_IN_PROGRESS' && (
-        <p className="banner" role="status" aria-live="polite">
+        <p
+          className="p-3 rounded-md bg-muted/40 border border-border text-xs text-muted-foreground m-0"
+          role="status"
+          aria-live="polite"
+        >
           Sending… Career Strike is waiting for a receipt.
         </p>
       )}
       {view.state === 'SUBMISSION_UNCONFIRMED' && view.mode === 'automated' && (
-        <div className="banner banner--attention" role="note">
-          <p>
+        <div
+          className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs space-y-2"
+          role="note"
+        >
+          <p className="m-0">
             <strong>Career Strike does not know whether it arrived.</strong> It will not resend it. Ask the endpoint
             whether it has a record of this submission.
           </p>
-          <button
+          <Button
             type="button"
             disabled={busy}
             onClick={() => void run('Checked with the endpoint.', () => post('reconcile'))}
+            className="w-full"
           >
             Check whether it arrived
-          </button>
+          </Button>
         </div>
       )}
       {view.state === 'SUBMISSION_FAILED' && (
-        <div className="banner banner--attention" role="note">
-          <p>
+        <div
+          className="p-3 rounded-md border border-amber-500/30 bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-200 text-xs space-y-2"
+          role="note"
+        >
+          <p className="m-0">
             <strong>It was not submitted.</strong> To try again, prepare it again and approve the new version.
           </p>
-          <button
+          <Button
             type="button"
             disabled={busy}
             onClick={() => void run('Back to drafts. Review and approve it again.', () => post('redraft'))}
+            className="w-full"
           >
             Prepare it again
-          </button>
+          </Button>
         </div>
       )}
       {view.state === 'APPROVED' && view.payload.destination.method !== 'test-ats' && (
-        <div className="banner" role="note">
-          <p>
-            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> —{' '}
-            {view.approval.reason}
+        <div className="p-3 rounded-md bg-muted/40 border border-border text-xs space-y-2" role="note">
+          <p className="m-0">
+            <strong className="text-foreground">
+              {view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}
+            </strong>{' '}
+            — {view.approval.reason}
           </p>
           {view.approval.approval && (
-            <p className="muted">
+            <p className="text-muted-foreground m-0">
               Approved {formatDateTime(view.approval.approval.issuedAt)}; expires{' '}
               {formatDateTime(view.approval.approval.expiresAt)}.
             </p>
           )}
-          <p className="help">
+          <p className="text-muted-foreground m-0">
             When you start, the approval is used up. Then submit on the employer’s site, using the copy buttons for each
             answer.
           </p>
-          <button
+          <Button
             type="button"
             disabled={busy || !view.approval.valid}
             onClick={() => {
@@ -715,11 +840,15 @@ function Actions({
                 post('start-submission'),
               );
             }}
+            className="w-full"
           >
             Start submitting on the employer’s site
-          </button>
+          </Button>
           {view.payload.destination.url && (
-            <ExternalLink href={view.payload.destination.url} className="button button--quiet">
+            <ExternalLink
+              href={view.payload.destination.url}
+              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'w-full text-center text-xs')}
+            >
               Open the official application
             </ExternalLink>
           )}
@@ -740,14 +869,27 @@ function Actions({
         />
       )}
       {can('CANCELLED') && (
-        <button type="button" className="quiet" disabled={busy} onClick={reject}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={busy}
+          onClick={reject}
+          className="w-full text-xs text-muted-foreground"
+        >
           Reject
-        </button>
+        </Button>
       )}
       {view.state === 'CANCELLED' && (
-        <button type="button" className="quiet" onClick={() => navigate(`/jobs/${view.jobId}`)}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/jobs/${view.jobId}`)}
+          className="w-full text-xs"
+        >
           Back to the job
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -771,9 +913,10 @@ function ConfirmSubmission({ view, busy, post, run }: { view: ApplicationView; b
   const [date, setDate] = useState(today());
   const [reference, setReference] = useState('');
   const [note, setNote] = useState('');
+
   return (
     <form
-      className="banner outcome-form"
+      className="p-3.5 rounded-lg border border-border bg-card space-y-3 text-xs"
       onSubmit={(e) => {
         e.preventDefault();
         void run('Recorded as submitted.', () =>
@@ -785,40 +928,62 @@ function ConfirmSubmission({ view, busy, post, run }: { view: ApplicationView; b
         );
       }}
     >
-      <p>
-        <strong>Did you submit it?</strong> Career Strike only counts it as submitted when you confirm.
+      <p className="font-semibold text-foreground m-0">
+        Did you submit it? Career Strike only counts it as submitted when you confirm.
       </p>
-      <label htmlFor="submitted-at">Date submitted</label>
-      <input
-        id="submitted-at"
-        type="date"
-        required
-        value={date}
-        max={today()}
-        onChange={(e) => setDate(e.target.value)}
-      />
-      <label htmlFor="reference">Confirmation number or reference (optional)</label>
-      <input id="reference" type="text" value={reference} onChange={(e) => setReference(e.target.value)} />
-      <label htmlFor="confirm-note">What did you see? (optional)</label>
-      <input
-        id="confirm-note"
-        type="text"
-        placeholder="e.g. confirmation email received"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-      />
-      <button type="submit" disabled={busy}>
+      <div className="space-y-1">
+        <label htmlFor="submitted-at" className="text-muted-foreground font-medium block">
+          Date submitted
+        </label>
+        <Input
+          id="submitted-at"
+          type="date"
+          required
+          value={date}
+          max={today()}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="reference" className="text-muted-foreground font-medium block">
+          Confirmation number or reference (optional)
+        </label>
+        <Input
+          id="reference"
+          type="text"
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="confirm-note" className="text-muted-foreground font-medium block">
+          What did you see? (optional)
+        </label>
+        <Input
+          id="confirm-note"
+          type="text"
+          placeholder="e.g. confirmation email received"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+      <Button type="submit" disabled={busy} className="w-full h-8 text-xs">
         Yes, I submitted it
-      </button>
+      </Button>
       {view.state === 'NEEDS_MANUAL_ACTION' && (
-        <button
+        <Button
           type="button"
-          className="quiet"
+          variant="ghost"
+          size="sm"
           disabled={busy}
           onClick={() => void run('Marked as not confirmed.', () => post('mark-unconfirmed', { note: null }))}
+          className="w-full h-8 text-xs text-muted-foreground"
         >
           I’m not sure it went through
-        </button>
+        </Button>
       )}
     </form>
   );
@@ -841,42 +1006,68 @@ function RecordOutcome({
   const [chosen, setOutcome] = useState<string>(options[0] ?? '');
   const [date, setDate] = useState(today());
   const [note, setNote] = useState('');
-  // After a transition the available outcomes change; fall back to the first valid one.
   const outcome = options.includes(chosen as (typeof OUTCOMES)[number]) ? chosen : (options[0] ?? '');
+
   return (
     <form
-      className="banner outcome-form"
+      className="p-3.5 rounded-lg border border-border bg-card space-y-3 text-xs"
       onSubmit={(e) => {
         e.preventDefault();
         void run('Recorded.', () => post('outcome', { outcome, occurredAt: date, note: note.trim() || null }));
       }}
     >
-      <p>
-        <strong>Record what happened</strong>
-      </p>
-      <label htmlFor="outcome">What happened?</label>
-      <select id="outcome" value={outcome} onChange={(e) => setOutcome(e.target.value)}>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {OUTCOME_LABEL[o]}
-          </option>
-        ))}
-      </select>
-      <label htmlFor="outcome-date">When?</label>
-      <input
-        id="outcome-date"
-        type="date"
-        required
-        value={date}
-        max={today()}
-        onChange={(e) => setDate(e.target.value)}
-      />
-      <label htmlFor="outcome-note">Details (optional)</label>
-      <input id="outcome-note" type="text" value={note} onChange={(e) => setNote(e.target.value)} />
-      <button type="submit" disabled={busy || !outcome}>
+      <p className="font-semibold text-foreground m-0">Record what happened</p>
+      <div className="space-y-1">
+        <label htmlFor="outcome" className="text-muted-foreground font-medium block">
+          What happened?
+        </label>
+        <select
+          id="outcome"
+          value={outcome}
+          onChange={(e) => setOutcome(e.target.value)}
+          className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs"
+        >
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {OUTCOME_LABEL[o]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="outcome-date" className="text-muted-foreground font-medium block">
+          When?
+        </label>
+        <Input
+          id="outcome-date"
+          type="date"
+          required
+          value={date}
+          max={today()}
+          onChange={(e) => setDate(e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+      <div className="space-y-1">
+        <label htmlFor="outcome-note" className="text-muted-foreground font-medium block">
+          Details (optional)
+        </label>
+        <Input
+          id="outcome-note"
+          type="text"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          className="h-8 text-xs"
+        />
+      </div>
+      <Button type="submit" disabled={busy || !outcome} className="w-full h-8 text-xs">
         Record
-      </button>
-      <span className="muted">{view.state === 'OFFER' ? 'Congratulations.' : ''}</span>
+      </Button>
+      {view.state === 'OFFER' && (
+        <span className="text-xs text-teal-600 dark:text-teal-400 font-semibold block text-center">
+          Congratulations.
+        </span>
+      )}
     </form>
   );
 }
@@ -922,75 +1113,102 @@ function FollowUpStudio({ view }: { view: ApplicationView }) {
   };
 
   return (
-    <section className="follow-ups outreach-studio" aria-labelledby="outreach-title">
-      <h3 id="outreach-title">✉️ Professional Follow-Up Studio</h3>
-      <p className="help">Draft thoughtful, stage-appropriate correspondence with one-click copy.</p>
+    <section className="space-y-3" aria-labelledby="outreach-title">
+      <h3 id="outreach-title" className="text-base font-semibold text-foreground m-0">
+        ✉️ Professional Follow-Up Studio
+      </h3>
+      <p className="text-xs text-muted-foreground m-0">
+        Draft thoughtful, stage-appropriate correspondence with one-click copy.
+      </p>
 
-      <div className="outreach-tabs" role="tablist" aria-label="Follow-up draft types">
-        <button
+      <div
+        className="flex gap-1 p-1 bg-muted/60 rounded-lg border border-border"
+        role="tablist"
+        aria-label="Follow-up draft types"
+      >
+        <Button
           type="button"
+          variant={kind === 'status_inquiry' ? 'default' : 'ghost'}
+          size="sm"
           role="tab"
           aria-selected={kind === 'status_inquiry'}
-          className={`outreach-tab ${kind === 'status_inquiry' ? 'outreach-tab--active' : ''}`}
+          className="text-xs h-7 flex-1"
           onClick={() => setKind('status_inquiry')}
         >
           Check-in
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant={kind === 'post_interview_thanks' ? 'default' : 'ghost'}
+          size="sm"
           role="tab"
           aria-selected={kind === 'post_interview_thanks'}
-          className={`outreach-tab ${kind === 'post_interview_thanks' ? 'outreach-tab--active' : ''}`}
+          className="text-xs h-7 flex-1"
           onClick={() => setKind('post_interview_thanks')}
         >
           Thank You
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant={kind === 'offer_next_steps' ? 'default' : 'ghost'}
+          size="sm"
           role="tab"
           aria-selected={kind === 'offer_next_steps'}
-          className={`outreach-tab ${kind === 'offer_next_steps' ? 'outreach-tab--active' : ''}`}
+          className="text-xs h-7 flex-1"
           onClick={() => setKind('offer_next_steps')}
         >
           Offer
-        </button>
+        </Button>
       </div>
 
-      <div className="outreach-inputs">
-        <label htmlFor="outreach-contact">Contact or recruiter name (optional)</label>
-        <input
-          id="outreach-contact"
-          type="text"
-          placeholder="e.g. Sarah Miller"
-          value={contactName}
-          onChange={(e) => setContactName(e.target.value)}
-        />
+      <div className="space-y-2">
+        <div className="space-y-1">
+          <label htmlFor="outreach-contact" className="text-xs text-muted-foreground font-medium block">
+            Contact or recruiter name (optional)
+          </label>
+          <Input
+            id="outreach-contact"
+            type="text"
+            placeholder="e.g. Sarah Miller"
+            value={contactName}
+            onChange={(e) => setContactName(e.target.value)}
+            className="h-8 text-xs"
+          />
+        </div>
 
         {kind === 'post_interview_thanks' && (
-          <>
-            <label htmlFor="outreach-highlight">Discussion highlight (optional)</label>
-            <input
+          <div className="space-y-1">
+            <label htmlFor="outreach-highlight" className="text-xs text-muted-foreground font-medium block">
+              Discussion highlight (optional)
+            </label>
+            <Input
               id="outreach-highlight"
               type="text"
               placeholder="e.g. system reliability during peak traffic"
               value={highlight}
               onChange={(e) => setHighlight(e.target.value)}
+              className="h-8 text-xs"
             />
-          </>
+          </div>
         )}
       </div>
 
-      <div className="outreach-preview-box">
-        <div className="outreach-preview-subject">
+      <div className="p-3 bg-muted/30 border border-border rounded-lg space-y-2 text-xs">
+        <div className="text-foreground">
           <strong>Subject:</strong> {draft.subject}
         </div>
-        <pre className="outreach-preview-body" tabIndex={0} role="region" aria-label="Email draft preview">
+        <pre
+          className="p-2.5 rounded bg-card border border-border text-xs whitespace-pre-wrap font-sans leading-relaxed max-h-48 overflow-y-auto"
+          tabIndex={0}
+          role="region"
+          aria-label="Email draft preview"
+        >
           {draft.body}
         </pre>
-        <div className="outreach-preview-actions">
-          <button type="button" className="button button--small button--secondary" onClick={handleCopy}>
+        <div>
+          <Button type="button" variant="secondary" size="sm" className="w-full text-xs h-7" onClick={handleCopy}>
             {copied ? '✓ Copied to Clipboard!' : '📋 Copy Outreach Draft'}
-          </button>
+          </Button>
         </div>
       </div>
     </section>
@@ -999,11 +1217,13 @@ function FollowUpStudio({ view }: { view: ApplicationView }) {
 
 function History({ view }: { view: ApplicationView }) {
   return (
-    <details className="history">
-      <summary>History ({view.versions.length} versions)</summary>
-      <ol className="disclosures">
+    <details className="text-xs space-y-2 pt-2 border-t border-border">
+      <summary className="font-semibold cursor-pointer text-foreground">
+        History ({view.versions.length} versions)
+      </summary>
+      <ol className="space-y-1 p-0 m-0 list-none text-muted-foreground pt-2">
         {view.events.map((e, i) => (
-          <li key={i}>
+          <li key={i} className="p-1.5 rounded bg-muted/20 border border-border/40">
             {formatDateTime(e.at)} · {e.from ? `${APP_STATE_LABEL[e.from] ?? e.from} → ` : ''}
             {APP_STATE_LABEL[e.to] ?? e.to}
             {e.note ? ` · ${e.note}` : ''}
@@ -1011,14 +1231,14 @@ function History({ view }: { view: ApplicationView }) {
             {e.evidence && typeof (e.evidence.receipt as { receiptId?: unknown } | undefined)?.receiptId === 'string'
               ? ` · receipt ${(e.evidence.receipt as { receiptId: string }).receiptId}`
               : ''}{' '}
-            <span className="muted">({e.actor})</span>
+            <span className="text-muted-foreground">({e.actor})</span>
           </li>
         ))}
       </ol>
-      <h3>Versions</h3>
-      <ol className="disclosures">
+      <h3 className="text-xs font-semibold text-foreground pt-2">Versions</h3>
+      <ol className="space-y-1 p-0 m-0 list-none text-muted-foreground">
         {view.versions.map((v) => (
-          <li key={v.version}>
+          <li key={v.version} className="p-1.5 rounded bg-muted/20 border border-border/40">
             v{v.version} · {v.reason} · {formatDateTime(v.createdAt)} <code>{shortHash(v.payloadHash)}</code>
           </li>
         ))}
@@ -1026,3 +1246,5 @@ function History({ view }: { view: ApplicationView }) {
     </details>
   );
 }
+
+export default ApplicationPage;

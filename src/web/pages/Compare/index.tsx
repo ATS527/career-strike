@@ -40,7 +40,11 @@ export function Compare() {
         }
         title="Side by side"
       />
-      {ids.length < 2 && <p className="empty">Choose at least two opportunities to compare from the list.</p>}
+      {ids.length < 2 && (
+        <p className="text-sm text-muted-foreground italic my-4">
+          Choose at least two opportunities to compare from the list.
+        </p>
+      )}
       {ids.length >= 2 && state.status === 'loading' && <Loading label="Loading jobs" />}
       {ids.length >= 2 && state.status === 'error' && (
         <ErrorPanel message="One of these jobs could not be loaded." onRetry={() => setAttempt((n) => n + 1)} />

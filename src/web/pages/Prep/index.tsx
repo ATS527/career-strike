@@ -81,12 +81,16 @@ export function Prep({ applicationId }: { applicationId: string }) {
         }
       />
 
-      <section className="settings-group mb-6" aria-labelledby="posting-topics">
-        <h2 id="posting-topics">What the posting asks for</h2>
+      <section className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6" aria-labelledby="posting-topics">
+        <h2 id="posting-topics" className="text-lg font-semibold tracking-tight text-foreground mb-4">
+          What the posting asks for
+        </h2>
         {fromPosting.length === 0 && (
-          <p className="empty">Career Strike found no specific requirements in this posting.</p>
+          <p className="text-sm text-muted-foreground italic py-2">
+            Career Strike found no specific requirements in this posting.
+          </p>
         )}
-        <ul className="topic-list space-y-4">
+        <ul className="space-y-4">
           {fromPosting.map((t) => (
             <Topic
               key={t.id}
@@ -99,10 +103,14 @@ export function Prep({ applicationId }: { applicationId: string }) {
         </ul>
       </section>
 
-      <section className="settings-group mb-6" aria-labelledby="general-topics">
-        <h2 id="general-topics">General preparation</h2>
-        <p className="help">Suggested by Career Strike for this kind of role — not stated in the posting.</p>
-        <ul className="topic-list space-y-4">
+      <section className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6" aria-labelledby="general-topics">
+        <h2 id="general-topics" className="text-lg font-semibold tracking-tight text-foreground mb-1">
+          General preparation
+        </h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Suggested by Career Strike for this kind of role — not stated in the posting.
+        </p>
+        <ul className="space-y-4">
           {general.map((t) => (
             <Topic
               key={t.id}
@@ -116,16 +124,18 @@ export function Prep({ applicationId }: { applicationId: string }) {
       </section>
 
       {data.sessions.length > 0 && (
-        <section className="settings-group mb-6" aria-labelledby="history-title">
-          <h2 id="history-title">Practice history</h2>
-          <ul className="disclosures">
+        <section className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6" aria-labelledby="history-title">
+          <h2 id="history-title" className="text-lg font-semibold tracking-tight text-foreground mb-4">
+            Practice history
+          </h2>
+          <ul className="divide-y divide-border/60 text-sm">
             {data.sessions.map((s) => {
               const topic = data.topics.find((t) => t.id === s.topicId);
               return (
-                <li key={s.id}>
-                  <strong>{topic?.title ?? 'Topic'}</strong> · {CONFIDENCE[s.confidence]}
+                <li key={s.id} className="py-3 first:pt-0 last:pb-0">
+                  <strong className="text-foreground">{topic?.title ?? 'Topic'}</strong> · {CONFIDENCE[s.confidence]}
                   {s.minutes ? ` · ${s.minutes} min` : ''} · {ago(s.practicedAt)}
-                  {s.notes && <p className="help mt-1">{s.notes}</p>}
+                  {s.notes && <p className="text-xs text-muted-foreground mt-1">{s.notes}</p>}
                 </li>
               );
             })}

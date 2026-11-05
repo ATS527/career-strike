@@ -64,15 +64,21 @@ export function FactSection({
 
   const headingId = `profile-${section.kind}`;
   return (
-    <section className="settings-group" aria-labelledby={headingId} data-fact-kind={section.kind}>
-      <h2 id={headingId}>{section.title}</h2>
-      {section.intro && <p className="help">{section.intro}</p>}
+    <section
+      className="rounded-xl border border-border bg-card p-6 shadow-xs"
+      aria-labelledby={headingId}
+      data-fact-kind={section.kind}
+    >
+      <h2 id={headingId} className="text-lg font-semibold tracking-tight text-foreground mb-1">
+        {section.title}
+      </h2>
+      {section.intro && <p className="text-sm text-muted-foreground mb-4">{section.intro}</p>}
       {facts.length === 0 ? (
-        <p className="empty">None added yet.</p>
+        <p className="text-sm text-muted-foreground italic py-2">None added yet.</p>
       ) : (
         <>
           {facts.filter((f) => !f.approved).length > 1 && (
-            <div style={{ marginBottom: '0.75rem' }}>
+            <div className="mb-3">
               <Button
                 type="button"
                 variant="ghost"
@@ -87,31 +93,31 @@ export function FactSection({
               </Button>
             </div>
           )}
-          <ul className="fact-list">
+          <ul className="divide-y divide-border/60 text-sm mb-4">
             {facts.map((f) => (
-              <li key={f.id}>
-                <span>{section.describe(f.value)}</span>
-                {!f.approved && (
-                  <Badge variant="secondary" className="ml-2">
-                    Suggested — not used until you approve
-                  </Badge>
-                )}
-                {!f.approved && (
-                  <Button type="button" size="sm" onClick={() => void approve(f)}>
-                    Approve<span className="visually-hidden"> {section.describe(f.value)}</span>
+              <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground">{section.describe(f.value)}</span>
+                  {!f.approved && <Badge variant="secondary">Suggested — not used until you approve</Badge>}
+                </div>
+                <div className="flex items-center gap-2">
+                  {!f.approved && (
+                    <Button type="button" size="sm" onClick={() => void approve(f)}>
+                      Approve<span className="sr-only"> {section.describe(f.value)}</span>
+                    </Button>
+                  )}
+                  <Button type="button" variant="ghost" size="sm" onClick={() => void remove(f)}>
+                    {f.approved ? 'Remove' : 'Discard'}
+                    <span className="sr-only"> {section.describe(f.value)}</span>
                   </Button>
-                )}
-                <Button type="button" variant="ghost" size="sm" onClick={() => void remove(f)}>
-                  {f.approved ? 'Remove' : 'Discard'}
-                  <span className="visually-hidden"> {section.describe(f.value)}</span>
-                </Button>
+                </div>
               </li>
             ))}
           </ul>
         </>
       )}
       <form
-        className="fact-form"
+        className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3"
         onSubmit={(e) => void submit(e)}
         noValidate
         aria-label={`Add to ${section.title.toLowerCase()}`}
@@ -119,14 +125,15 @@ export function FactSection({
         {section.fields.map((f) => {
           const id = `${section.kind}-${f.name}`;
           return (
-            <div key={f.name} className="record__part">
-              <label htmlFor={id}>
+            <div key={f.name} className="space-y-1">
+              <label htmlFor={id} className="block text-xs font-medium text-foreground">
                 {f.label}
-                {!f.required && <span className="muted"> (optional)</span>}
+                {!f.required && <span className="text-muted-foreground font-normal"> (optional)</span>}
               </label>
               {f.type === 'select' ? (
                 <select
                   id={id}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={form[f.name] ?? ''}
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
                 >
@@ -141,6 +148,7 @@ export function FactSection({
                   id={id}
                   type={f.type}
                   inputMode={f.type === 'number' ? 'numeric' : undefined}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={form[f.name] ?? ''}
                   onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
                   aria-invalid={errors[f.name] ? true : undefined}
@@ -151,7 +159,7 @@ export function FactSection({
               {(errors[f.name] || f.hint) && (
                 <span
                   id={`${id}-note`}
-                  className={errors[f.name] ? 'save-status--error field-note' : 'muted field-note'}
+                  className={`block text-xs mt-1 ${errors[f.name] ? 'text-destructive font-medium' : 'text-muted-foreground'}`}
                 >
                   {errors[f.name] ?? f.hint}
                 </span>
@@ -159,15 +167,17 @@ export function FactSection({
             </div>
           );
         })}
-        <div className="fact-form__submit">
+        <div className="pt-2 flex justify-end">
           <Button type="submit" size="sm">
             Add
           </Button>
         </div>
       </form>
-      <p role="status" aria-live="polite" className="save-status">
-        {status}
-      </p>
+      {status && (
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2">
+          {status}
+        </p>
+      )}
     </section>
   );
 }

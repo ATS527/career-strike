@@ -39,23 +39,30 @@ export function RunningTaskRow({
   onCancel: (id: string) => Promise<void>;
 }) {
   return (
-    <li className="job-row">
-      <div className="job-row__main">
-        <h3 className="job-row__title">{describeTask(t, boards)}</h3>
-        <p className="job-row__meta">
+    <li className="flex items-center justify-between gap-4 p-4 rounded-lg border border-border bg-card shadow-xs">
+      <div className="space-y-1 flex-1 min-w-0">
+        <h3 className="text-base font-semibold text-foreground m-0 truncate">{describeTask(t, boards)}</h3>
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground m-0">
           <span>{TRIGGER[t.trigger] ?? t.trigger}</span>
+          <span>•</span>
           <span>started {ago(t.startedAt ?? t.createdAt)}</span>
+          <span>•</span>
           <span>last heartbeat {ago(t.heartbeatAt)}</span>
-          {typeof t.progress?.step === 'string' && <span>step: {t.progress.step}</span>}
+          {typeof t.progress?.step === 'string' && (
+            <>
+              <span>•</span>
+              <span>step: {t.progress.step}</span>
+            </>
+          )}
         </p>
       </div>
-      <div className="job-row__actions">
+      <div className="shrink-0">
         {t.kind.startsWith('discover:') ? (
           <Button type="button" variant="ghost" size="sm" onClick={() => void onCancel(t.id)}>
-            Cancel<span className="visually-hidden"> {describeTask(t, boards)}</span>
+            Cancel<span className="sr-only"> {describeTask(t, boards)}</span>
           </Button>
         ) : (
-          <span className="muted">Sending cannot be cancelled safely</span>
+          <span className="text-xs text-muted-foreground">Sending cannot be cancelled safely</span>
         )}
       </div>
     </li>

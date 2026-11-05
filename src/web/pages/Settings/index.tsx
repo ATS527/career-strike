@@ -31,8 +31,14 @@ export function Settings() {
       {settings.state === 'error' && <ErrorPanel message={settings.message} onRetry={settings.retry} />}
       {settings.state === 'ready' &&
         GROUPS.map((group) => (
-          <section key={group.id} className="settings-group" aria-labelledby={`group-${group.id}`}>
-            <h2 id={`group-${group.id}`}>{group.title}</h2>
+          <section
+            key={group.id}
+            className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6"
+            aria-labelledby={`group-${group.id}`}
+          >
+            <h2 id={`group-${group.id}`} className="text-lg font-semibold tracking-tight text-foreground mb-4">
+              {group.title}
+            </h2>
             {settings.data.definitions
               .filter((d: SettingDefinition) => groupOf(d) === group.id)
               .map((def: SettingDefinition) => (

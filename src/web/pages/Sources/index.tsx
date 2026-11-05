@@ -69,9 +69,11 @@ export function Sources() {
 
       {loadError && <ErrorPanel message="Job boards could not be loaded." onRetry={() => void load()} />}
       {!boards && !loadError && <Loading label="Loading job boards" />}
-      {boards && boards.length === 0 && <p className="empty">No job boards yet. Add one above.</p>}
+      {boards && boards.length === 0 && (
+        <p className="text-sm text-muted-foreground italic py-4">No job boards yet. Add one above.</p>
+      )}
       {boards && boards.length > 0 && (
-        <ul className="board-list" data-testid="board-list">
+        <ul className="space-y-3" data-testid="board-list">
           {boards.map((b) => (
             <BoardRow key={b.id} board={b} task={taskFor(b)} onTask={track} onRemoved={() => void load()} />
           ))}

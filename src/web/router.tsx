@@ -85,7 +85,7 @@ export function ExternalLink({
   return (
     <a href={safe} target="_blank" rel="noopener noreferrer external" className={className} style={style}>
       {children}
-      <span className="visually-hidden"> (opens the employer’s site in a new tab)</span>
+      <span className="sr-only"> (opens the employer’s site in a new tab)</span>
     </a>
   );
 }

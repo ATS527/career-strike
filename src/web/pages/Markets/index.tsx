@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
-import { Button } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
+import { cn } from '../../helpers/cn';
 import { Link } from '../../router';
 import { ErrorPanel, Loading } from '../states';
 import { MarketDetailRail } from './-components/MarketDetailRail';
@@ -90,17 +91,17 @@ export function Markets() {
   };
 
   return (
-    <div className="candidate-markets-view">
+    <div className="space-y-6">
       <PageHeader
         eyebrow="International opportunity strategy"
         title="Where should you look next?"
         lede="Research software hiring ecosystems, legal mobility pathways, and language realities—not misleading vacancy-count rankings."
         actions={
           <div className="flex gap-2 items-center flex-wrap">
-            <Button type="button" variant="ghost" onClick={resetFilters}>
+            <Button type="button" variant="ghost" size="sm" onClick={resetFilters}>
               Reset filters
             </Button>
-            <Link href="/profile" className="button button--primary">
+            <Link href="/profile" className={cn(buttonVariants({ variant: 'default', size: 'sm' }), 'text-xs')}>
               Back to profile →
             </Link>
           </div>
@@ -113,7 +114,7 @@ export function Markets() {
       {loading && !error && <Loading label="Loading international tech hiring markets" />}
 
       {/* Truth-in-Advertising Callout */}
-      <section aria-labelledby="callout-heading" className="mb-6 p-4 bg-card border border-border rounded-lg shadow-xs">
+      <section aria-labelledby="callout-heading" className="p-4 bg-card border border-border rounded-lg shadow-xs">
         <div className="flex gap-3 items-start">
           <span className="text-2xl leading-none" aria-hidden="true">
             🌐
@@ -132,41 +133,47 @@ export function Markets() {
       </section>
 
       {statusMessage && (
-        <p role="status" aria-live="polite" className="save-status mb-4">
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground">
           {statusMessage}
         </p>
       )}
 
       {/* 3-Column Editorial Research Workspace */}
-      <div className="market-research-workspace">
-        <MarketFilters
-          search={search}
-          onSearchChange={setSearch}
-          region={region}
-          onRegionChange={setRegion}
-          englishOnly={englishOnly}
-          onEnglishOnlyChange={setEnglishOnly}
-          selectedCountries={selectedCountries}
-          onSelectCountry={setActiveMarketCode}
-          onToggleTarget={toggleTarget}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        <div className="lg:col-span-1">
+          <MarketFilters
+            search={search}
+            onSearchChange={setSearch}
+            region={region}
+            onRegionChange={setRegion}
+            englishOnly={englishOnly}
+            onEnglishOnlyChange={setEnglishOnly}
+            selectedCountries={selectedCountries}
+            onSelectCountry={setActiveMarketCode}
+            onToggleTarget={toggleTarget}
+          />
+        </div>
 
-        <MarketTable
-          markets={filteredMarkets}
-          selectedCountries={selectedCountries}
-          activeMarketCode={activeMarketCode}
-          savingCode={savingCode}
-          onSelectMarket={setActiveMarketCode}
-          onToggleTarget={toggleTarget}
-          onResetFilters={resetFilters}
-        />
+        <div className="lg:col-span-2">
+          <MarketTable
+            markets={filteredMarkets}
+            selectedCountries={selectedCountries}
+            activeMarketCode={activeMarketCode}
+            savingCode={savingCode}
+            onSelectMarket={setActiveMarketCode}
+            onToggleTarget={toggleTarget}
+            onResetFilters={resetFilters}
+          />
+        </div>
 
-        <MarketDetailRail
-          activeMarket={activeMarket}
-          isSelected={selectedCountries.includes(activeMarket.code)}
-          isSaving={savingCode === activeMarket.code}
-          onToggleTarget={toggleTarget}
-        />
+        <div className="lg:col-span-1">
+          <MarketDetailRail
+            activeMarket={activeMarket}
+            isSelected={selectedCountries.includes(activeMarket.code)}
+            isSaving={savingCode === activeMarket.code}
+            onToggleTarget={toggleTarget}
+          />
+        </div>
       </div>
     </div>
   );

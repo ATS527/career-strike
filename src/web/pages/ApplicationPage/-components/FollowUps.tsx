@@ -41,35 +41,53 @@ export function FollowUps({ view, onChange }: { view: ApplicationView; onChange:
   };
 
   return (
-    <section className="follow-ups" aria-labelledby="fu-title">
-      <h3 id="fu-title">Follow-ups</h3>
+    <section className="space-y-4" aria-labelledby="fu-title">
+      <h3 id="fu-title" className="text-base font-semibold text-foreground m-0">
+        Follow-ups
+      </h3>
       {open.length === 0 ? (
-        <p className="muted">No reminders set.</p>
+        <p className="text-xs text-muted-foreground italic m-0">No reminders set.</p>
       ) : (
-        <ul className="disclosures" data-testid="follow-ups">
+        <ul className="space-y-2 p-0 m-0 list-none text-sm text-muted-foreground" data-testid="follow-ups">
           {open.map((f) => (
-            <li key={f.id}>
-              {formatDate(f.dueAt)} · {f.note}{' '}
-              <button type="button" className="quiet copy" onClick={() => void close(f, 'done')}>
-                Done<span className="visually-hidden"> {f.note}</span>
-              </button>{' '}
-              <button type="button" className="quiet copy" onClick={() => void close(f, 'dismiss')}>
-                Dismiss<span className="visually-hidden"> {f.note}</span>
-              </button>
+            <li key={f.id} className="flex items-center gap-2 flex-wrap">
+              <span>
+                {formatDate(f.dueAt)} · {f.note}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => void close(f, 'done')}
+              >
+                Done<span className="sr-only"> {f.note}</span>
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => void close(f, 'dismiss')}
+              >
+                Dismiss<span className="sr-only"> {f.note}</span>
+              </Button>
             </li>
           ))}
         </ul>
       )}
       <Form {...form}>
-        <form className="fu-form space-y-2" onSubmit={form.handleSubmit(onSubmit)}>
+        <form className="space-y-3 pt-2" onSubmit={form.handleSubmit(onSubmit)}>
           <FormField
             control={form.control}
             name="note"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel htmlFor="fu-note">Remind me to</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel htmlFor="fu-note" className="text-xs font-medium">
+                  Remind me to
+                </FormLabel>
                 <FormControl>
-                  <Input id="fu-note" placeholder="e.g. email the recruiter" {...field} />
+                  <Input id="fu-note" placeholder="e.g. email the recruiter" className="h-8 text-xs" {...field} />
                 </FormControl>
               </FormItem>
             )}
@@ -79,20 +97,22 @@ export function FollowUps({ view, onChange }: { view: ApplicationView; onChange:
             control={form.control}
             name="dueAt"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel htmlFor="fu-due">Due date</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel htmlFor="fu-due" className="text-xs font-medium">
+                  Due date
+                </FormLabel>
                 <FormControl>
-                  <Input id="fu-due" type="date" {...field} />
+                  <Input id="fu-due" type="date" className="h-8 text-xs" {...field} />
                 </FormControl>
               </FormItem>
             )}
           />
 
-          <Button type="submit" variant="ghost" size="sm" className="mt-1">
+          <Button type="submit" variant="ghost" size="sm" className="h-8 text-xs">
             Add reminder
           </Button>
           {error && (
-            <span role="alert" className="save-status--error block text-xs text-destructive">
+            <span role="alert" className="block text-xs text-destructive">
               {error}
             </span>
           )}
@@ -101,3 +121,5 @@ export function FollowUps({ view, onChange }: { view: ApplicationView; onChange:
     </section>
   );
 }
+
+export default FollowUps;

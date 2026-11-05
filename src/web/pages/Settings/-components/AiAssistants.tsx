@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../../../api';
+import { Button } from '../../../components/ui/button';
 import { ago, formatDate } from '../../../format';
 
 interface Client {
@@ -59,23 +60,29 @@ export function AiAssistants() {
   };
 
   return (
-    <section className="settings-group" aria-labelledby="ai-title" id="ai-assistants">
-      <h2 id="ai-title">AI assistants</h2>
-      <p className="help">
+    <section
+      className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6"
+      aria-labelledby="ai-title"
+      id="ai-assistants"
+    >
+      <h2 id="ai-title" className="text-lg font-semibold tracking-tight text-foreground mb-1">
+        AI assistants
+      </h2>
+      <p className="text-sm text-muted-foreground mb-4">
         Assistants connected over MCP can always search and read public postings, add jobs and boards, and shortlist.
         Anything about you needs your permission below. No assistant can approve or submit an application.
       </p>
       {data && data.clients.length === 0 && (
-        <p className="empty">
+        <p className="text-sm text-muted-foreground italic py-2">
           None connected. In a terminal run <code>career-strike connect codex</code>, <code>claude-code</code> or{' '}
           <code>opencode</code>.
         </p>
       )}
       {data?.clients.map((c) => (
-        <div key={c.id} className="field" data-client={c.name}>
-          <h3>
+        <div key={c.id} className="space-y-2 py-4 border-b border-border/60 last:border-0" data-client={c.name}>
+          <h3 className="text-sm font-semibold text-foreground">
             {NAMES[c.name] ?? c.name}{' '}
-            <span className="muted">
+            <span className="text-muted-foreground font-normal">
               ·{' '}
               {data.connected.includes(c.id)
                 ? `active ${ago(c.lastSeenAt)}`
@@ -85,28 +92,33 @@ export function AiAssistants() {
             </span>
           </h3>
           <fieldset>
-            <legend className="visually-hidden">Access for {NAMES[c.name] ?? c.name}</legend>
-            {GRANTABLE.map((scope) => (
-              <label key={scope} className="choice">
-                <input
-                  type="checkbox"
-                  checked={c.scopes.includes(scope)}
-                  onChange={(e) => void toggle(c, scope, e.target.checked)}
-                />
-                <span>Allow it to {data.scopes[scope]!.toLowerCase()}</span>
-              </label>
-            ))}
+            <legend className="sr-only">Access for {NAMES[c.name] ?? c.name}</legend>
+            <div className="flex flex-col gap-2 pt-1">
+              {GRANTABLE.map((scope) => (
+                <label key={scope} className="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="accent-primary rounded"
+                    checked={c.scopes.includes(scope)}
+                    onChange={(e) => void toggle(c, scope, e.target.checked)}
+                  />
+                  <span>Allow it to {data.scopes[scope]!.toLowerCase()}</span>
+                </label>
+              ))}
+            </div>
           </fieldset>
-          <div className="field__actions">
-            <button type="button" className="quiet" onClick={() => void revoke(c)}>
+          <div className="flex items-center gap-2 pt-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => void revoke(c)}>
               Disconnect {NAMES[c.name] ?? c.name}
-            </button>
+            </Button>
           </div>
         </div>
       ))}
-      <p role="status" aria-live="polite" className="save-status">
-        {status}
-      </p>
+      {status && (
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2">
+          {status}
+        </p>
+      )}
     </section>
   );
 }
@@ -212,82 +224,95 @@ export function AiRequests() {
   const pending = items.filter((d) => d.state === 'PENDING');
   const past = items.filter((d) => d.state !== 'PENDING');
   return (
-    <section className="settings-group" aria-labelledby="ai-requests-title" id="ai-requests">
-      <h2 id="ai-requests-title">Requests to see your information</h2>
-      <p className="help">
+    <section
+      className="rounded-xl border border-border bg-card p-6 shadow-xs mb-6"
+      aria-labelledby="ai-requests-title"
+      id="ai-requests"
+    >
+      <h2 id="ai-requests-title" className="text-lg font-semibold tracking-tight text-foreground mb-1">
+        Requests to see your information
+      </h2>
+      <p className="text-sm text-muted-foreground mb-4">
         An assistant can ask for parts of your profile for a stated purpose. You see the exact values first, can share
         less, and each approval can be collected once. Contact details and documents are never shared with assistants.
       </p>
-      {pending.length === 0 && <p className="empty">No requests waiting.</p>}
-      <ul className="topic-list" data-testid="pending-requests">
+      {pending.length === 0 && <p className="text-sm text-muted-foreground italic py-2">No requests waiting.</p>}
+      <ul className="space-y-4" data-testid="pending-requests">
         {pending.map((d) => (
-          <li key={d.id} className="topic">
-            <h3>
+          <li key={d.id} className="p-4 rounded-lg border border-border/70 bg-card/60 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">
               {name(d.provider)} asks to see: {d.requested.map((f) => labels[f] ?? f).join('; ')}
             </h3>
-            <p>
-              <span className="muted">Purpose, in the assistant’s words: </span>
-              <q>{d.purpose}</q>
+            <p className="text-sm text-foreground">
+              <span className="text-muted-foreground">Purpose, in the assistant’s words: </span>
+              <q className="italic">{d.purpose}</q>
             </p>
             {preview?.disclosure.id === d.id ? (
-              <fieldset className="disclosure-preview">
-                <legend>Exactly what {name(d.provider)} would receive</legend>
+              <fieldset className="p-4 rounded-lg border border-border bg-background/50 space-y-3 mt-3">
+                <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Exactly what {name(d.provider)} would receive
+                </legend>
                 {preview.disclosure.requested.map((f) => (
-                  <div key={f} className="disclosure-item">
-                    <label className="choice">
+                  <div key={f} className="space-y-2">
+                    <label className="inline-flex items-center gap-2 text-sm text-foreground cursor-pointer">
                       <input
                         type="checkbox"
+                        className="accent-primary rounded"
                         checked={chosen.includes(f)}
                         onChange={(e) => setChosen(e.target.checked ? [...chosen, f] : chosen.filter((x) => x !== f))}
                       />
                       <span>Share {(preview.fields[f] ?? f).toLowerCase()}</span>
                     </label>
-                    <ul className="disclosures" data-field={f}>
+                    <ul className="divide-y divide-border/60 text-xs text-muted-foreground pl-6" data-field={f}>
                       {showValue(preview.values[f]).map((line) => (
-                        <li key={line}>{line}</li>
+                        <li key={line} className="py-1">
+                          {line}
+                        </li>
                       ))}
                     </ul>
                   </div>
                 ))}
-                <div className="field__actions">
-                  <button type="button" onClick={() => void approve()} disabled={chosen.length === 0}>
+                <div className="flex items-center gap-2 pt-2">
+                  <Button type="button" size="sm" onClick={() => void approve()} disabled={chosen.length === 0}>
                     Share once with {name(d.provider)}
-                  </button>
-                  <button type="button" className="quiet" onClick={() => void decline(d)}>
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => void decline(d)}>
                     Decline
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             ) : (
-              <div className="field__actions">
-                <button type="button" onClick={() => void review(d)}>
-                  Review what would be shared<span className="visually-hidden"> with {name(d.provider)}</span>
-                </button>
-                <button type="button" className="quiet" onClick={() => void decline(d)}>
-                  Decline<span className="visually-hidden"> {name(d.provider)}’s request</span>
-                </button>
+              <div className="flex items-center gap-2 pt-1">
+                <Button type="button" size="sm" onClick={() => void review(d)}>
+                  Review what would be shared<span className="sr-only"> with {name(d.provider)}</span>
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => void decline(d)}>
+                  Decline<span className="sr-only"> {name(d.provider)}’s request</span>
+                </Button>
               </div>
             )}
           </li>
         ))}
       </ul>
       {past.length > 0 && (
-        <>
-          <h3>Record of what was shared</h3>
-          <ul className="disclosures" data-testid="disclosure-history">
+        <div className="mt-6 pt-4 border-t border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Record of what was shared</h3>
+          <ul className="divide-y divide-border/60 text-xs text-muted-foreground" data-testid="disclosure-history">
             {past.map((d) => (
-              <li key={d.id}>
-                {name(d.provider)} · {STATE_TEXT[d.state]}
+              <li key={d.id} className="py-2 first:pt-0 last:pb-0">
+                <span className="text-foreground font-medium">{name(d.provider)}</span> · {STATE_TEXT[d.state]}
                 {d.approved ? ` · ${d.approved.map((f) => labels[f] ?? f).join('; ')}` : ''} ·{' '}
                 {formatDate(d.decidedAt ?? d.createdAt)} · for “{d.purpose}”
               </li>
             ))}
           </ul>
-        </>
+        </div>
       )}
-      <p role="status" aria-live="polite" className="save-status">
-        {status}
-      </p>
+      {status && (
+        <p role="status" aria-live="polite" className="text-xs text-muted-foreground mt-2">
+          {status}
+        </p>
+      )}
     </section>
   );
 }

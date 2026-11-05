@@ -72,7 +72,7 @@ export function AddJobForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-xl space-y-6 form-narrow" noValidate>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-xl space-y-6" noValidate>
         <FormField
           control={form.control}
           name="title"
@@ -141,9 +141,9 @@ export function AddJobForm() {
             <FormItem className="space-y-3">
               <FormLabel>Work arrangement</FormLabel>
               <FormControl>
-                <div className="flex flex-wrap gap-4 choices">
+                <div className="flex flex-wrap gap-4">
                   {ARRANGEMENTS.map((item) => (
-                    <label key={item.value} className="flex items-center gap-2 cursor-pointer text-sm choice">
+                    <label key={item.value} className="flex items-center gap-2 cursor-pointer text-sm">
                       <input
                         type="radio"
                         value={item.value}

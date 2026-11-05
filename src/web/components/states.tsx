@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 
 export function Loading({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-2 py-6 text-muted-foreground loading" role="status" aria-live="polite">
+    <div className="flex items-center gap-2 py-6 text-muted-foreground" role="status" aria-live="polite">
       <Loader2 className="h-4 w-4 animate-spin text-primary" />
       <span>{label}…</span>
     </div>
@@ -13,7 +13,7 @@ export function Loading({ label }: { label: string }) {
 
 export function ErrorPanel({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <Alert variant="destructive" className="my-4 banner banner--danger" role="alert">
+    <Alert variant="destructive" className="my-4" role="alert">
       <AlertCircle className="h-4 w-4" />
       <AlertTitle>Something went wrong</AlertTitle>
       <AlertDescription className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

@@ -10,7 +10,9 @@ import { officialUaeSearchUrl, UAE_SOURCE_ASSESSMENTS } from '../../../markets/u
 import { officialUkSearchUrl, UK_SOURCE_ASSESSMENTS } from '../../../markets/uk-sources';
 import { api, type Disposition, type JobList, type JobSummary, type SettingsResponse } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
-import { Button } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { cn } from '../../helpers/cn';
 import { Link, useNavigateTo, useSearch } from '../../router';
 import { useResource } from '../../useResource';
 import { ErrorPanel, Loading } from '../states';
@@ -142,17 +144,23 @@ export function Opportunities() {
   const filtered = activeFilters > 0 || Boolean(params.get('q'));
 
   return (
-    <>
+    <div>
       <PageHeader
         eyebrow="Market discovery"
         title="Opportunities"
         lede="Roles found on employer job boards, matched against your verified experience."
         actions={
           <div className="flex gap-2">
-            <Link href="/opportunities/new" className="button button--secondary text-xs">
+            <Link
+              href="/opportunities/new"
+              className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'text-xs')}
+            >
               + Add a job
             </Link>
-            <Link href="/opportunities/sources" className="button button--quiet text-xs">
+            <Link
+              href="/opportunities/sources"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}
+            >
               Job boards
             </Link>
           </div>
@@ -161,8 +169,8 @@ export function Opportunities() {
 
       <CountryFocusViews countries={countries} />
 
-      <form className="search-bar my-4 flex gap-2" role="search" onSubmit={submitQuery}>
-        <input
+      <form className="my-4 flex gap-2 max-w-xl" role="search" onSubmit={submitQuery}>
+        <Input
           type="search"
           placeholder="Search by title, employer or skill…"
           aria-label="Search opportunities"
@@ -175,59 +183,74 @@ export function Opportunities() {
         </Button>
       </form>
 
-      <div className="filters-bar my-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="filters-toggle"
-          aria-expanded={filtersOpen}
-          aria-controls="filters-content"
-          onClick={() => setFiltersOpen((o) => !o)}
-        >
-          {filtersOpen ? 'Hide filters' : `Filters${activeFilters > 0 ? ` (${activeFilters})` : ''}`}
-        </Button>
-        <div id="filters-content" className={`filters ${filtersOpen ? '' : 'filters--collapsed'}`}>
-          {(Object.keys(FILTERS) as FilterKey[]).map((k) => (
-            <div key={k} className="field field--inline">
-              <label htmlFor={`filter-${k}`} className="field__label">
-                {filterLabel(k)}
-              </label>
-              <select id={`filter-${k}`} value={params.get(k) ?? ''} onChange={(e) => update(k, e.target.value)}>
-                {FILTERS[k].map(([v, label]) => (
-                  <option key={v} value={v}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-          <div className="field field--inline">
-            <label className="choice">
-              <input
-                type="checkbox"
-                checked={params.get('immediateStart') === '1'}
-                onChange={(e) => update('immediateStart', e.target.checked ? '1' : '')}
-              />
-              <span>Immediate start</span>
-            </label>
-          </div>
-          <div className="field field--inline">
-            <label className="choice">
-              <input
-                type="checkbox"
-                checked={params.get('includeExcludedEmployers') === '1'}
-                onChange={(e) => update('includeExcludedEmployers', e.target.checked ? '1' : '')}
-              />
-              <span>Include excluded employers</span>
-            </label>
-          </div>
+      <div className="my-4 p-4 rounded-lg border border-border bg-card shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={filtersOpen}
+            aria-controls="filters-content"
+            onClick={() => setFiltersOpen((o) => !o)}
+            className="text-xs"
+          >
+            {filtersOpen ? 'Hide filters' : `Filters${activeFilters > 0 ? ` (${activeFilters})` : ''}`}
+          </Button>
           {filtered && (
-            <Link href="/opportunities" className="button button--quiet text-xs">
-              Reset
+            <Link href="/opportunities" className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'text-xs')}>
+              Reset all
             </Link>
           )}
         </div>
+
+        {filtersOpen && (
+          <div
+            id="filters-content"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-border"
+          >
+            {(Object.keys(FILTERS) as FilterKey[]).map((k) => (
+              <div key={k} className="space-y-1">
+                <label htmlFor={`filter-${k}`} className="text-xs font-medium text-muted-foreground block">
+                  {filterLabel(k)}
+                </label>
+                <select
+                  id={`filter-${k}`}
+                  value={params.get(k) ?? ''}
+                  onChange={(e) => update(k, e.target.value)}
+                  className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs shadow-xs"
+                >
+                  {FILTERS[k].map(([v, label]) => (
+                    <option key={v} value={v}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <div className="flex items-center gap-2 pt-4">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={params.get('immediateStart') === '1'}
+                  onChange={(e) => update('immediateStart', e.target.checked ? '1' : '')}
+                  className="accent-primary"
+                />
+                <span>Immediate start</span>
+              </label>
+            </div>
+            <div className="flex items-center gap-2 pt-4">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={params.get('includeExcludedEmployers') === '1'}
+                  onChange={(e) => update('includeExcludedEmployers', e.target.checked ? '1' : '')}
+                  className="accent-primary"
+                />
+                <span>Include excluded employers</span>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       {list.state === 'loading' && <Loading label="Loading opportunities" />}
@@ -241,11 +264,11 @@ export function Opportunities() {
             <EmptyHint filtered={filtered} />
           ) : (
             <>
-              <p className="results-count" aria-live="polite">
+              <p className="text-xs text-muted-foreground my-2" aria-live="polite">
                 Showing {list.data.jobs.length} of {list.data.total}{' '}
                 {list.data.total === 1 ? 'opportunity' : 'opportunities'}
               </p>
-              <ul className="job-list space-y-3">
+              <ul className="space-y-3 p-0 m-0 list-none">
                 {list.data.jobs.map((job) => (
                   <JobRow
                     key={job.id}
@@ -258,7 +281,7 @@ export function Opportunities() {
                 ))}
               </ul>
               {list.data.jobs.length < list.data.total && (
-                <div className="load-more my-4 text-center">
+                <div className="my-6 text-center">
                   <Button type="button" variant="outline" size="sm" onClick={() => setLimit((l) => l + PAGE)}>
                     Load more opportunities
                   </Button>
@@ -268,20 +291,20 @@ export function Opportunities() {
           )}
           {compare.length > 0 && (
             <aside
-              className="compare-bar fixed bottom-4 right-4 z-40 p-4 bg-card border border-border rounded-xl shadow-lg flex items-center gap-4"
+              className="fixed bottom-4 right-4 z-40 p-4 bg-card border border-border rounded-xl shadow-lg flex items-center gap-4"
               aria-label="Comparison dock"
             >
-              <span>
+              <span className="text-xs font-semibold text-foreground">
                 {compare.length} of {MAX_COMPARE} selected
               </span>
               <div className="flex gap-2">
                 <Link
                   href={`/opportunities/compare?id=${compare.map(encodeURIComponent).join('&id=')}`}
-                  className="button button--small button--primary"
+                  className={cn(buttonVariants({ variant: 'default', size: 'sm' }), 'text-xs')}
                 >
                   Compare {compare.length} roles →
                 </Link>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setCompare([])}>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setCompare([])} className="text-xs">
                   Clear
                 </Button>
               </div>
@@ -361,7 +384,7 @@ export function Opportunities() {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }
 
@@ -383,11 +406,23 @@ function filterLabel(key: FilterKey): string {
 }
 
 function EmptyHint({ filtered }: { filtered: boolean }) {
-  if (filtered) return <p className="empty">Try clearing a filter or searching for something broader.</p>;
+  if (filtered)
+    return (
+      <p className="text-sm text-muted-foreground italic my-6 text-center">
+        Try clearing a filter or searching for something broader.
+      </p>
+    );
   return (
-    <p className="empty">
-      Nothing here yet. <Link href="/opportunities/sources">Monitor a job board</Link> or{' '}
-      <Link href="/opportunities/new">add a job you found</Link>.
+    <p className="text-sm text-muted-foreground italic my-6 text-center">
+      Nothing here yet.{' '}
+      <Link href="/opportunities/sources" className="text-primary hover:underline">
+        Monitor a job board
+      </Link>{' '}
+      or{' '}
+      <Link href="/opportunities/new" className="text-primary hover:underline">
+        add a job you found
+      </Link>
+      .
     </p>
   );
 }

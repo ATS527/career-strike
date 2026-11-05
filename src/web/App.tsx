@@ -50,7 +50,13 @@ export function App() {
 
   const value = useMemo<ConnectionState>(() => ({ connection, generation, logout }), [connection, generation, logout]);
 
-  if (connection === 'checking') return <div className="boot" aria-busy="true" />;
+  if (connection === 'checking') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center" aria-busy="true">
+        <div className="h-9 w-9 rounded-full border-3 border-border border-t-primary animate-spin" />
+      </div>
+    );
+  }
   if (connection === 'unauthenticated') return <SessionRequired />;
 
   return (
@@ -62,15 +68,17 @@ export function App() {
 
 function SessionRequired() {
   return (
-    <main className="standalone" id="main">
-      <p className="eyebrow">Career Strike</p>
-      <h1>Open the dashboard from your terminal</h1>
-      <p>
+    <main className="max-w-[40rem] mx-auto mt-[12vh] px-6 flex flex-col gap-4 text-foreground" id="main">
+      <p className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">Career Strike</p>
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">Open the dashboard from your terminal</h1>
+      <p className="text-sm text-muted-foreground leading-relaxed">
         For your privacy, the dashboard only opens through a one-time link created on this computer. Run this command
         and your browser will open signed in:
       </p>
-      <pre className="command">career-strike dashboard</pre>
-      <p className="muted">Nothing here works from another website or another device.</p>
+      <pre className="font-mono text-sm p-4 rounded-xl bg-slate-900 text-slate-100 border border-slate-800 shadow-md overflow-x-auto">
+        career-strike dashboard
+      </pre>
+      <p className="text-xs text-muted-foreground">Nothing here works from another website or another device.</p>
     </main>
   );
 }

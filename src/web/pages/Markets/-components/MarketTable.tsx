@@ -24,7 +24,7 @@ export function MarketTable({
   return (
     <section
       aria-labelledby="comparison-matrix-heading"
-      className="market-comparison-table-wrapper rounded-lg border border-border bg-card shadow-xs overflow-hidden"
+      className="rounded-lg border border-border bg-card shadow-xs overflow-hidden"
     >
       <div className="p-4 border-b border-border flex justify-between items-center bg-card">
         <div>
@@ -48,8 +48,8 @@ export function MarketTable({
           </Button>
         </div>
       ) : (
-        <div className="market-cards-grid overflow-x-auto">
-          <table className="market-table w-full text-left">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="p-3 font-medium">Market</th>

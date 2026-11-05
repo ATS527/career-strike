@@ -7,25 +7,42 @@ interface BySourceTableProps {
 
 export function BySourceTable({ bySource }: BySourceTableProps) {
   return (
-    <div className="table-scroll" tabIndex={0} role="region" aria-label="Results by source">
-      <table className="compare" data-testid="by-source">
+    <div
+      className="overflow-x-auto rounded-lg border border-border shadow-xs"
+      tabIndex={0}
+      role="region"
+      aria-label="Results by source"
+    >
+      <table className="w-full text-left text-sm border-collapse bg-card" data-testid="by-source">
         <thead>
-          <tr>
-            <th scope="col">Source</th>
-            <th scope="col">Found</th>
-            <th scope="col">Closed or stale</th>
-            <th scope="col">Submitted</th>
-            <th scope="col">Responses</th>
+          <tr className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <th scope="col" className="p-3">
+              Source
+            </th>
+            <th scope="col" className="p-3">
+              Found
+            </th>
+            <th scope="col" className="p-3">
+              Closed or stale
+            </th>
+            <th scope="col" className="p-3">
+              Submitted
+            </th>
+            <th scope="col" className="p-3">
+              Responses
+            </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-border">
           {bySource.map((s) => (
-            <tr key={s.source}>
-              <th scope="row">{SOURCE_LABEL[s.source] ?? s.source}</th>
-              <td>{s.found}</td>
-              <td>{showRate(s.closedOrStale)}</td>
-              <td>{s.submitted}</td>
-              <td>{showRate(s.responded)}</td>
+            <tr key={s.source} className="hover:bg-muted/20 transition-colors">
+              <th scope="row" className="p-3 font-semibold text-foreground text-xs">
+                {SOURCE_LABEL[s.source] ?? s.source}
+              </th>
+              <td className="p-3 text-muted-foreground">{s.found}</td>
+              <td className="p-3 text-muted-foreground">{showRate(s.closedOrStale)}</td>
+              <td className="p-3 text-muted-foreground">{s.submitted}</td>
+              <td className="p-3 text-muted-foreground">{showRate(s.responded)}</td>
             </tr>
           ))}
         </tbody>
@@ -33,3 +50,5 @@ export function BySourceTable({ bySource }: BySourceTableProps) {
     </div>
   );
 }
+
+export default BySourceTable;

@@ -69,49 +69,64 @@ export function Topic({
   };
 
   return (
-    <li className={`topic${topic.gap ? ' topic--gap' : ''}`} data-topic={topic.id}>
-      <div className="topic__head">
-        <h3 id={id}>{topic.title}</h3>
-        {topic.gap && (
-          <Badge variant="secondary" className="ml-2">
-            Gap: not in your profile
-          </Badge>
-        )}
-        <span className="muted">
+    <li
+      className={`p-4 rounded-lg border bg-card shadow-xs space-y-3 ${
+        topic.gap ? 'border-amber-500/40 bg-amber-500/5' : 'border-border'
+      }`}
+      data-topic={topic.id}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 id={id} className="text-base font-semibold text-foreground m-0">
+            {topic.title}
+          </h3>
+          {topic.gap && (
+            <Badge variant="warning" className="text-[10px]">
+              Gap: not in your profile
+            </Badge>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground">
           {topic.sessions === 0
             ? 'Not practised yet'
             : `${topic.sessions} session${topic.sessions === 1 ? '' : 's'} · last: ${CONFIDENCE[topic.lastConfidence ?? 0]}`}
         </span>
       </div>
-      {topic.quote && <p className="provenance">Posting: “{topic.quote}”</p>}
+
+      {topic.quote && <p className="text-xs text-muted-foreground italic m-0">Posting: “{topic.quote}”</p>}
 
       {(matchedEvidence.skills.length > 0 || matchedEvidence.roles.length > 0) && (
-        <div className="topic-evidence">
-          <span className="topic-evidence__label">Your Anchors:</span>
+        <div className="flex items-center gap-1.5 flex-wrap text-xs pt-1">
+          <span className="font-semibold text-muted-foreground text-[11px] uppercase tracking-wider">
+            Your Anchors:
+          </span>
           {matchedEvidence.skills.map((s) => (
-            <span key={s} className="evidence-chip evidence-chip--skill">
+            <Badge key={s} variant="secondary" className="text-[10px]">
               ⚡ {s}
-            </span>
+            </Badge>
           ))}
           {matchedEvidence.roles.map((r) => (
-            <span key={r} className="evidence-chip evidence-chip--role">
+            <Badge key={r} variant="outline" className="text-[10px]">
               💼 {r}
-            </span>
+            </Badge>
           ))}
         </div>
       )}
 
-      <ul className="disclosures">
+      <ul className="space-y-1 p-0 m-0 list-none text-xs text-muted-foreground">
         {topic.prompts.map((p) => (
-          <li key={p}>{p}</li>
+          <li key={p} className="p-2 rounded bg-muted/20 border border-border/40 text-foreground">
+            {p}
+          </li>
         ))}
       </ul>
 
-      <div className="star-assistant-toggle">
+      <div>
         <Button
           type="button"
           variant="ghost"
           size="sm"
+          className="text-xs h-7 px-2"
           onClick={() => setShowStarGuide(!showStarGuide)}
           aria-expanded={showStarGuide}
         >
@@ -120,44 +135,50 @@ export function Topic({
       </div>
 
       {showStarGuide && (
-        <div className="star-guide">
-          <p className="star-guide__intro">
+        <div className="p-3.5 rounded-lg border border-teal-500/30 bg-teal-50/40 dark:bg-teal-950/20 text-xs space-y-2">
+          <p className="m-0 text-foreground">
             Structure your behavioral & technical answers with <strong>STAR</strong>:
           </p>
-          <div className="star-guide__steps">
-            <div>
-              <strong>S</strong>: Set the scene (architecture, constraints, scale)
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-muted-foreground">
+            <div className="p-1.5 rounded bg-background/50 border border-border/50">
+              <strong className="text-foreground">S</strong>: Set the scene (architecture, constraints, scale)
             </div>
-            <div>
-              <strong>T</strong>: The challenge or milestone you owned
+            <div className="p-1.5 rounded bg-background/50 border border-border/50">
+              <strong className="text-foreground">T</strong>: The challenge or milestone you owned
             </div>
-            <div>
-              <strong>A</strong>: Decisions, code, tools & how you tackled friction
+            <div className="p-1.5 rounded bg-background/50 border border-border/50">
+              <strong className="text-foreground">A</strong>: Decisions, code, tools & how you tackled friction
             </div>
-            <div>
-              <strong>R</strong>: Measurable impact, performance gains, team growth
+            <div className="p-1.5 rounded bg-background/50 border border-border/50">
+              <strong className="text-foreground">R</strong>: Measurable impact, performance gains, team growth
             </div>
           </div>
-          <Button type="button" variant="secondary" size="sm" onClick={insertStarTemplate}>
+          <Button type="button" variant="secondary" size="sm" className="text-xs h-7" onClick={insertStarTemplate}>
             ✍️ Insert STAR Outline into Notes
           </Button>
         </div>
       )}
 
       <Form {...form}>
-        <form className="practice-form" onSubmit={form.handleSubmit(onSubmit)} aria-labelledby={id}>
+        <form
+          className="flex flex-wrap items-end gap-3 pt-2 border-t border-border"
+          onSubmit={form.handleSubmit(onSubmit)}
+          aria-labelledby={id}
+        >
           <FormField
             control={form.control}
             name="confidence"
             render={({ field }) => (
-              <FormItem className="inline-block mr-2">
-                <FormLabel htmlFor={`${id}-conf`}>How ready do you feel?</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel htmlFor={`${id}-conf`} className="text-xs font-medium">
+                  How ready do you feel?
+                </FormLabel>
                 <FormControl>
                   <select
                     id={`${id}-conf`}
                     value={field.value}
                     onChange={(e) => field.onChange(Number(e.target.value))}
-                    className="p-1 border border-input rounded-md bg-background text-sm"
+                    className="h-8 rounded-md border border-input bg-background px-2.5 text-xs shadow-xs"
                   >
                     {[1, 2, 3, 4, 5].map((n) => (
                       <option key={n} value={n}>
@@ -174,8 +195,10 @@ export function Topic({
             control={form.control}
             name="minutes"
             render={({ field }) => (
-              <FormItem className="inline-block mr-2">
-                <FormLabel htmlFor={`${id}-min`}>Minutes (optional)</FormLabel>
+              <FormItem className="space-y-1">
+                <FormLabel htmlFor={`${id}-min`} className="text-xs font-medium">
+                  Minutes (optional)
+                </FormLabel>
                 <FormControl>
                   <Input
                     id={`${id}-min`}
@@ -183,7 +206,7 @@ export function Topic({
                     min={1}
                     max={600}
                     inputMode="numeric"
-                    className="w-20 inline-block"
+                    className="w-24 h-8 text-xs"
                     {...field}
                   />
                 </FormControl>
@@ -195,23 +218,29 @@ export function Topic({
             control={form.control}
             name="notes"
             render={({ field }) => (
-              <FormItem className="inline-block mr-2">
-                <FormLabel htmlFor={`${id}-notes`}>Notes (optional)</FormLabel>
+              <FormItem className="space-y-1 flex-1 min-w-[200px]">
+                <FormLabel htmlFor={`${id}-notes`} className="text-xs font-medium">
+                  Notes (optional)
+                </FormLabel>
                 <FormControl>
-                  <Input id={`${id}-notes`} type="text" className="inline-block w-48" {...field} />
+                  <Input id={`${id}-notes`} type="text" className="h-8 text-xs" {...field} />
                 </FormControl>
               </FormItem>
             )}
           />
 
-          <Button type="submit" variant="ghost" size="sm">
-            Log practice<span className="visually-hidden"> for {topic.title}</span>
+          <Button type="submit" variant="ghost" size="sm" className="h-8 text-xs">
+            Log practice<span className="sr-only"> for {topic.title}</span>
           </Button>
-          <span role="status" className="field-note ml-2">
-            {status}
-          </span>
+          {status && (
+            <span role="status" className="text-xs text-muted-foreground self-center">
+              {status}
+            </span>
+          )}
         </form>
       </Form>
     </li>
   );
 }
+
+export default Topic;
