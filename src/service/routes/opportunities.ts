@@ -4,6 +4,7 @@ import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { candidateContext } from '../../career/context.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
 import { addFact, approveAllFacts, approveFact, deleteFact, listFacts, NewFact, suggestSkills, updateFact } from '../../career/profile.js';
+import { extractDocumentText } from '../../vault/text-extraction.js';
 import { addEvidence, confirmEvidence, deleteEvidence, listEvidence, NewEvidence, updateEvidence } from '../../career/evidence.js';
 import { importLinkedInExport, parseLinkedInArchive, parseLinkedInCsvText } from '../../career/linkedin-export.js';
 import type { Db } from '../../store/db.js';
@@ -136,11 +137,13 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
     else {
       const doc = vault.get(parsed.data.documentId);
       if (!doc) return reply.code(404).send({ error: 'NOT_FOUND' });
-      // PDF and Word text extraction is not built in; say so rather than guess.
-      if (doc.mime !== 'text/plain') {
-        return reply.code(400).send({ error: 'UNSUPPORTED_TYPE', message: 'Skills can be suggested from plain-text documents only. Paste the text of a PDF or Word résumé instead.' });
+      const bytes = vault.read(doc.id);
+      if (!bytes) return reply.code(404).send({ error: 'NOT_FOUND' });
+      const extracted = extractDocumentText(doc.mime, bytes);
+      if (!extracted || !extracted.trim()) {
+        return reply.code(400).send({ error: 'UNSUPPORTED_TYPE', message: 'Skills can be suggested from plain-text, PDF and Word documents only. This document has no readable text.' });
       }
-      text = vault.read(doc.id)!.toString('utf8');
+      text = extracted;
     }
     return reply.code(201).send({ suggested: suggestSkills(db, text, actorOf(req)) });
   });

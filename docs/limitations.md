@@ -1,6 +1,6 @@
 # Known limitations
 
-What Career Strike does not do, or does only partly, as of version 0.2.0. Feature status is
+What Career Strike does not do, or does only partly, as of version 0.4.0. Feature status is
 tracked with evidence in `acceptance/registry.json`.
 
 ## By design
@@ -64,8 +64,9 @@ tracked with evidence in `acceptance/registry.json`.
   is not matched automatically. Names that are ordinary words or single letters are recognised
   only in unambiguous spellings (for example "Golang" or "Go language", not "Go"; "C" and "R" not
   at all), so some real requirements are missed rather than invented.
-- Skill suggestions are read from résumé text you paste on the Profile page. Text is not extracted
-  from PDF or Word files; paste their text instead.
+- Skill suggestions are read from résumé text you paste on the Profile page, or from plain-text,
+  PDF and Word (.docx) documents you upload. Text extraction is best-effort and may miss content
+  in complex layouts; paste the text instead if a suggestion is missing.
 - Insights compare sources only with at least 10 submitted applications per source, and never
   claim a cause. Silence from employers is not treated as feedback.
 - Country and city normalisation is deterministic and limited to configured market aliases. A
