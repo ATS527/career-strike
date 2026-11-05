@@ -3,7 +3,7 @@
 
 **Find opportunities. Understand your strengths. Prepare better applications. Move forward with confidence.**
 
-[![Version](https://img.shields.io/badge/version-0.2.0-17695F.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-17695F.svg)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Apache--2.0-1D2930.svg)](LICENSE)
 [![Architecture](https://img.shields.io/badge/architecture-local--first%20%26%20private-17695F.svg)](docs/privacy.md)
 [![MCP](https://img.shields.io/badge/mcp-compatible-2A554A.svg)](docs/job-hunt-guide.md#optional-connect-an-ai-assistant)

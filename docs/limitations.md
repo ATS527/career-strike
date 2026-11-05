@@ -94,3 +94,15 @@ tracked with evidence in `acceptance/registry.json`.
 - Backups do not include signing keys. After restoring on another computer, approvals given
   before the backup must be given again.
 - `restore` and `delete-data` require the service to be stopped.
+
+## Frontend modernization
+
+- Full screen-by-screen Tailwind conversion is intentionally incremental; the
+  Tailwind CSS v4 tooling and Career Strike design tokens are in place, but not
+  every screen has been converted yet.
+- Complete React Hook Form migration across every existing form is intentionally
+  incremental; the Add Job form demonstrates the React Hook Form plus Zod-ready
+  pattern, and remaining forms keep their existing behaviour.
+- Route-local `-components`, `-hooks`, `-helpers` and `-schema` colocation was not
+  fully reorganized in this release, to avoid destabilizing the existing route
+  architecture.

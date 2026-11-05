@@ -3,6 +3,26 @@
 Every release of Career Strike is listed here, newest first. The section for a version is shown in
 the dashboard after you update, and is published as that version's release notes on GitHub.
 
+## [0.4.0] - 2026-11-05
+
+### Changed
+
+- Recorded the frontend modernization scope for this release: full screen-by-screen
+  Tailwind conversion and complete React Hook Form migration across every existing
+  form remain intentionally incremental. The Tailwind CSS v4 tooling and design
+  tokens are in place and the Add Job form demonstrates the React Hook Form plus
+  Zod-ready pattern, without breaking existing candidate workflows.
+- Recorded that route-local `-components`, `-hooks`, `-helpers` and `-schema`
+  colocation was not fully reorganized in this release, to avoid destabilizing the
+  existing route architecture.
+
+### Known limitations
+
+- Tailwind conversion and React Hook Form migration are incremental; not every
+  screen or form has been converted yet.
+- Route-local component, hook, helper and schema files are not yet colocated
+  per route.
+
 ## [0.3.0] - 2026-11-05
 
 ### Added
