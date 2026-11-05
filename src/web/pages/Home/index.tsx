@@ -1,12 +1,12 @@
 import type { Overview, ProfileReadinessReport } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Badge } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
 import { ago } from '../../format';
 import { cn } from '../../helpers/cn';
+import { useResource } from '../../hooks/useResource';
 import { Link } from '../../router';
-import { useResource } from '../../useResource';
-import { ErrorPanel, Loading } from '../states';
 import { Count } from './-components/Count';
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', day: 'numeric', month: 'long' });

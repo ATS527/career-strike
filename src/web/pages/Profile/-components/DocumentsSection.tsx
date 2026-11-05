@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, type StoredDocument } from '../../../api';
 import { Button } from '../../../components/ui/button';
 import { formatDate } from '../../../format';
-import { uploadDocument } from '../../ApplicationPage';
+import { uploadDocument } from '../../../helpers/documents';
 
 export function DocumentsSection() {
   const [docs, setDocs] = useState<StoredDocument[] | null>(null);

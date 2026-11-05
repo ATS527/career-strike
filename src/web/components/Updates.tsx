@@ -2,8 +2,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api, type UpdateStatus } from '../api';
 import { formatDate, formatDateTime } from '../format';
+import { apiKey, useResource } from '../hooks/useResource';
 import { Link } from '../router';
-import { apiKey, useResource } from '../useResource';
 import { Button } from './ui/button';
 
 const PATH = '/api/updates';

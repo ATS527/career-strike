@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, type JobDetail } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Link, useSearch } from '../../router';
-import { ErrorPanel, Loading } from '../states';
 import { ComparisonTable } from './-components/ComparisonTable';
 
 export function Compare() {

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type Task } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { ago, formatDateTime } from '../../format';
 import { Link } from '../../router';
-import { ErrorPanel, Loading } from '../states';
 import { type ActivityBoard, describeTask, RunningTaskRow, TRIGGER } from './-components/TaskItem';
 
 interface ActivityData {

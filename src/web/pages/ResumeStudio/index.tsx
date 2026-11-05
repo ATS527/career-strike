@@ -11,10 +11,10 @@ import {
   type SettingsResponse,
 } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Link } from '../../router';
-import { ErrorPanel, Loading } from '../states';
 import { type AtsCheck, AtsScorecard } from './-components/AtsScorecard';
 import { TailoredResumeEditor } from './-components/TailoredResumeEditor';
 

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { ApplicationState, ApplicationSummary } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { APP_STATE_LABEL, ago } from '../../format';
 import { cn } from '../../helpers/cn';
+import { useResource } from '../../hooks/useResource';
 import { Link } from '../../router';
-import { useResource } from '../../useResource';
-import { ErrorPanel, Loading } from '../states';
 import { KanbanCard } from './-components/KanbanCard';
 
 const GROUPS: { title: string; hint: string; states: ApplicationState[] }[] = [

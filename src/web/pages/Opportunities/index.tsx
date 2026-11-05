@@ -10,12 +10,12 @@ import { officialUaeSearchUrl, UAE_SOURCE_ASSESSMENTS } from '../../../markets/u
 import { officialUkSearchUrl, UK_SOURCE_ASSESSMENTS } from '../../../markets/uk-sources';
 import { api, type Disposition, type JobList, type JobSummary, type SettingsResponse } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { cn } from '../../helpers/cn';
+import { useResource } from '../../hooks/useResource';
 import { Link, useNavigateTo, useSearch } from '../../router';
-import { useResource } from '../../useResource';
-import { ErrorPanel, Loading } from '../states';
 import { CountryFocusViews, OfficialSearches } from './-components/CountryFocusViews';
 import { JobRow } from './-components/JobRow';
 import { TopMatchSpotlight } from './-components/TopMatchSpotlight';

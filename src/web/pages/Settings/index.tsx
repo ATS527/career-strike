@@ -1,9 +1,9 @@
 import type { SettingDefinition, SettingsResponse } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { UpdatesPanel } from '../../components/Updates';
+import { useResource } from '../../hooks/useResource';
 import { useHashFocus } from '../../router';
-import { useResource } from '../../useResource';
-import { ErrorPanel, Loading } from '../states';
 import { AiAssistants, AiRequests } from './-components/AiAssistants';
 import { DataAndPrivacy } from './-components/DataAndPrivacy';
 import { SettingField } from './-components/SettingField';

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, api } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { cn } from '../../helpers/cn';
 import { Link } from '../../router';
-import { ErrorPanel, Loading } from '../states';
 import { MarketDetailRail } from './-components/MarketDetailRail';
 import { MarketFilters } from './-components/MarketFilters';
 import { MarketTable } from './-components/MarketTable';

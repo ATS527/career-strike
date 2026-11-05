@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { ApiError, type ApplicationSummary, api, type JobDetail } from '../../api';
 import { FitPanel, RequirementsPanel } from '../../components/FitPanel';
 import { DispositionControls, StatusChip } from '../../components/jobBits';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { EMPLOYMENT_LABEL, formatDate, formatDateTime, formatSalary, REMOTE_LABEL, SOURCE_LABEL } from '../../format';
 import { cn } from '../../helpers/cn';
+import { useResource } from '../../hooks/useResource';
 import { ExternalLink, Link, useNavigateTo } from '../../router';
-import { useResource } from '../../useResource';
-import { ErrorPanel, Loading } from '../states';
 import { Description } from './-components/Description';
 
 export function JobPage({ id }: { id: string }) {

@@ -6,21 +6,19 @@ import {
   type PayloadField,
   type PersonalizationView,
   type StoredDocument,
-} from '../api';
-import { buildOutreachDraft, type OutreachKind } from '../candidateExperience';
-import { Badge } from '../components/ui/badge';
-import { Button, buttonVariants } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Textarea } from '../components/ui/textarea';
-import { APP_STATE_LABEL, formatDateTime, shortHash } from '../format';
-import { cn } from '../helpers/cn';
-import { uploadDocument } from '../helpers/documents';
-import { ExternalLink, Link, useNavigateTo } from '../router';
-import { FollowUps } from './ApplicationPage/-components/FollowUps';
-import { Interviews } from './ApplicationPage/-components/Interviews';
-import { ErrorPanel, Loading } from './states';
-
-export { uploadDocument };
+} from '../../api';
+import { buildOutreachDraft, type OutreachKind } from '../../candidateExperience';
+import { ErrorPanel, Loading } from '../../components/states';
+import { Badge } from '../../components/ui/badge';
+import { Button, buttonVariants } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { APP_STATE_LABEL, formatDateTime, shortHash } from '../../format';
+import { cn } from '../../helpers/cn';
+import { uploadDocument } from '../../helpers/documents';
+import { ExternalLink, Link, useNavigateTo } from '../../router';
+import { FollowUps } from './-components/FollowUps';
+import { Interviews } from './-components/Interviews';
 
 const SOURCE_NOTE: Record<PayloadField['source'], string> = {
   identity: 'from your contact details',

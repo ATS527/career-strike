@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, type SourceBoard, type Task } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Link } from '../../router';
-import { ErrorPanel, Loading } from '../states';
 import { AddBoardForm } from './-components/AddBoardForm';
 import { BoardRow } from './-components/BoardRow';
 

@@ -8,12 +8,12 @@ import {
   type StoredDocument,
 } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
+import { ErrorPanel, Loading } from '../../components/states';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { uploadDocument } from '../../helpers/documents';
 import { ExternalLink, Link } from '../../router';
-import { uploadDocument } from '../ApplicationPage';
 import { CURATED_MARKETS } from '../Markets';
-import { ErrorPanel, Loading } from '../states';
 import { DocumentsSection } from './-components/DocumentsSection';
 import { EvidenceSection } from './-components/EvidenceSection';
 import { FactSection } from './-components/FactSection';
