@@ -32,6 +32,7 @@ jobs:
 
       - name: Warm the npm cache for the offline packaged-install test
         run: npm install --global --prefix "$RUNNER_TEMP/warm-cache" --no-fund --no-audit $(node -p "Object.entries(require('./package.json').dependencies).map(([n, v]) => n + '@' + v).join(' ')")
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npx playwright install --with-deps chromium
