@@ -17,23 +17,47 @@ export interface CroatiaSourceAssessment {
 
 export const CROATIA_SOURCE_ASSESSMENTS: readonly CroatiaSourceAssessment[] = [
   {
-    id: 'eures-croatia', name: 'EURES Croatia', capability: 'USER_DRIVEN_DISCOVERY', automatedRetrieval: false,
-    permittedUserAction: 'open_official_site', officialUrl: 'https://eures.europa.eu/living-and-working/labour-market-information/labour-market-information-croatia_en', reviewUrl: 'https://eures.europa.eu/living-and-working/labour-market-information/labour-market-information-croatia_en',
-    rationale: 'Official European employment-service information for Croatia; no automated Career Strike retrieval or access grant is recorded.',
+    id: 'eures-croatia',
+    name: 'EURES Croatia',
+    capability: 'USER_DRIVEN_DISCOVERY',
+    automatedRetrieval: false,
+    permittedUserAction: 'open_official_site',
+    officialUrl:
+      'https://eures.europa.eu/living-and-working/labour-market-information/labour-market-information-croatia_en',
+    reviewUrl:
+      'https://eures.europa.eu/living-and-working/labour-market-information/labour-market-information-croatia_en',
+    rationale:
+      'Official European employment-service information for Croatia; no automated Career Strike retrieval or access grant is recorded.',
   },
   {
-    id: 'mup-croatia', name: 'MUP stay and work permit', capability: 'USER_DRIVEN_DISCOVERY', automatedRetrieval: false,
-    permittedUserAction: 'open_official_site', officialUrl: 'https://mup.gov.hr/aliens-281621/286833?big=1', reviewUrl: 'https://mup.gov.hr/aliens-281621/286833?big=1',
-    rationale: 'Official Croatian Ministry of Interior guidance for stay and work permits; a digital-nomad stay is not Croatian-employer work authorization.',
+    id: 'mup-croatia',
+    name: 'MUP stay and work permit',
+    capability: 'USER_DRIVEN_DISCOVERY',
+    automatedRetrieval: false,
+    permittedUserAction: 'open_official_site',
+    officialUrl: 'https://mup.gov.hr/aliens-281621/286833?big=1',
+    reviewUrl: 'https://mup.gov.hr/aliens-281621/286833?big=1',
+    rationale:
+      'Official Croatian Ministry of Interior guidance for stay and work permits; a digital-nomad stay is not Croatian-employer work authorization.',
   },
   {
-    id: 'linkedin-jobs', name: 'LinkedIn Jobs', capability: 'RESTRICTED', automatedRetrieval: false,
-    permittedUserAction: 'open_official_site', officialUrl: 'https://www.linkedin.com/jobs/', reviewUrl: 'https://www.linkedin.com/legal/jobs-terms-conditions',
+    id: 'linkedin-jobs',
+    name: 'LinkedIn Jobs',
+    capability: 'RESTRICTED',
+    automatedRetrieval: false,
+    permittedUserAction: 'open_official_site',
+    officialUrl: 'https://www.linkedin.com/jobs/',
+    reviewUrl: 'https://www.linkedin.com/legal/jobs-terms-conditions',
     rationale: 'Automated scraping or extraction needs LinkedIn’s express written authorisation.',
   },
   {
-    id: 'indeed-croatia', name: 'Indeed Croatia', capability: 'UNVERIFIED', automatedRetrieval: false,
-    permittedUserAction: 'open_official_site', officialUrl: 'https://hr.indeed.com/', reviewUrl: 'https://docs.indeed.com/legal-terms/developer-agreement',
+    id: 'indeed-croatia',
+    name: 'Indeed Croatia',
+    capability: 'UNVERIFIED',
+    automatedRetrieval: false,
+    permittedUserAction: 'open_official_site',
+    officialUrl: 'https://hr.indeed.com/',
+    reviewUrl: 'https://docs.indeed.com/legal-terms/developer-agreement',
     rationale: 'Partner API terms exist, but Career Strike has no approved integration or recorded access grant.',
   },
 ];

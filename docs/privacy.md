@@ -15,11 +15,11 @@ Each statement is backed by tests whose latest results are recorded in `acceptan
 
 Only these requests, and only when you add or fetch a job board or prepare an application:
 
-| Destination | What is sent | Why |
-| --- | --- | --- |
+| Destination                | What is sent                            | Why                                                            |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------------- |
 | `boards-api.greenhouse.io` | A GET for a public board or one posting | Read job postings and an employer's application form questions |
-| `api.lever.co` | A GET for a public board | Read job postings |
-| `api.ashbyhq.com` | A GET for a public board | Read job postings |
+| `api.lever.co`             | A GET for a public board                | Read job postings                                              |
+| `api.ashbyhq.com`          | A GET for a public board                | Read job postings                                              |
 
 These requests carry no information about you: no profile data, no cookies, no identifiers beyond
 a plain `User-Agent`. Only these three hosts can be contacted (an allowlist, so a pasted link
@@ -30,13 +30,13 @@ down, scheduled checks wait at least as long as asked.
 ### Updates
 
 Career Strike contacts GitHub about updates only when you ask (`career-strike update`, or
-*Check now* in Settings) or after you turn on weekly checks, which are off by default:
+_Check now_ in Settings) or after you turn on weekly checks, which are off by default:
 
-| Destination | What is sent | Why |
-| --- | --- | --- |
-| `api.github.com` | A GET for Career Strike's public release list | Find out whether a newer version exists |
-| `github.com` | A GET for a release package and its checksum (only when you update) | Download the update |
-| `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | The same download, where GitHub redirects it | Download the update |
+| Destination                                                             | What is sent                                                        | Why                                     |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------- |
+| `api.github.com`                                                        | A GET for Career Strike's public release list                       | Find out whether a newer version exists |
+| `github.com`                                                            | A GET for a release package and its checksum (only when you update) | Download the update                     |
+| `objects.githubusercontent.com`, `release-assets.githubusercontent.com` | The same download, where GitHub redirects it                        | Download the update                     |
 
 These requests also carry nothing about you; the `User-Agent` names the Career Strike version.
 Only these hosts can be contacted for updates, over HTTPS, and redirects are followed only between
@@ -63,13 +63,13 @@ approved. Automated submission exists only for the owned practice endpoint on yo
 Every column in the database has a class, checked by a test whenever the schema changes
 (`src/store/classification.ts`):
 
-| Class | Examples | Treatment |
-| --- | --- | --- |
-| PUBLIC | Job postings, board names | May be shown to connected AI assistants. |
-| INTERNAL | Task states, timestamps | Operational; never contains anything about you. |
-| PERSONAL | Shortlist, application states, notes | Shown to an assistant only if you allow it. |
+| Class     | Examples                                                          | Treatment                                                                                                                                  |
+| --------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| PUBLIC    | Job postings, board names                                         | May be shown to connected AI assistants.                                                                                                   |
+| INTERNAL  | Task states, timestamps                                           | Operational; never contains anything about you.                                                                                            |
+| PERSONAL  | Shortlist, application states, notes                              | Shown to an assistant only if you allow it.                                                                                                |
 | SENSITIVE | Profile, salary, contact details, documents, application packages | Shared with an assistant only through a single-use disclosure you approve. Contact details and documents are never shared with assistants. |
-| SECRET | Credential hashes, approval signatures | Never exported, logged or shown. |
+| SECRET    | Credential hashes, approval signatures                            | Never exported, logged or shown.                                                                                                           |
 
 Anything computed from other data is at least as protected as the most protected thing it was
 computed from.

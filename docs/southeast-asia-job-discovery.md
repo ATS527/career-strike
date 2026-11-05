@@ -13,15 +13,15 @@ live integrations until `verify-market` has successfully retrieved an explicitly
 for that market. Because each board is adopted once per installation, a board certified for one
 market also carries its explicit postings for the other markets it was reviewed for.
 
-| Employer | Official careers site | Public board | Target id | Markets reviewed |
-| --- | --- | --- | --- | --- |
-| Ninja Van | [Careers](https://www.ninjavan.co/en-sg/company/careers) | [Lever](https://jobs.lever.co/ninjavan) | `ninjavan-sea` | MY, ID, PH, TH, VN |
-| Agoda | [Careers](https://careersatagoda.com/) | [Greenhouse](https://job-boards.greenhouse.io/agoda) | `agoda-careers` | TH, MY, PH, VN |
-| Xendit | [Careers](https://www.xendit.co/careers/) | [Greenhouse](https://job-boards.greenhouse.io/xendit) | `xendit-sea` | ID, TH, MY, PH |
-| AvePoint | [Careers](https://www.avepoint.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/avepoint) | `avepoint-ph` | PH |
-| Mitsogo | [Careers](https://www.mitsogo.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/mitsogoinc) | `mitsogo-ph` | PH |
-| Amanotes | [Careers](https://www.careers.amanotes.com/) | [Lever](https://jobs.lever.co/amanotes) | `amanotes-vn` | VN |
-| Sky Mavis | [Careers](https://skymavis.com/careers) | [Ashby](https://jobs.ashbyhq.com/skymavis) | `skymavis-vn` | VN |
+| Employer  | Official careers site                                    | Public board                                              | Target id       | Markets reviewed   |
+| --------- | -------------------------------------------------------- | --------------------------------------------------------- | --------------- | ------------------ |
+| Ninja Van | [Careers](https://www.ninjavan.co/en-sg/company/careers) | [Lever](https://jobs.lever.co/ninjavan)                   | `ninjavan-sea`  | MY, ID, PH, TH, VN |
+| Agoda     | [Careers](https://careersatagoda.com/)                   | [Greenhouse](https://job-boards.greenhouse.io/agoda)      | `agoda-careers` | TH, MY, PH, VN     |
+| Xendit    | [Careers](https://www.xendit.co/careers/)                | [Greenhouse](https://job-boards.greenhouse.io/xendit)     | `xendit-sea`    | ID, TH, MY, PH     |
+| AvePoint  | [Careers](https://www.avepoint.com/careers)              | [Greenhouse](https://job-boards.greenhouse.io/avepoint)   | `avepoint-ph`   | PH                 |
+| Mitsogo   | [Careers](https://www.mitsogo.com/careers)               | [Greenhouse](https://job-boards.greenhouse.io/mitsogoinc) | `mitsogo-ph`    | PH                 |
+| Amanotes  | [Careers](https://www.careers.amanotes.com/)             | [Lever](https://jobs.lever.co/amanotes)                   | `amanotes-vn`   | VN                 |
+| Sky Mavis | [Careers](https://skymavis.com/careers)                  | [Ashby](https://jobs.ashbyhq.com/skymavis)                | `skymavis-vn`   | VN                 |
 
 On the review date the public board APIs returned complete listings with explicit local evidence:
 Ninja Van — Malaysia 84, Philippines 17, Indonesia 7, Thailand 4, Vietnam 2 postings; Agoda —
@@ -54,13 +54,13 @@ markets' explicit postings.
 
 ## Marketplace policy
 
-| Source | Current capability | Career Strike behaviour |
-| --- | --- | --- |
-| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions) | `RESTRICTED` | No scraping or automated extraction; use the official site or a user-supplied listing. |
-| [JobStreet](https://www.jobstreet.com.sg/career-resources/legal/privacy-notice/) / [JobsDB](https://www.jobsdb.com/en/thailand/) | `UNVERIFIED` | SEEK-group marketplaces; no integration until approved access and permitted display/reuse are confirmed. |
-| [Glints](https://glints.com/), [Kalibrr](https://www.kalibrr.com/), [Hiredly](https://hiredly.com/) | `UNVERIFIED` | No automated retrieval; open the official site or add a verified official listing manually. |
-| [VietnamWorks](https://www.vietnamworks.com/), [TopCV](https://www.topcv.vn/), [ITviec](https://itviec.com/) | `UNVERIFIED` | Vietnam-focused marketplaces; no automated retrieval is claimed. |
-| [Indeed](https://docs.indeed.com/legal-terms/developer-agreement) | `UNVERIFIED` | No integration until approved partner access and permitted display/reuse are confirmed. |
+| Source                                                                                                                           | Current capability | Career Strike behaviour                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------- |
+| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions)                                                            | `RESTRICTED`       | No scraping or automated extraction; use the official site or a user-supplied listing.                   |
+| [JobStreet](https://www.jobstreet.com.sg/career-resources/legal/privacy-notice/) / [JobsDB](https://www.jobsdb.com/en/thailand/) | `UNVERIFIED`       | SEEK-group marketplaces; no integration until approved access and permitted display/reuse are confirmed. |
+| [Glints](https://glints.com/), [Kalibrr](https://www.kalibrr.com/), [Hiredly](https://hiredly.com/)                              | `UNVERIFIED`       | No automated retrieval; open the official site or add a verified official listing manually.              |
+| [VietnamWorks](https://www.vietnamworks.com/), [TopCV](https://www.topcv.vn/), [ITviec](https://itviec.com/)                     | `UNVERIFIED`       | Vietnam-focused marketplaces; no automated retrieval is claimed.                                         |
+| [Indeed](https://docs.indeed.com/legal-terms/developer-agreement)                                                                | `UNVERIFIED`       | No integration until approved partner access and permitted display/reuse are confirmed.                  |
 
 The `UNVERIFIED` label means Career Strike has no recorded approved access; it does not imply a
 source is prohibited. A source can move only after its official access model, terms, fields,

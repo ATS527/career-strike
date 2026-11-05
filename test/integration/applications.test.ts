@@ -25,64 +25,127 @@ const FORM = {
     { label: 'Email', required: true, fields: [{ name: 'email', type: 'input_text', values: [] }] },
     { label: 'Resume/CV', required: true, fields: [{ name: 'resume', type: 'input_file', values: [] }] },
     { label: 'Cover Letter', required: false, fields: [{ name: 'cover_letter_text', type: 'textarea', values: [] }] },
-    { label: 'Do you need visa sponsorship?', required: true, fields: [{ name: 'q_visa', type: 'multi_value_single_select', values: [{ label: 'Yes' }, { label: 'No' }] }] },
+    {
+      label: 'Do you need visa sponsorship?',
+      required: true,
+      fields: [{ name: 'q_visa', type: 'multi_value_single_select', values: [{ label: 'Yes' }, { label: 'No' }] }],
+    },
   ],
   demographic_questions: { questions: [{ label: 'Gender' }] },
 };
 
 function posting(): NormalizedPosting {
   return {
-    source: 'greenhouse', board: 'synthetic', sourceJobId: '4242', employer: 'Synthetic Labs', title: 'Platform Engineer', locationText: 'Remote - India',
-    remotePolicy: 'remote', employmentType: 'full_time', department: null, salary: null,
-    description: [{ type: 'heading', text: 'Requirements' }, { type: 'item', text: 'TypeScript and Kubernetes' }],
-    applyUrl: 'https://careers.example.com/apply/4242', postingUrl: 'https://careers.example.com/4242', publishedAt: '2026-10-01T00:00:00.000Z', unresolved: [],
+    source: 'greenhouse',
+    board: 'synthetic',
+    sourceJobId: '4242',
+    employer: 'Synthetic Labs',
+    title: 'Platform Engineer',
+    locationText: 'Remote - India',
+    remotePolicy: 'remote',
+    employmentType: 'full_time',
+    department: null,
+    salary: null,
+    description: [
+      { type: 'heading', text: 'Requirements' },
+      { type: 'item', text: 'TypeScript and Kubernetes' },
+    ],
+    applyUrl: 'https://careers.example.com/apply/4242',
+    postingUrl: 'https://careers.example.com/4242',
+    publishedAt: '2026-10-01T00:00:00.000Z',
+    unresolved: [],
   };
 }
 
 async function setup() {
   const paths = appPaths(path.join(tempDir(), 'data'));
-  const s = await startService(paths, { port: 0, adapters: createAdapters(fakeFetch({ 'boards-api.greenhouse.io': FORM })) });
+  const s = await startService(paths, {
+    port: 0,
+    adapters: createAdapters(fakeFetch({ 'boards-api.greenhouse.io': FORM })),
+  });
   running.push(s);
   const db = openDb(paths.db);
   syncBoard(db, 'greenhouse', 'synthetic', [posting()]);
   const jobId = db.prepare('SELECT id FROM jobs').pluck().get() as string;
   db.close();
   const bearer = { authorization: `Bearer ${s.info.token}` };
-  const call = (method: string, url: string, body?: unknown, headers: Record<string, string> = bearer) => localRequest(s.info.port, url, { method, body, headers });
+  const call = (method: string, url: string, body?: unknown, headers: Record<string, string> = bearer) =>
+    localRequest(s.info.port, url, { method, body, headers });
   for (const [key, value] of [
     ['identity.fullName', 'Jordan Example'],
     ['identity.email', 'jordan@example.com'],
     ['identity.phone', '+1 555 0100'],
-  ] as const) await call('PUT', `/api/settings/${key}`, { value });
+  ] as const)
+    await call('PUT', `/api/settings/${key}`, { value });
   await call('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'TypeScript', years: 5 } });
-  await call('POST', '/api/profile/facts', { kind: 'role', value: { title: 'Platform Engineer', employer: 'Synthetic Co', startYear: 2019 } });
+  await call('POST', '/api/profile/facts', {
+    kind: 'role',
+    value: { title: 'Platform Engineer', employer: 'Synthetic Co', startYear: 2019 },
+  });
   const dash = await dashboardSession(s.info.port, s.info.token);
   return { s, paths, jobId, call, dash };
 }
 
-async function upload(s: RunningService, bytes: Buffer, mime = 'application/pdf', filename = 'resume.pdf', kind = 'resume') {
+async function upload(
+  s: RunningService,
+  bytes: Buffer,
+  mime = 'application/pdf',
+  filename = 'resume.pdf',
+  kind = 'resume',
+) {
   return localRequest(s.info.port, '/api/documents', {
     method: 'POST',
-    headers: { authorization: `Bearer ${s.info.token}`, 'content-type': mime, 'x-cs-filename': encodeURIComponent(filename), 'x-cs-document-kind': kind, 'content-length': String(bytes.length) },
+    headers: {
+      authorization: `Bearer ${s.info.token}`,
+      'content-type': mime,
+      'x-cs-filename': encodeURIComponent(filename),
+      'x-cs-document-kind': kind,
+      'content-length': String(bytes.length),
+    },
     // localRequest JSON-encodes bodies; send raw bytes via a direct request instead.
     body: undefined,
   }).then(() => rawUpload(s, bytes, mime, filename, kind));
 }
 
-function rawUpload(s: RunningService, bytes: Buffer, mime: string, filename: string, kind: string): Promise<{ status: number; body: unknown }> {
+function rawUpload(
+  s: RunningService,
+  bytes: Buffer,
+  mime: string,
+  filename: string,
+  kind: string,
+): Promise<{ status: number; body: unknown }> {
   return fetch(`http://127.0.0.1:${s.info.port}/api/documents`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${s.info.token}`, 'content-type': mime, 'x-cs-filename': encodeURIComponent(filename), 'x-cs-document-kind': kind },
+    headers: {
+      authorization: `Bearer ${s.info.token}`,
+      'content-type': mime,
+      'x-cs-filename': encodeURIComponent(filename),
+      'x-cs-document-kind': kind,
+    },
     body: bytes,
   }).then(async (r) => ({ status: r.status, body: await r.json() }));
 }
 
 type View = {
-  id: string; state: string; version: number; payloadHash: string; missingRequired: string[]; disclosures: string[]; warnings: { message: string }[];
+  id: string;
+  state: string;
+  version: number;
+  payloadHash: string;
+  missingRequired: string[];
+  disclosures: string[];
+  warnings: { message: string }[];
   approval: { valid: boolean; reason: string; approval: { state: string } | null };
   payload: {
-    identity: Record<string, unknown>; fields: { key: string; value: string | null; source: string }[]; coverLetter: string | null; notAnswered: string[]; attachments: { filename: string; sha256: string }[];
-    personalization: { profileFingerprint: string; snapshotId: string; variants: { id: string; kind: string; contentHash: string }[] } | null;
+    identity: Record<string, unknown>;
+    fields: { key: string; value: string | null; source: string }[];
+    coverLetter: string | null;
+    notAnswered: string[];
+    attachments: { filename: string; sha256: string }[];
+    personalization: {
+      profileFingerprint: string;
+      snapshotId: string;
+      variants: { id: string; kind: string; contentHash: string }[];
+    } | null;
   };
   versions: { version: number; reason: string }[];
 };
@@ -102,12 +165,19 @@ describe('documents', () => {
 
     const stored = fs.readdirSync(path.join(paths.vault, 'documents'));
     expect(stored).toEqual([doc.id]);
-    if (process.platform !== 'win32') expect(fs.statSync(path.join(paths.vault, 'documents', doc.id)).mode & 0o777).toBe(0o600);
+    if (process.platform !== 'win32')
+      expect(fs.statSync(path.join(paths.vault, 'documents', doc.id)).mode & 0o777).toBe(0o600);
 
-    const content = await fetch(`http://127.0.0.1:${s.info.port}/api/documents/${doc.id}/content`, { headers: { authorization: `Bearer ${s.info.token}` } });
+    const content = await fetch(`http://127.0.0.1:${s.info.port}/api/documents/${doc.id}/content`, {
+      headers: { authorization: `Bearer ${s.info.token}` },
+    });
     expect(content.headers.get('content-disposition')).toMatch(/^attachment;/);
     expect(Buffer.from(await content.arrayBuffer()).equals(PDF)).toBe(true);
-    for (const res of [await call('GET', '/api/documents'), await call('GET', '/api/overview'), await call('GET', '/api/profile')]) {
+    for (const res of [
+      await call('GET', '/api/documents'),
+      await call('GET', '/api/overview'),
+      await call('GET', '/api/profile'),
+    ]) {
       expect(JSON.stringify(res.body)).not.toContain(paths.vault);
     }
   });
@@ -147,10 +217,20 @@ describe('applications', () => {
     expect(app.payload.coverLetter).toContain('Platform Engineer');
 
     const review = await ctx.call('GET', `/api/applications/${app.id}/personalization`);
-    const personalization = (review.body as { personalization: { variants: { kind: string; evidence: { requirement: string; evidenceRefs: string[] }[] }[]; stale: boolean } }).personalization;
+    const personalization = (
+      review.body as {
+        personalization: {
+          variants: { kind: string; evidence: { requirement: string; evidenceRefs: string[] }[] }[];
+          stale: boolean;
+        };
+      }
+    ).personalization;
     expect(personalization.stale).toBe(false);
     expect(personalization.variants).toHaveLength(2);
-    expect(personalization.variants.find((v) => v.kind === 'resume')?.evidence.find((e) => e.requirement === 'TypeScript')?.evidenceRefs[0]).toMatch(/^fact_/);
+    expect(
+      personalization.variants.find((v) => v.kind === 'resume')?.evidence.find((e) => e.requirement === 'TypeScript')
+        ?.evidenceRefs[0],
+    ).toMatch(/^fact_/);
 
     // Required form fields are answered first, then changing confirmed profile evidence makes the
     // package stale and prevents review until it is regenerated.
@@ -167,13 +247,26 @@ describe('applications', () => {
     const res = await ctx.call('POST', `/api/applications/${app.id}/ready`);
     expect(res.status).toBe(422);
     expect((res.body as { message: string }).message).toContain('Do you need visa sponsorship?');
-    expect((await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { fields: [{ key: 'q_visa', value: 'Maybe' }] } })).status).toBe(400);
+    expect(
+      (
+        await ctx.call('PUT', `/api/applications/${app.id}`, {
+          changes: { fields: [{ key: 'q_visa', value: 'Maybe' }] },
+        })
+      ).status,
+    ).toBe(400);
   });
 
   it('approval is dashboard-only, bound to the reviewed version and hash, and invalidated by any edit', async () => {
     const ctx = await setup();
     let app = await draft(ctx);
-    app = ((await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { fields: [{ key: 'q_visa', value: 'No' }] }, reason: 'Answered visa question' })).body as { application: View }).application;
+    app = (
+      (
+        await ctx.call('PUT', `/api/applications/${app.id}`, {
+          changes: { fields: [{ key: 'q_visa', value: 'No' }] },
+          reason: 'Answered visa question',
+        })
+      ).body as { application: View }
+    ).application;
     expect(app.version).toBe(2);
     app = ((await ctx.call('POST', `/api/applications/${app.id}/ready`)).body as { application: View }).application;
     expect(app.state).toBe('READY_FOR_REVIEW');
@@ -183,7 +276,12 @@ describe('applications', () => {
     expect(viaBearer.status).toBe(403);
     expect((viaBearer.body as { error: string }).error).toBe('APPROVAL_REQUIRES_DASHBOARD');
 
-    const stale = await ctx.call('POST', `/api/applications/${app.id}/approve`, { version: 1, payloadHash: app.payloadHash }, ctx.dash.headers);
+    const stale = await ctx.call(
+      'POST',
+      `/api/applications/${app.id}/approve`,
+      { version: 1, payloadHash: app.payloadHash },
+      ctx.dash.headers,
+    );
     expect(stale.status).toBe(409);
 
     const approved = await ctx.call('POST', `/api/applications/${app.id}/approve`, approveBody, ctx.dash.headers);
@@ -193,22 +291,46 @@ describe('applications', () => {
     expect(app.approval).toMatchObject({ valid: true, approval: { state: 'ACTIVE' } });
 
     // Any material change: a new version, the approval invalidated, back to drafts.
-    app = ((await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { coverLetter: `${app.payload.coverLetter}\nP.S.` } })).body as { application: View }).application;
+    app = (
+      (
+        await ctx.call('PUT', `/api/applications/${app.id}`, {
+          changes: { coverLetter: `${app.payload.coverLetter}\nP.S.` },
+        })
+      ).body as { application: View }
+    ).application;
     expect(app.state).toBe('DRAFTED');
     expect(app.version).toBe(3);
     expect(app.approval).toMatchObject({ valid: false, approval: { state: 'INVALIDATED' } });
-    expect(app.versions.map((v) => v.reason)).toEqual(['Edited by you', 'Answered visa question', 'First draft from your approved profile and the employer’s published form']);
+    expect(app.versions.map((v) => v.reason)).toEqual([
+      'Edited by you',
+      'Answered visa question',
+      'First draft from your approved profile and the employer’s published form',
+    ]);
   });
 
   it('flags unsupported claims and requires the candidate to confirm them before approving', async () => {
     const ctx = await setup();
     let app = await draft(ctx);
-    await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { fields: [{ key: 'q_visa', value: 'No' }], coverLetter: 'I have 20 years of Rust.' } });
+    await ctx.call('PUT', `/api/applications/${app.id}`, {
+      changes: { fields: [{ key: 'q_visa', value: 'No' }], coverLetter: 'I have 20 years of Rust.' },
+    });
     app = ((await ctx.call('POST', `/api/applications/${app.id}/ready`)).body as { application: View }).application;
-    expect(app.warnings.map((w) => w.message)).toEqual(['Mentions Rust, which is not in your profile.', 'Claims 20 years; your profile supports about 7.']);
+    expect(app.warnings.map((w) => w.message)).toEqual([
+      'Mentions Rust, which is not in your profile.',
+      'Claims 20 years; your profile supports about 7.',
+    ]);
     const body = { version: app.version, payloadHash: app.payloadHash };
     expect((await ctx.call('POST', `/api/applications/${app.id}/approve`, body, ctx.dash.headers)).status).toBe(422);
-    expect((await ctx.call('POST', `/api/applications/${app.id}/approve`, { ...body, acknowledgeWarnings: true }, ctx.dash.headers)).status).toBe(200);
+    expect(
+      (
+        await ctx.call(
+          'POST',
+          `/api/applications/${app.id}/approve`,
+          { ...body, acknowledgeWarnings: true },
+          ctx.dash.headers,
+        )
+      ).status,
+    ).toBe(200);
   });
 
   async function approvedApp() {
@@ -216,29 +338,54 @@ describe('applications', () => {
     let app = await draft(ctx);
     await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { fields: [{ key: 'q_visa', value: 'No' }] } });
     app = ((await ctx.call('POST', `/api/applications/${app.id}/ready`)).body as { application: View }).application;
-    app = ((await ctx.call('POST', `/api/applications/${app.id}/approve`, { version: app.version, payloadHash: app.payloadHash }, ctx.dash.headers)).body as { application: View }).application;
+    app = (
+      (
+        await ctx.call(
+          'POST',
+          `/api/applications/${app.id}/approve`,
+          { version: app.version, payloadHash: app.payloadHash },
+          ctx.dash.headers,
+        )
+      ).body as { application: View }
+    ).application;
     expect(app.approval.valid).toBe(true);
-    const status = async () => ((await ctx.call('GET', `/api/applications/${app.id}`)).body as { application: View }).application.approval;
+    const status = async () =>
+      ((await ctx.call('GET', `/api/applications/${app.id}`)).body as { application: View }).application.approval;
     return { ...ctx, app, status, paths: ctx.paths as AppPaths };
   }
 
   it('detects a payload changed behind the approval’s back', async () => {
     const { app, status, paths } = await approvedApp();
     const db = openDb(paths.db);
-    const row = db.prepare('SELECT payload_json FROM application_versions WHERE application_id = ? AND version = ?').get(app.id, app.version) as { payload_json: string };
+    const row = db
+      .prepare('SELECT payload_json FROM application_versions WHERE application_id = ? AND version = ?')
+      .get(app.id, app.version) as { payload_json: string };
     const tampered = JSON.parse(row.payload_json);
     tampered.destination.url = 'https://evil.example/collect';
-    db.prepare('UPDATE application_versions SET payload_json = ? WHERE application_id = ? AND version = ?').run(JSON.stringify(tampered), app.id, app.version);
+    db.prepare('UPDATE application_versions SET payload_json = ? WHERE application_id = ? AND version = ?').run(
+      JSON.stringify(tampered),
+      app.id,
+      app.version,
+    );
     db.close();
-    expect(await status()).toMatchObject({ valid: false, reason: 'What would be submitted differs from what was approved.' });
+    expect(await status()).toMatchObject({
+      valid: false,
+      reason: 'What would be submitted differs from what was approved.',
+    });
   });
 
   it('rejects a forged approval record', async () => {
     const { app, status, paths } = await approvedApp();
     const db = openDb(paths.db);
-    db.prepare("UPDATE approvals SET mac = ? WHERE application_id = ? AND state = 'ACTIVE'").run('0'.repeat(64), app.id);
+    db.prepare("UPDATE approvals SET mac = ? WHERE application_id = ? AND state = 'ACTIVE'").run(
+      '0'.repeat(64),
+      app.id,
+    );
     db.close();
-    expect(await status()).toMatchObject({ valid: false, reason: expect.stringContaining('signature does not verify') });
+    expect(await status()).toMatchObject({
+      valid: false,
+      reason: expect.stringContaining('signature does not verify'),
+    });
   });
 
   it('a consumed approval cannot be replayed and an old one expires', async () => {
@@ -246,7 +393,9 @@ describe('applications', () => {
     const db = openDb(paths.db);
     db.prepare("UPDATE approvals SET state = 'CONSUMED', consumed_at = 'x' WHERE application_id = ?").run(app.id);
     expect(await status()).toMatchObject({ valid: false, approval: { state: 'CONSUMED' } });
-    db.prepare("UPDATE approvals SET state = 'ACTIVE', expires_at = '2000-01-01T00:00:00.000Z' WHERE application_id = ?").run(app.id);
+    db.prepare(
+      "UPDATE approvals SET state = 'ACTIVE', expires_at = '2000-01-01T00:00:00.000Z' WHERE application_id = ?",
+    ).run(app.id);
     db.close();
     // Changing expiry also breaks the signature; either way the approval is not usable.
     expect((await status()).valid).toBe(false);
@@ -258,7 +407,12 @@ describe('applications', () => {
     const { DocumentVault } = await import('../../src/vault/documents.js');
     const { FileSecretStore } = await import('../../src/vault/secrets.js');
     const db = openDb(paths.db);
-    const service = new ApplicationService(db, new FileSecretStore(path.join(paths.home, 'secrets')), new DocumentVault(db, paths.vault), async () => null);
+    const service = new ApplicationService(
+      db,
+      new FileSecretStore(path.join(paths.home, 'secrets')),
+      new DocumentVault(db, paths.vault),
+      async () => null,
+    );
     expect((await service.verifyApproval(app.id)).valid).toBe(true);
     const later = await service.verifyApproval(app.id, Date.now() + APPROVAL_TTL_MS + 60_000);
     expect(later).toMatchObject({ valid: false, reason: 'Approval expired. Review and approve again.' });

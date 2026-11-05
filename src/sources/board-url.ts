@@ -9,7 +9,10 @@ const HOSTS: readonly [RegExp, SourceId][] = [
 ];
 
 /** Recognise a public board URL such as https://jobs.lever.co/acme/123 → { lever, acme }. */
-export function boardFromUrl(raw: string, practiceOrigin: string | null = null): { source: SourceId; board: string } | null {
+export function boardFromUrl(
+  raw: string,
+  practiceOrigin: string | null = null,
+): { source: SourceId; board: string } | null {
   let url: URL;
   try {
     url = new URL(raw.trim());

@@ -24,11 +24,22 @@ export interface PostingRequirements {
   locationConstraints: string[];
 }
 
-export type Seniority = 'intern' | 'junior' | 'mid' | 'senior' | 'staff' | 'principal' | 'lead' | 'manager' | 'director' | 'executive';
+export type Seniority =
+  | 'intern'
+  | 'junior'
+  | 'mid'
+  | 'senior'
+  | 'staff'
+  | 'principal'
+  | 'lead'
+  | 'manager'
+  | 'director'
+  | 'executive';
 
 const REQUIRED_HEADINGS =
   /\b(requirements?|qualifications?|what you('|’)?ll (need|bring)|what we('|’)?re looking for|you (have|bring|are)|must[- ]haves?|minimum|basic qualifications|about you|who you are|skills|experience|thrive|ideal candidate|you should have|you will need|you('|’)?ll need|we('|’)?d love (you|to hear)|you may be a fit|you might be a (good )?fit|is this you)\b/i;
-const PREFERRED_HEADINGS = /\b(nice[- ]to[- ]haves?|preferred|bonus|pluses?|desirable|good to have|ideally|extra credit)\b/i;
+const PREFERRED_HEADINGS =
+  /\b(nice[- ]to[- ]haves?|preferred|bonus|pluses?|desirable|good to have|ideally|extra credit)\b/i;
 const OTHER_HEADINGS =
   /\b(about (us|the (company|team|role))|what you('|’)?ll do|responsibilities|the role|benefits|perks|what we offer|why join|compensation|equal opportunity|our values)\b/i;
 
@@ -57,7 +68,9 @@ const YEARS = /\b(\d{1,2})\s*(?:\+|plus)?\s*(?:or more\s+)?(?:years|yrs)\b(?:\s+
 type Section = 'required' | 'preferred' | 'other' | 'none';
 
 function sectionFor(block: TextBlock, current: Section): Section {
-  const isHeadingLike = block.type === 'heading' || (block.type === 'paragraph' && block.text.length <= 80 && /[:?]$|^[A-Z][^.!]*$/.test(block.text));
+  const isHeadingLike =
+    block.type === 'heading' ||
+    (block.type === 'paragraph' && block.text.length <= 80 && /[:?]$|^[A-Z][^.!]*$/.test(block.text));
   if (!isHeadingLike) return current;
   if (PREFERRED_HEADINGS.test(block.text)) return 'preferred';
   if (OTHER_HEADINGS.test(block.text)) return 'other';
@@ -87,12 +100,14 @@ export function extractRequirements(title: string, blocks: TextBlock[]): Posting
   for (const block of blocks) {
     section = sectionFor(block, section);
     const text = block.text;
-    let importance: Importance = section === 'required' ? 'required' : section === 'preferred' ? 'preferred' : 'mentioned';
+    let importance: Importance =
+      section === 'required' ? 'required' : section === 'preferred' ? 'preferred' : 'mentioned';
     if (importance === 'required' && PREFERRED_INLINE.test(text)) importance = 'preferred';
 
     for (const skill of skillsIn(text)) {
       const existing = skills.get(skill);
-      if (!existing || RANK[importance] > RANK[existing.importance]) skills.set(skill, { skill, importance, evidence: quote(text) });
+      if (!existing || RANK[importance] > RANK[existing.importance])
+        skills.set(skill, { skill, importance, evidence: quote(text) });
     }
 
     const y = YEARS.exec(text);
@@ -107,7 +122,9 @@ export function extractRequirements(title: string, blocks: TextBlock[]): Posting
   const seniorityMatch = SENIORITY.find(([re]) => re.test(title));
   return {
     version: REQUIREMENTS_VERSION,
-    skills: [...skills.values()].sort((a, b) => RANK[b.importance] - RANK[a.importance] || a.skill.localeCompare(b.skill)),
+    skills: [...skills.values()].sort(
+      (a, b) => RANK[b.importance] - RANK[a.importance] || a.skill.localeCompare(b.skill),
+    ),
     yearsRequired: years,
     seniority: seniorityMatch ? { level: seniorityMatch[1], evidence: title } : null,
     urgency,

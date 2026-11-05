@@ -48,7 +48,9 @@ export class SessionStore {
     const csrf = newToken();
     const nowIso = new Date(this.now()).toISOString();
     this.db
-      .prepare('INSERT INTO dashboard_sessions (id_hash, csrf_token, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)')
+      .prepare(
+        'INSERT INTO dashboard_sessions (id_hash, csrf_token, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?)',
+      )
       .run(sha256(id), csrf, nowIso, new Date(this.now() + SESSION_TTL_MS).toISOString(), nowIso);
     this.db.prepare('DELETE FROM dashboard_sessions WHERE expires_at <= ?').run(nowIso);
     return { id, session: { csrf } };

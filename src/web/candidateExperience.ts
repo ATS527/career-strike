@@ -39,11 +39,7 @@ export function generateInterviewIcsContent(params: {
 }
 
 /** Generates and triggers download of an RFC-5545 .ics iCalendar file for scheduled interviews. */
-export function downloadInterviewIcs(params: {
-  interview: Interview;
-  employer: string;
-  jobTitle: string;
-}): void {
+export function downloadInterviewIcs(params: { interview: Interview; employer: string; jobTitle: string }): void {
   if (typeof document === 'undefined') return;
 
   const { interview, employer, jobTitle } = params;

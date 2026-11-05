@@ -70,7 +70,9 @@ export class McpClientStore {
       this.db
         .prepare('INSERT INTO mcp_clients (id, name, token_hash, scopes_json, created_at) VALUES (?, ?, ?, ?, ?)')
         .run(id, name, sha256(token), JSON.stringify(DEFAULT_SCOPES), at);
-      this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'mcp.client.created', `${name}:${id}`);
+      this.db
+        .prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)')
+        .run(at, actor, 'mcp.client.created', `${name}:${id}`);
     })();
     return { client: this.get(id)!, token };
   }
@@ -78,7 +80,9 @@ export class McpClientStore {
   /** Resolve a bearer token to an active client, noting when it was last used. */
   authenticate(token: string): McpClient | null {
     if (!token.startsWith('csm_')) return null;
-    const row = this.db.prepare('SELECT * FROM mcp_clients WHERE token_hash = ? AND revoked_at IS NULL').get(sha256(token)) as Row | undefined;
+    const row = this.db
+      .prepare('SELECT * FROM mcp_clients WHERE token_hash = ? AND revoked_at IS NULL')
+      .get(sha256(token)) as Row | undefined;
     if (!row) return null;
     const now = Date.now();
     if (!row.last_seen_at || now - Date.parse(row.last_seen_at) > 30_000) {
@@ -93,27 +97,41 @@ export class McpClientStore {
   }
 
   list(): McpClient[] {
-    return (this.db.prepare('SELECT * FROM mcp_clients WHERE revoked_at IS NULL ORDER BY created_at').all() as Row[]).map(toClient);
+    return (
+      this.db.prepare('SELECT * FROM mcp_clients WHERE revoked_at IS NULL ORDER BY created_at').all() as Row[]
+    ).map(toClient);
   }
 
   setScopes(id: string, scopes: Scope[], actor: string): McpClient | null {
     const unique = [...new Set<Scope>([...DEFAULT_SCOPES, ...scopes])];
     const at = new Date().toISOString();
-    const changed = this.db.prepare('UPDATE mcp_clients SET scopes_json = ? WHERE id = ? AND revoked_at IS NULL').run(JSON.stringify(unique), id).changes;
+    const changed = this.db
+      .prepare('UPDATE mcp_clients SET scopes_json = ? WHERE id = ? AND revoked_at IS NULL')
+      .run(JSON.stringify(unique), id).changes;
     if (!changed) return null;
-    this.db.prepare('INSERT INTO audit_events (at, actor, action, subject, detail_json) VALUES (?, ?, ?, ?, ?)').run(at, actor, 'mcp.client.scopes', id, JSON.stringify({ scopes: unique }));
+    this.db
+      .prepare('INSERT INTO audit_events (at, actor, action, subject, detail_json) VALUES (?, ?, ?, ?, ?)')
+      .run(at, actor, 'mcp.client.scopes', id, JSON.stringify({ scopes: unique }));
     return this.get(id);
   }
 
   revoke(id: string, actor: string): boolean {
     const at = new Date().toISOString();
-    const changed = this.db.prepare('UPDATE mcp_clients SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL').run(at, id).changes;
-    if (changed) this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'mcp.client.revoked', id);
+    const changed = this.db
+      .prepare('UPDATE mcp_clients SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')
+      .run(at, id).changes;
+    if (changed)
+      this.db
+        .prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)')
+        .run(at, actor, 'mcp.client.revoked', id);
     return changed === 1;
   }
 
   revokeByName(name: string, actor: string): number {
-    const ids = (this.db.prepare('SELECT id FROM mcp_clients WHERE name = ? AND revoked_at IS NULL').pluck().all(name) as string[]);
+    const ids = this.db
+      .prepare('SELECT id FROM mcp_clients WHERE name = ? AND revoked_at IS NULL')
+      .pluck()
+      .all(name) as string[];
     for (const id of ids) this.revoke(id, actor);
     return ids.length;
   }

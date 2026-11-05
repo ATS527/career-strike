@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateProfileReadiness } from '../../src/career/readiness-engine.js';
-import { addFact } from '../../src/career/profile.js';
 import { addEvidence } from '../../src/career/evidence.js';
-import { setSetting } from '../../src/store/settings.js';
+import { addFact } from '../../src/career/profile.js';
+import { evaluateProfileReadiness } from '../../src/career/readiness-engine.js';
 import { openDb } from '../../src/store/db.js';
+import { setSetting } from '../../src/store/settings.js';
 
 describe('profile readiness state machine', () => {
   it('reports PROFILE_MISSING_INFORMATION for a fresh profile', () => {
@@ -37,7 +37,14 @@ describe('profile readiness state machine', () => {
 
   it('reports APPLICATION_INFORMATION_INCOMPLETE when background is confirmed but contact info is missing', () => {
     const db = openDb(':memory:');
-    addFact(db, { kind: 'role', value: { title: 'Staff Engineer', employer: 'Acme', startYear: 2021, endYear: null, summary: null } }, 'test');
+    addFact(
+      db,
+      {
+        kind: 'role',
+        value: { title: 'Staff Engineer', employer: 'Acme', startYear: 2021, endYear: null, summary: null },
+      },
+      'test',
+    );
     addFact(db, { kind: 'skill', value: { name: 'Go', years: 4, level: 'expert' } }, 'test');
 
     const report = evaluateProfileReadiness(db);
@@ -52,9 +59,23 @@ describe('profile readiness state machine', () => {
 
   it('reports PROFILE_READY_FOR_APPLICATION_PREPARATION when background and contact info are both present', () => {
     const db = openDb(':memory:');
-    addFact(db, { kind: 'role', value: { title: 'Principal Engineer', employer: 'Acme Corp', startYear: 2020, endYear: null, summary: null } }, 'test');
+    addFact(
+      db,
+      {
+        kind: 'role',
+        value: { title: 'Principal Engineer', employer: 'Acme Corp', startYear: 2020, endYear: null, summary: null },
+      },
+      'test',
+    );
     addFact(db, { kind: 'skill', value: { name: 'TypeScript', years: 5, level: 'expert' } }, 'test');
-    addEvidence(db, { kind: 'project', value: { name: 'Career Strike', summary: 'Local career workspace', skills: ['TypeScript'], url: null } }, 'test');
+    addEvidence(
+      db,
+      {
+        kind: 'project',
+        value: { name: 'Career Strike', summary: 'Local career workspace', skills: ['TypeScript'], url: null },
+      },
+      'test',
+    );
 
     // Set contact info
     setSetting(db, 'identity.fullName', 'Ada Lovelace', 'test');

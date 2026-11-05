@@ -17,6 +17,9 @@ export function notesFor(version: string, text?: string): string | null {
   const start = lines.findIndex((l) => new RegExp(`^## \\[?v?${version.replace(/\./g, '\\.')}\\]?(\\s|$)`).test(l));
   if (start < 0) return null;
   const end = lines.findIndex((l, i) => i > start && /^## /.test(l));
-  const body = lines.slice(start + 1, end < 0 ? undefined : end).join('\n').trim();
+  const body = lines
+    .slice(start + 1, end < 0 ? undefined : end)
+    .join('\n')
+    .trim();
   return body || null;
 }

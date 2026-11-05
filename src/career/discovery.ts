@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import type { Db } from '../store/db.js';
 import { assertBoard } from '../sources/adapters.js';
 import { type NormalizedPosting, type SourceAdapter, SourceError, type SourceId } from '../sources/types.js';
+import type { Db } from '../store/db.js';
 import { backoffMs } from '../supervisor/scheduler.js';
 import type { Task, TaskSupervisor } from '../supervisor/tasks.js';
 import { type SyncResult, syncBoard } from './jobs.js';
@@ -48,9 +48,12 @@ export class Discovery {
     assertBoard(board);
     const id = `src_${randomBytes(9).toString('base64url')}`;
     try {
-      this.db.prepare('INSERT INTO source_boards (id, source, board, added_at) VALUES (?, ?, ?, ?)').run(id, source, board, new Date().toISOString());
+      this.db
+        .prepare('INSERT INTO source_boards (id, source, board, added_at) VALUES (?, ?, ?, ?)')
+        .run(id, source, board, new Date().toISOString());
     } catch (err) {
-      if ((err as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') throw new DuplicateBoardError(`${source}/${board} is already monitored`);
+      if ((err as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE')
+        throw new DuplicateBoardError(`${source}/${board} is already monitored`);
       throw err;
     }
     return this.getBoard(id)!;
@@ -60,12 +63,19 @@ export class Discovery {
    * Adopt a board only after the caller obtained one complete, permitted listing. This avoids
    * treating a configured employer target as a live source before it has actually responded.
    */
-  adoptVerifiedBoard(source: SourceId, board: string, postings: NormalizedPosting[], verifiedAt = new Date()): { board: SourceBoard; result: SyncResult } {
+  adoptVerifiedBoard(
+    source: SourceId,
+    board: string,
+    postings: NormalizedPosting[],
+    verifiedAt = new Date(),
+  ): { board: SourceBoard; result: SyncResult } {
     const created = this.addBoard(source, board);
     try {
       const result = syncBoard(this.db, source, board, postings, verifiedAt);
       this.db
-        .prepare("UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0, next_attempt_at = NULL WHERE id = ?")
+        .prepare(
+          "UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0, next_attempt_at = NULL WHERE id = ?",
+        )
         .run(verifiedAt.toISOString(), created.id);
       return { board: this.getBoard(created.id)!, result };
     } catch (err) {
@@ -113,7 +123,14 @@ export class Discovery {
     const board = this.getBoard(boardId);
     if (!board) return null;
     return this.tasks.start(
-      { kind: `discover:${board.id}`, dedupeKey: `discover:${board.id}`, trigger, client, params: { source: board.source, board: board.board }, attempt },
+      {
+        kind: `discover:${board.id}`,
+        dedupeKey: `discover:${board.id}`,
+        trigger,
+        client,
+        params: { source: board.source, board: board.board },
+        attempt,
+      },
       async (ctx) => {
         ctx.progress({ step: 'fetching', source: board.source, board: board.board });
         let result: SyncResult;
@@ -132,12 +149,24 @@ export class Discovery {
           // Scheduled fetches of this board back off (at least as long as the source asked); a fetch
           // the candidate starts by hand never waits.
           this.db
-            .prepare('UPDATE source_boards SET health = ?, last_error = ?, consecutive_failures = ?, next_attempt_at = ? WHERE id = ?')
-            .run(health, message, failures, new Date(Date.now() + Math.max(backoffMs(failures), (err instanceof SourceError && err.retryAfterMs) || 0)).toISOString(), board.id);
+            .prepare(
+              'UPDATE source_boards SET health = ?, last_error = ?, consecutive_failures = ?, next_attempt_at = ? WHERE id = ?',
+            )
+            .run(
+              health,
+              message,
+              failures,
+              new Date(
+                Date.now() + Math.max(backoffMs(failures), (err instanceof SourceError && err.retryAfterMs) || 0),
+              ).toISOString(),
+              board.id,
+            );
           throw err;
         }
         this.db
-          .prepare("UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0, next_attempt_at = NULL WHERE id = ?")
+          .prepare(
+            "UPDATE source_boards SET health = 'OK', last_success_at = ?, last_error = NULL, consecutive_failures = 0, next_attempt_at = NULL WHERE id = ?",
+          )
           .run(new Date().toISOString(), board.id);
         return result;
       },

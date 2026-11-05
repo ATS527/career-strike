@@ -14,7 +14,9 @@ const Submission = z
   .object({
     jobRef: z.string(),
     payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
-    applicant: z.object({ fullName: z.string().nullable(), email: z.string().nullable(), phone: z.string().nullable() }).passthrough(),
+    applicant: z
+      .object({ fullName: z.string().nullable(), email: z.string().nullable(), phone: z.string().nullable() })
+      .passthrough(),
     answers: z.array(z.object({ key: z.string(), value: z.string().nullable() }).passthrough()),
     coverLetter: z.string().nullable(),
     attachments: z.array(z.object({ filename: z.string(), sha256: z.string(), contentBase64: z.string() })),
@@ -73,8 +75,12 @@ export async function startPracticeAts(port = 0): Promise<PracticeAts> {
 
   app.post('/applications', async (req, reply) => {
     const key = req.headers['idempotency-key'];
-    if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(key)) return reply.code(400).send({ error: 'IDEMPOTENCY_KEY_REQUIRED' });
-    if (fault === 'reject') return reply.code(422).send({ error: 'REJECTED', message: 'The practice endpoint was told to reject this submission.' });
+    if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{8,100}$/.test(key))
+      return reply.code(400).send({ error: 'IDEMPOTENCY_KEY_REQUIRED' });
+    if (fault === 'reject')
+      return reply
+        .code(422)
+        .send({ error: 'REJECTED', message: 'The practice endpoint was told to reject this submission.' });
     if (fault === 'server-error') return reply.code(503).send({ error: 'UNAVAILABLE' });
     const existing = byKey.get(key);
     if (existing) return reply.code(200).send({ receipt: existing, duplicate: true });

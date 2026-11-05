@@ -12,7 +12,9 @@ const NODE_DIR = path.dirname(process.execPath);
 
 function packFromCleanCopy(): string {
   const copy = path.join(tempDir('cs-pack-'), 'career-strike');
-  const files = execFileSync('git', ['ls-files', '-co', '--exclude-standard'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  const files = execFileSync('git', ['ls-files', '-co', '--exclude-standard'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
   for (const f of files) {
     if (!fs.existsSync(f)) continue;
     fs.mkdirSync(path.join(copy, path.dirname(f)), { recursive: true });
@@ -31,7 +33,10 @@ function fakeHosts(): { bin: string; state: string; opencodeConfig: string } {
   fs.mkdirSync(bin);
   fs.mkdirSync(state);
   // codex and claude: "mcp list" prints the registered names; "mcp remove <name>" removes one.
-  for (const [cmd, file] of [['codex', 'codex.txt'], ['claude', 'claude.txt']] as const) {
+  for (const [cmd, file] of [
+    ['codex', 'codex.txt'],
+    ['claude', 'claude.txt'],
+  ] as const) {
     fs.writeFileSync(path.join(state, file), 'career-strike\nother-server\n');
     fs.writeFileSync(
       path.join(bin, cmd),
@@ -51,8 +56,19 @@ esac
   // opencode: "mcp list" reads its JSON config, which Career Strike edits directly.
   const opencodeConfig = path.join(root, 'xdg', 'opencode', 'opencode.json');
   fs.mkdirSync(path.dirname(opencodeConfig), { recursive: true });
-  fs.writeFileSync(opencodeConfig, JSON.stringify({ mcp: { servers: { 'career-strike': { command: ['x'] }, 'other-server': { command: ['y'] } } } }, null, 2));
-  fs.writeFileSync(path.join(bin, 'opencode'), `#!/bin/sh\ncase "$1" in --version) echo "opencode 9.9.9-fake" ;; mcp) cat "${opencodeConfig}" ;; esac\n`, { mode: 0o755 });
+  fs.writeFileSync(
+    opencodeConfig,
+    JSON.stringify(
+      { mcp: { servers: { 'career-strike': { command: ['x'] }, 'other-server': { command: ['y'] } } } },
+      null,
+      2,
+    ),
+  );
+  fs.writeFileSync(
+    path.join(bin, 'opencode'),
+    `#!/bin/sh\ncase "$1" in --version) echo "opencode 9.9.9-fake" ;; mcp) cat "${opencodeConfig}" ;; esac\n`,
+    { mode: 0o755 },
+  );
   return { bin, state, opencodeConfig };
 }
 
@@ -67,7 +83,11 @@ describe('packaged install', () => {
     expect(listing.filter((f) => /^package\/(src|test|acceptance|scripts)\//.test(f))).toEqual([]);
 
     const prefix = path.join(tempDir('cs-prefix-'), 'prefix');
-    const install = spawnSync('npm', ['install', '--global', '--prefix', prefix, '--offline', '--no-audit', '--no-fund', tgz], { encoding: 'utf8' });
+    const install = spawnSync(
+      'npm',
+      ['install', '--global', '--prefix', prefix, '--offline', '--no-audit', '--no-fund', tgz],
+      { encoding: 'utf8' },
+    );
     expect(install.status, `offline install from the local npm cache failed:\n${install.stderr}`).toBe(0);
     const bin = path.join(prefix, 'bin', 'career-strike');
     expect(fs.existsSync(bin)).toBe(true);
@@ -112,10 +132,13 @@ describe('packaged install', () => {
     // Uninstall: host entries and the program go; other host entries and all data stay.
     const un = run('uninstall');
     expect(un.status, un.stdout + un.stderr).toBe(0);
-    for (const host of ['codex', 'claude-code', 'opencode']) expect(un.stdout).toContain(`Removed Career Strike from ${host}.`);
+    for (const host of ['codex', 'claude-code', 'opencode'])
+      expect(un.stdout).toContain(`Removed Career Strike from ${host}.`);
     expect(fs.readFileSync(path.join(hosts.state, 'codex.txt'), 'utf8')).toBe('other-server\n');
     expect(fs.readFileSync(path.join(hosts.state, 'claude.txt'), 'utf8')).toBe('other-server\n');
-    expect(JSON.parse(fs.readFileSync(hosts.opencodeConfig, 'utf8'))).toEqual({ mcp: { servers: { 'other-server': { command: ['y'] } } } });
+    expect(JSON.parse(fs.readFileSync(hosts.opencodeConfig, 'utf8'))).toEqual({
+      mcp: { servers: { 'other-server': { command: ['y'] } } },
+    });
     expect(fs.existsSync(bin)).toBe(false);
     expect(fs.existsSync(path.join(prefix, 'lib', 'node_modules', 'career-strike'))).toBe(false);
     expect(fs.existsSync(path.join(home, 'career-strike.db'))).toBe(true);

@@ -19,13 +19,27 @@ const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).dig
 export const SECRET_NAMES = ['approval-key'] as const;
 
 /** Everything in the data directory that Career Strike creates. Anything else is left alone. */
-export const OWNED = ['career-strike.db', 'career-strike.db-wal', 'career-strike.db-shm', 'vault', 'logs', 'backups', 'mcp', 'secrets', 'service.json'];
+export const OWNED = [
+  'career-strike.db',
+  'career-strike.db-wal',
+  'career-strike.db-shm',
+  'vault',
+  'logs',
+  'backups',
+  'mcp',
+  'secrets',
+  'service.json',
+];
 
 function prepareOutDir(outDir: string): string {
   const dir = path.resolve(outDir);
   const repo = findGitRoot(dir);
-  if (repo) throw new LifecycleError(`Refusing to write career data inside the git working tree ${repo}. Choose a folder outside any repository.`);
-  if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0) throw new LifecycleError(`${dir} is not empty. Choose a new or empty folder.`);
+  if (repo)
+    throw new LifecycleError(
+      `Refusing to write career data inside the git working tree ${repo}. Choose a folder outside any repository.`,
+    );
+  if (fs.existsSync(dir) && fs.readdirSync(dir).length > 0)
+    throw new LifecycleError(`${dir} is not empty. Choose a new or empty folder.`);
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   if (process.platform !== 'win32') fs.chmodSync(dir, 0o700);
   return dir;
@@ -78,18 +92,32 @@ export function exportData(paths: AppPaths, outDir: string): ExportResult {
     db.transaction(() => {
       for (const [table, columns] of Object.entries(CLASSIFICATION)) {
         if (NOT_EXPORTED.has(table)) continue;
-        const keep = Object.entries(columns).filter(([, c]) => c.class !== 'SECRET').map(([name]) => name);
-        const secret = Object.entries(columns).filter(([, c]) => c.class === 'SECRET').map(([name]) => `${table}.${name}`);
+        const keep = Object.entries(columns)
+          .filter(([, c]) => c.class !== 'SECRET')
+          .map(([name]) => name);
+        const secret = Object.entries(columns)
+          .filter(([, c]) => c.class === 'SECRET')
+          .map(([name]) => `${table}.${name}`);
         omitted.push(...secret.map((s) => `Credential column ${s}`));
         tables[table] = db.prepare(`SELECT ${keep.map((k) => `"${k}"`).join(', ')} FROM "${table}"`).all();
       }
-      docs = db.prepare('SELECT id, filename FROM documents ORDER BY created_at').all() as { id: string; filename: string }[];
+      docs = db.prepare('SELECT id, filename FROM documents ORDER BY created_at').all() as {
+        id: string;
+        filename: string;
+      }[];
     })();
     for (const d of docs) {
       const file = path.join(paths.vault, 'documents', d.id);
       if (fs.existsSync(file)) add(path.join('documents', `${d.id}-${d.filename}`), fs.readFileSync(file));
     }
-    const data = { format: 'career-strike-export', formatVersion: 1, exportedAt: new Date().toISOString(), appVersion: VERSION, schemaVersion: schemaVersion(db), tables };
+    const data = {
+      format: 'career-strike-export',
+      formatVersion: 1,
+      exportedAt: new Date().toISOString(),
+      appVersion: VERSION,
+      schemaVersion: schemaVersion(db),
+      tables,
+    };
     add('career-data.json', Buffer.from(JSON.stringify(data, null, 2)));
     add(
       'README.txt',
@@ -101,7 +129,12 @@ export function exportData(paths: AppPaths, outDir: string): ExportResult {
       ),
     );
     writePrivate(path.join(dir, 'manifest.json'), JSON.stringify({ files, omitted }, null, 2));
-    return { dir, tables: Object.fromEntries(Object.entries(tables).map(([t, rows]) => [t, rows.length])), documents: docs.length, omitted };
+    return {
+      dir,
+      tables: Object.fromEntries(Object.entries(tables).map(([t, rows]) => [t, rows.length])),
+      documents: docs.length,
+      omitted,
+    };
   } finally {
     db.close();
   }
@@ -141,7 +174,14 @@ export function backup(paths: AppPaths, outDir: string): { dir: string; files: n
     writePrivate(path.join(dir, 'documents', name), data);
     files.push({ path: `documents/${name}`, bytes: data.length, sha256: sha256(data) });
   }
-  const manifest: BackupManifest = { format: 'career-strike-backup', formatVersion: 1, createdAt: new Date().toISOString(), appVersion: VERSION, schemaVersion: version, files };
+  const manifest: BackupManifest = {
+    format: 'career-strike-backup',
+    formatVersion: 1,
+    createdAt: new Date().toISOString(),
+    appVersion: VERSION,
+    schemaVersion: version,
+    files,
+  };
   writePrivate(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2));
   return { dir, files: files.length, schemaVersion: version };
 }
@@ -153,15 +193,23 @@ function readManifest(dir: string): BackupManifest {
   } catch {
     throw new LifecycleError(`${dir} is not a Career Strike backup (no readable manifest.json).`);
   }
-  if (manifest.format !== 'career-strike-backup' || manifest.formatVersion !== 1) throw new LifecycleError(`${dir} is not a Career Strike backup this version can read.`);
+  if (manifest.format !== 'career-strike-backup' || manifest.formatVersion !== 1)
+    throw new LifecycleError(`${dir} is not a Career Strike backup this version can read.`);
   if (manifest.schemaVersion > latestKnownVersion()) {
-    throw new LifecycleError(`This backup is from a newer Career Strike (schema v${manifest.schemaVersion}). Upgrade Career Strike before restoring it.`);
+    throw new LifecycleError(
+      `This backup is from a newer Career Strike (schema v${manifest.schemaVersion}). Upgrade Career Strike before restoring it.`,
+    );
   }
   for (const f of manifest.files) {
-    if (f.path !== 'career-strike.db' && !/^documents\/doc_[A-Za-z0-9_-]+$/.test(f.path)) throw new LifecycleError(`The backup manifest names an unexpected file: ${f.path}`);
+    if (f.path !== 'career-strike.db' && !/^documents\/doc_[A-Za-z0-9_-]+$/.test(f.path))
+      throw new LifecycleError(`The backup manifest names an unexpected file: ${f.path}`);
     const file = path.resolve(dir, f.path);
-    if (!file.startsWith(path.resolve(dir) + path.sep)) throw new LifecycleError(`The backup manifest names a file outside the backup: ${f.path}`);
-    if (!fs.existsSync(file) || sha256(fs.readFileSync(file)) !== f.sha256) throw new LifecycleError(`The backup is damaged: ${f.path} is missing or does not match its recorded hash. Nothing was changed.`);
+    if (!file.startsWith(path.resolve(dir) + path.sep))
+      throw new LifecycleError(`The backup manifest names a file outside the backup: ${f.path}`);
+    if (!fs.existsSync(file) || sha256(fs.readFileSync(file)) !== f.sha256)
+      throw new LifecycleError(
+        `The backup is damaged: ${f.path} is missing or does not match its recorded hash. Nothing was changed.`,
+      );
   }
   return manifest;
 }
@@ -254,9 +302,19 @@ export function listBackups(paths: AppPaths): { count: number; latest: BackupIte
       const isDir = entry.isDirectory();
       if (isDir) {
         if (entry.name.startsWith('pre-restore-')) {
-          backups.push({ name: entry.name, kind: 'pre-restore', createdAt: stat.mtime.toISOString(), bytes: stat.size });
+          backups.push({
+            name: entry.name,
+            kind: 'pre-restore',
+            createdAt: stat.mtime.toISOString(),
+            bytes: stat.size,
+          });
         } else if (entry.name.startsWith('pre-rollback-')) {
-          backups.push({ name: entry.name, kind: 'pre-rollback', createdAt: stat.mtime.toISOString(), bytes: stat.size });
+          backups.push({
+            name: entry.name,
+            kind: 'pre-rollback',
+            createdAt: stat.mtime.toISOString(),
+            bytes: stat.size,
+          });
         } else {
           backups.push({ name: entry.name, kind: 'manual', createdAt: stat.mtime.toISOString(), bytes: stat.size });
         }
@@ -282,7 +340,10 @@ export function listBackups(paths: AppPaths): { count: number; latest: BackupIte
   return { count: backups.length, latest: backups[0] ?? null, backups };
 }
 
-export function rollback(paths: AppPaths, options: { targetFile?: string } = {}): { restoredFrom: string; schemaVersion: number; previous: string | null } {
+export function rollback(
+  paths: AppPaths,
+  options: { targetFile?: string } = {},
+): { restoredFrom: string; schemaVersion: number; previous: string | null } {
   const backupsDir = path.join(paths.home, 'backups');
   let backupFile: string;
   if (options.targetFile) {
@@ -325,8 +386,12 @@ export function buildExportPayload(db: Db, paths: AppPaths): Record<string, unkn
   db.transaction(() => {
     for (const [table, columns] of Object.entries(CLASSIFICATION)) {
       if (NOT_EXPORTED.has(table)) continue;
-      const keep = Object.entries(columns).filter(([, c]) => c.class !== 'SECRET').map(([name]) => name);
-      const secret = Object.entries(columns).filter(([, c]) => c.class === 'SECRET').map(([name]) => `${table}.${name}`);
+      const keep = Object.entries(columns)
+        .filter(([, c]) => c.class !== 'SECRET')
+        .map(([name]) => name);
+      const secret = Object.entries(columns)
+        .filter(([, c]) => c.class === 'SECRET')
+        .map(([name]) => `${table}.${name}`);
       omitted.push(...secret.map((s) => `Credential column ${s}`));
       tables[table] = db.prepare(`SELECT ${keep.map((k) => `"${k}"`).join(', ')} FROM "${table}"`).all();
     }

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type AppPaths, appPaths } from '../../src/core/paths.js';
-import { localRequest, type LocalResponse } from '../../src/service/http-client.js';
+import { type LocalResponse, localRequest } from '../../src/service/http-client.js';
 import { type RunningService, startService } from '../../src/service/service.js';
 import { tempDir } from '../helpers.js';
 
@@ -75,7 +75,11 @@ describe('dashboard sessions', () => {
     expect((await localRequest(s.info.port, '/api/settings', { headers: { cookie } })).status).toBe(200);
 
     const put = (headers: Record<string, string>) =>
-      localRequest(s.info.port, '/api/settings/search.remotePreference', { method: 'PUT', headers: { cookie, ...headers }, body: { value: 'hybrid_ok' } });
+      localRequest(s.info.port, '/api/settings/search.remotePreference', {
+        method: 'PUT',
+        headers: { cookie, ...headers },
+        body: { value: 'hybrid_ok' },
+      });
     expect((await put({})).status).toBe(403);
     expect((await put({ 'x-cs-csrf': 'wrong' })).status).toBe(403);
     expect((await put({ 'x-cs-csrf': csrf })).status).toBe(200);
@@ -85,17 +89,24 @@ describe('dashboard sessions', () => {
     const { s } = await start();
     const { cookie, csrf } = await login(s);
     for (const site of ['cross-site', 'same-site']) {
-      const res = await localRequest(s.info.port, '/api/settings', { headers: { cookie, 'x-cs-csrf': csrf, 'sec-fetch-site': site } });
+      const res = await localRequest(s.info.port, '/api/settings', {
+        headers: { cookie, 'x-cs-csrf': csrf, 'sec-fetch-site': site },
+      });
       expect(res.status, site).toBe(403);
     }
-    const sameOrigin = await localRequest(s.info.port, '/api/settings', { headers: { cookie, 'sec-fetch-site': 'same-origin' } });
+    const sameOrigin = await localRequest(s.info.port, '/api/settings', {
+      headers: { cookie, 'sec-fetch-site': 'same-origin' },
+    });
     expect(sameOrigin.status).toBe(200);
   });
 
   it('does not let a dashboard session mint launch tokens', async () => {
     const { s } = await start();
     const { cookie, csrf } = await login(s);
-    const res = await localRequest(s.info.port, '/api/session/launch-token', { method: 'POST', headers: { cookie, 'x-cs-csrf': csrf } });
+    const res = await localRequest(s.info.port, '/api/session/launch-token', {
+      method: 'POST',
+      headers: { cookie, 'x-cs-csrf': csrf },
+    });
     expect(res.status).toBe(403);
   });
 
@@ -109,7 +120,10 @@ describe('dashboard sessions', () => {
     expect(session.status).toBe(200);
     const csrf = (session.body as { csrf: string }).csrf;
 
-    const out = await localRequest(s2.info.port, '/api/session/logout', { method: 'POST', headers: { cookie, 'x-cs-csrf': csrf } });
+    const out = await localRequest(s2.info.port, '/api/session/logout', {
+      method: 'POST',
+      headers: { cookie, 'x-cs-csrf': csrf },
+    });
     expect(out.status).toBe(200);
     expect(out.headers['set-cookie']?.[0]).toContain('Max-Age=0');
     expect((await localRequest(s2.info.port, '/api/session', { headers: { cookie } })).status).toBe(401);
@@ -141,7 +155,13 @@ describe('dashboard assets', () => {
 
   it('never serves files outside the built dashboard', async () => {
     const { s } = await start();
-    for (const p of ['/../package.json', '/%2e%2e/%2e%2e/etc/passwd', '/assets/../../career-strike.db', '/service.json', '/missing.js']) {
+    for (const p of [
+      '/../package.json',
+      '/%2e%2e/%2e%2e/etc/passwd',
+      '/assets/../../career-strike.db',
+      '/service.json',
+      '/missing.js',
+    ]) {
       const res = await localRequest(s.info.port, p);
       expect(res.status, p).not.toBe(200);
       expect(String(JSON.stringify(res.body))).not.toContain('token');

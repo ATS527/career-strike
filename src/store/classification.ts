@@ -16,8 +16,10 @@ export interface ColumnClass {
   derivedFrom?: readonly string[];
 }
 
-const c = (cls: DataClass, derivedFrom?: readonly string[]): ColumnClass => (derivedFrom ? { class: cls, derivedFrom } : { class: cls });
-const all = (cls: DataClass, columns: readonly string[]): Record<string, ColumnClass> => Object.fromEntries(columns.map((k) => [k, c(cls)]));
+const c = (cls: DataClass, derivedFrom?: readonly string[]): ColumnClass =>
+  derivedFrom ? { class: cls, derivedFrom } : { class: cls };
+const all = (cls: DataClass, columns: readonly string[]): Record<string, ColumnClass> =>
+  Object.fromEntries(columns.map((k) => [k, c(cls)]));
 
 const PROFILE = ['profile_facts.value_json'];
 const IDENTITY = ['settings.value_json'];
@@ -36,7 +38,10 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
     // Per-row class is in the classification column; the column as a whole is the strictest row.
     value_json: c('SENSITIVE'),
   },
-  dashboard_sessions: { ...all('SECRET', ['id_hash', 'csrf_token']), ...all('INTERNAL', ['created_at', 'expires_at', 'last_seen_at']) },
+  dashboard_sessions: {
+    ...all('SECRET', ['id_hash', 'csrf_token']),
+    ...all('INTERNAL', ['created_at', 'expires_at', 'last_seen_at']),
+  },
   mcp_clients: {
     ...all('INTERNAL', ['id', 'name', 'scopes_json', 'created_at', 'last_seen_at', 'revoked_at']),
     token_hash: c('SECRET'),
@@ -44,34 +49,93 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
 
   jobs: {
     ...all('PUBLIC', [
-      'id', 'canonical_key', 'duplicate_key', 'duplicate_of', 'employer', 'title', 'location_text', 'remote_policy', 'employment_type',
-      'department', 'salary_json', 'description_json', 'description_text', 'apply_url', 'posting_url', 'published_at', 'status', 'unresolved_json', 'market_json',
+      'id',
+      'canonical_key',
+      'duplicate_key',
+      'duplicate_of',
+      'employer',
+      'title',
+      'location_text',
+      'remote_policy',
+      'employment_type',
+      'department',
+      'salary_json',
+      'description_json',
+      'description_text',
+      'apply_url',
+      'posting_url',
+      'published_at',
+      'status',
+      'unresolved_json',
+      'market_json',
     ]),
     ...all('INTERNAL', ['first_seen_at', 'last_seen_at', 'last_verified_at', 'closed_at', 'requirements_version']),
     requirements_json: c('PUBLIC', ['jobs.description_json']),
   },
-  job_sources: all('PUBLIC', ['job_id', 'source', 'board', 'source_job_id', 'source_url', 'fetched_at', 'content_hash']),
+  job_sources: all('PUBLIC', [
+    'job_id',
+    'source',
+    'board',
+    'source_job_id',
+    'source_url',
+    'fetched_at',
+    'content_hash',
+  ]),
   source_boards: {
     ...all('PUBLIC', ['id', 'source', 'board']),
-    ...all('INTERNAL', ['added_at', 'health', 'last_success_at', 'last_error', 'consecutive_failures', 'next_attempt_at']),
+    ...all('INTERNAL', [
+      'added_at',
+      'health',
+      'last_success_at',
+      'last_error',
+      'consecutive_failures',
+      'next_attempt_at',
+    ]),
   },
   job_user_state: { job_id: c('PUBLIC'), disposition: c('PERSONAL'), ...all('INTERNAL', ['updated_at', 'updated_by']) },
   tasks: {
-    ...all('INTERNAL', ['id', 'kind', 'dedupe_key', 'trigger', 'client', 'state', 'created_at', 'started_at', 'ended_at', 'heartbeat_at', 'owner_pid', 'cancel_requested', 'attempt', 'error']),
+    ...all('INTERNAL', [
+      'id',
+      'kind',
+      'dedupe_key',
+      'trigger',
+      'client',
+      'state',
+      'created_at',
+      'started_at',
+      'ended_at',
+      'heartbeat_at',
+      'owner_pid',
+      'cancel_requested',
+      'attempt',
+      'error',
+    ]),
     // Discovery tasks carry board ids and fetch counts only.
     ...all('PUBLIC', ['params_json', 'progress_json', 'result_json']),
   },
   schedule_slots: all('INTERNAL', ['schedule', 'slot', 'claimed_at', 'claimed_by', 'result']),
 
-  profile_facts: { ...all('INTERNAL', ['id', 'kind', 'source', 'approved', 'created_at', 'updated_at']), value_json: c('SENSITIVE'), source_ref: c('SENSITIVE') },
-  profile_evidence: { ...all('INTERNAL', ['id', 'kind', 'source', 'confirmed', 'created_at', 'updated_at']), value_json: c('SENSITIVE'), source_ref: c('SENSITIVE') },
+  profile_facts: {
+    ...all('INTERNAL', ['id', 'kind', 'source', 'approved', 'created_at', 'updated_at']),
+    value_json: c('SENSITIVE'),
+    source_ref: c('SENSITIVE'),
+  },
+  profile_evidence: {
+    ...all('INTERNAL', ['id', 'kind', 'source', 'confirmed', 'created_at', 'updated_at']),
+    value_json: c('SENSITIVE'),
+    source_ref: c('SENSITIVE'),
+  },
   documents: {
     ...all('INTERNAL', ['id', 'kind', 'mime', 'size_bytes', 'created_at']),
     // A filename often contains the candidate's name; the hash identifies a private file.
     ...all('SENSITIVE', ['filename', 'sha256']),
   },
 
-  applications: { ...all('INTERNAL', ['id', 'mode', 'current_version', 'created_at', 'updated_at']), job_id: c('PERSONAL'), state: c('PERSONAL') },
+  applications: {
+    ...all('INTERNAL', ['id', 'mode', 'current_version', 'created_at', 'updated_at']),
+    job_id: c('PERSONAL'),
+    state: c('PERSONAL'),
+  },
   application_versions: {
     ...all('INTERNAL', ['application_id', 'version', 'created_by', 'created_at']),
     payload_json: c('SENSITIVE', [...PROFILE, ...IDENTITY, 'documents.filename', 'jobs.description_json']),
@@ -96,7 +160,17 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
     evidence_json: c('PERSONAL'),
   },
   approvals: {
-    ...all('INTERNAL', ['id', 'application_id', 'version', 'issued_at', 'expires_at', 'state', 'state_reason', 'consumed_at', 'nonce']),
+    ...all('INTERNAL', [
+      'id',
+      'application_id',
+      'version',
+      'issued_at',
+      'expires_at',
+      'state',
+      'state_reason',
+      'consumed_at',
+      'nonce',
+    ]),
     payload_hash: c('SENSITIVE', ['application_versions.payload_hash']),
     identity_hash: c('SENSITIVE', IDENTITY),
     destination: c('PUBLIC'),
@@ -108,7 +182,10 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
     receipt_json: c('PERSONAL'),
   },
   practice_endpoint: all('INTERNAL', ['id', 'origin', 'created_at']),
-  follow_ups: { ...all('INTERNAL', ['id', 'application_id', 'due_at', 'status', 'created_at', 'closed_at']), note: c('PERSONAL') },
+  follow_ups: {
+    ...all('INTERNAL', ['id', 'application_id', 'due_at', 'status', 'created_at', 'closed_at']),
+    note: c('PERSONAL'),
+  },
   interviews: {
     ...all('INTERNAL', ['id', 'application_id', 'stage', 'format', 'scheduled_at', 'created_at', 'updated_at']),
     ...all('PERSONAL', ['notes', 'outcome']),
@@ -119,7 +196,18 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
   },
 
   disclosures: {
-    ...all('INTERNAL', ['id', 'client_id', 'provider', 'requested_json', 'approved_json', 'state', 'created_at', 'expires_at', 'decided_at', 'delivered_at']),
+    ...all('INTERNAL', [
+      'id',
+      'client_id',
+      'provider',
+      'requested_json',
+      'approved_json',
+      'state',
+      'created_at',
+      'expires_at',
+      'decided_at',
+      'delivered_at',
+    ]),
     // Written by the assistant; it may describe the candidate's plans.
     purpose: c('PERSONAL'),
     content_json: c('SENSITIVE', [...PROFILE, ...IDENTITY]),
@@ -128,9 +216,17 @@ export const CLASSIFICATION: Readonly<Record<string, Readonly<Record<string, Col
   strategy_proposals: {
     ...all('INTERNAL', ['id', 'rule', 'fingerprint', 'status', 'created_at', 'decided_at']),
     // Gap and role proposals name skills missing from the profile and roles that reached interview.
-    ...Object.fromEntries(['title', 'rationale', 'action_json'].map((k) => [k, c('SENSITIVE', [...PROFILE, 'applications.state', 'jobs.title'])])),
+    ...Object.fromEntries(
+      ['title', 'rationale', 'action_json'].map((k) => [
+        k,
+        c('SENSITIVE', [...PROFILE, 'applications.state', 'jobs.title']),
+      ]),
+    ),
   },
-  strategy_snapshots: { day: c('INTERNAL'), metrics_json: c('SENSITIVE', [...PROFILE, 'applications.state', 'application_events.to_state']) },
+  strategy_snapshots: {
+    day: c('INTERNAL'),
+    metrics_json: c('SENSITIVE', [...PROFILE, 'applications.state', 'application_events.to_state']),
+  },
 };
 
 const rank = (cls: DataClass): number => DATA_CLASSES.indexOf(cls);
@@ -153,7 +249,8 @@ export function derivationViolations(): string[] {
         const [t, col] = source.split('.') as [string, string];
         const sourceClass = classOf(t, col);
         if (!sourceClass) problems.push(`${table}.${column} is derived from unknown ${source}`);
-        else if (rank(spec.class) < rank(sourceClass)) problems.push(`${table}.${column} is ${spec.class} but derived from ${source} (${sourceClass})`);
+        else if (rank(spec.class) < rank(sourceClass))
+          problems.push(`${table}.${column} is ${spec.class} but derived from ${source} (${sourceClass})`);
       }
     }
   }

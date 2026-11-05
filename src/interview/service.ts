@@ -87,7 +87,12 @@ export class InterviewService {
     if (!app) throw new ApplicationError('NOT_FOUND', 'Application not found.');
     const job = getJob(this.db, app.jobId, candidateContext(this.db));
     if (!job) throw new ApplicationError('JOB_NOT_FOUND', 'The job for this application no longer exists.');
-    const topics = prepTopics({ title: job.title, employer: job.employer, requirements: job.requirements, fit: job.fitDetail ?? null });
+    const topics = prepTopics({
+      title: job.title,
+      employer: job.employer,
+      requirements: job.requirements,
+      fit: job.fitDetail ?? null,
+    });
     const stats = this.db
       .prepare(
         `SELECT topic_id, COUNT(*) AS n, MAX(practiced_at) AS last_at,
@@ -103,7 +108,9 @@ export class InterviewService {
       lastPracticedAt: byTopic.get(t.id)?.last_at ?? null,
     }));
     const sessions = (
-      this.db.prepare('SELECT * FROM practice_sessions WHERE application_id = ? ORDER BY practiced_at DESC LIMIT 50').all(applicationId) as {
+      this.db
+        .prepare('SELECT * FROM practice_sessions WHERE application_id = ? ORDER BY practiced_at DESC LIMIT 50')
+        .all(applicationId) as {
         id: string;
         topic_id: string;
         notes: string | null;
@@ -111,7 +118,14 @@ export class InterviewService {
         minutes: number | null;
         practiced_at: string;
       }[]
-    ).map((r) => ({ id: r.id, topicId: r.topic_id, notes: r.notes, confidence: r.confidence, minutes: r.minutes, practicedAt: r.practiced_at }));
+    ).map((r) => ({
+      id: r.id,
+      topicId: r.topic_id,
+      notes: r.notes,
+      confidence: r.confidence,
+      minutes: r.minutes,
+      practicedAt: r.practiced_at,
+    }));
     return {
       application: { id: app.id, state: app.state, title: job.title, employer: job.employer },
       topics: progress,
@@ -122,26 +136,48 @@ export class InterviewService {
 
   async logPractice(applicationId: string, input: z.infer<typeof PracticeInput>): Promise<void> {
     const { topics } = await this.prep(applicationId);
-    if (!topics.some((t) => t.id === input.topicId)) throw new ApplicationError('INVALID_CHANGE', 'That topic is not part of this preparation.');
+    if (!topics.some((t) => t.id === input.topicId))
+      throw new ApplicationError('INVALID_CHANGE', 'That topic is not part of this preparation.');
     this.db
-      .prepare('INSERT INTO practice_sessions (id, application_id, topic_id, notes, confidence, minutes, practiced_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(`prac_${randomBytes(9).toString('base64url')}`, applicationId, input.topicId, input.notes, input.confidence, input.minutes, new Date().toISOString());
+      .prepare(
+        'INSERT INTO practice_sessions (id, application_id, topic_id, notes, confidence, minutes, practiced_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(
+        `prac_${randomBytes(9).toString('base64url')}`,
+        applicationId,
+        input.topicId,
+        input.notes,
+        input.confidence,
+        input.minutes,
+        new Date().toISOString(),
+      );
   }
 
   async schedule(applicationId: string, input: z.infer<typeof InterviewInput>, actor: string): Promise<Interview> {
     const app = await this.applications.get(applicationId);
     if (!app) throw new ApplicationError('NOT_FOUND', 'Application not found.');
     if (!INTERVIEWABLE.has(app.state)) {
-      throw new ApplicationError('INVALID_CHANGE', 'Interviews can be recorded once the application has been submitted.');
+      throw new ApplicationError(
+        'INVALID_CHANGE',
+        'Interviews can be recorded once the application has been submitted.',
+      );
     }
     const id = `int_${randomBytes(9).toString('base64url')}`;
     const at = new Date().toISOString();
     this.db.transaction(() => {
       this.db
-        .prepare("INSERT INTO interviews (id, application_id, stage, format, scheduled_at, notes, outcome, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)")
+        .prepare(
+          "INSERT INTO interviews (id, application_id, stage, format, scheduled_at, notes, outcome, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+        )
         .run(id, applicationId, input.stage, input.format, input.scheduledAt, input.notes, at, at);
       // An interview being arranged is itself the evidence for the INTERVIEW stage.
-      if (app.state !== 'OFFER') this.applications.recordOutcome(applicationId, 'INTERVIEW', { occurredAt: at.slice(0, 10), note: `Interview arranged: ${input.stage}` }, actor);
+      if (app.state !== 'OFFER')
+        this.applications.recordOutcome(
+          applicationId,
+          'INTERVIEW',
+          { occurredAt: at.slice(0, 10), note: `Interview arranged: ${input.stage}` },
+          actor,
+        );
     })();
     return this.forApplication(applicationId).find((i) => i.id === id)!;
   }
@@ -151,12 +187,22 @@ export class InterviewService {
     if (!row) return null;
     this.db
       .prepare('UPDATE interviews SET outcome = ?, scheduled_at = ?, notes = ?, updated_at = ? WHERE id = ?')
-      .run(input.outcome ?? row.outcome, input.scheduledAt ?? row.scheduled_at, input.notes === undefined ? row.notes : input.notes, new Date().toISOString(), id);
+      .run(
+        input.outcome ?? row.outcome,
+        input.scheduledAt ?? row.scheduled_at,
+        input.notes === undefined ? row.notes : input.notes,
+        new Date().toISOString(),
+        id,
+      );
     return toInterview(this.db.prepare('SELECT * FROM interviews WHERE id = ?').get(id) as InterviewRow);
   }
 
   forApplication(applicationId: string): Interview[] {
-    return (this.db.prepare('SELECT * FROM interviews WHERE application_id = ? ORDER BY scheduled_at').all(applicationId) as InterviewRow[]).map(toInterview);
+    return (
+      this.db
+        .prepare('SELECT * FROM interviews WHERE application_id = ? ORDER BY scheduled_at')
+        .all(applicationId) as InterviewRow[]
+    ).map(toInterview);
   }
 
   /** Pending interviews from yesterday onwards, soonest first, with their job. */

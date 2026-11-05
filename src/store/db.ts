@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { type Migration, MIGRATIONS } from './migrations.js';
+import { MIGRATIONS, type Migration } from './migrations.js';
 
 export type Db = Database.Database;
 
@@ -62,8 +62,14 @@ export function schemaVersion(db: Db): number {
  * Apply pending migrations, each in its own IMMEDIATE transaction. When an existing database
  * (schema > 0) is about to change, a consistent copy is written to backupDir first.
  */
-export function migrate(db: Db, migrations: readonly Migration[] = MIGRATIONS, backupDir: string | null = null): number {
-  db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)');
+export function migrate(
+  db: Db,
+  migrations: readonly Migration[] = MIGRATIONS,
+  backupDir: string | null = null,
+): number {
+  db.exec(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)',
+  );
   const current = schemaVersion(db);
   const latest = latestKnownVersion(migrations);
   if (current > latest) {

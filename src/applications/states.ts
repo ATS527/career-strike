@@ -25,7 +25,13 @@ export const APPLICATION_STATES = [
 
 export type ApplicationState = (typeof APPLICATION_STATES)[number];
 
-const PRE_SUBMISSION: readonly ApplicationState[] = ['DRAFTED', 'NEEDS_INFORMATION', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED'];
+const PRE_SUBMISSION: readonly ApplicationState[] = [
+  'DRAFTED',
+  'NEEDS_INFORMATION',
+  'READY_FOR_REVIEW',
+  'APPROVED',
+  'BLOCKED',
+];
 
 const T: Readonly<Record<ApplicationState, readonly ApplicationState[]>> = {
   DRAFTED: ['READY_FOR_REVIEW', 'NEEDS_INFORMATION', 'BLOCKED', 'EXPIRED', 'DUPLICATE', 'CANCELLED'],
@@ -33,7 +39,15 @@ const T: Readonly<Record<ApplicationState, readonly ApplicationState[]>> = {
   // Back to DRAFTED = "save for later" or an edit; CANCELLED = rejected at review.
   READY_FOR_REVIEW: ['APPROVED', 'DRAFTED', 'BLOCKED', 'EXPIRED', 'DUPLICATE', 'CANCELLED'],
   // Manual and assisted applications need the candidate to submit on the employer's site.
-  APPROVED: ['SUBMISSION_IN_PROGRESS', 'NEEDS_MANUAL_ACTION', 'DRAFTED', 'BLOCKED', 'EXPIRED', 'DUPLICATE', 'CANCELLED'],
+  APPROVED: [
+    'SUBMISSION_IN_PROGRESS',
+    'NEEDS_MANUAL_ACTION',
+    'DRAFTED',
+    'BLOCKED',
+    'EXPIRED',
+    'DUPLICATE',
+    'CANCELLED',
+  ],
   NEEDS_MANUAL_ACTION: ['SUBMITTED_CONFIRMED', 'SUBMISSION_UNCONFIRMED', 'DRAFTED', 'EXPIRED', 'CANCELLED'],
   SUBMISSION_IN_PROGRESS: ['SUBMITTED_CONFIRMED', 'SUBMISSION_UNCONFIRMED', 'SUBMISSION_FAILED'],
   // Unconfirmed never becomes "submitted" without a receipt or the candidate's confirmation.
@@ -71,7 +85,9 @@ export function isPreSubmission(state: ApplicationState): boolean {
 
 /** States in which the candidate has really submitted, per a receipt or their own confirmation. */
 export function isSubmitted(state: ApplicationState): boolean {
-  return ['SUBMITTED_CONFIRMED', 'RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED', 'WITHDRAWN', 'CLOSED'].includes(state);
+  return ['SUBMITTED_CONFIRMED', 'RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED', 'WITHDRAWN', 'CLOSED'].includes(
+    state,
+  );
 }
 
 export class TransitionError extends Error {

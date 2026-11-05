@@ -15,12 +15,12 @@ These identities and board slugs were cross-checked on 2026-11-01 against the em
 careers site and its public ATS board. They are eligible for live certification, but are **not**
 live integrations until `verify-market` has successfully retrieved an explicitly British posting.
 
-| Employer | Official careers site | Public board | Target id |
-| --- | --- | --- | --- |
-| Monzo | [Careers](https://monzo.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/monzo) | `monzo-gb` |
-| Wayve | [Careers](https://wayve.ai/careers/) | [Ashby](https://jobs.ashbyhq.com/wayve) | `wayve-gb` |
-| ElevenLabs | [Careers](https://elevenlabs.io/careers) | [Ashby](https://jobs.ashbyhq.com/elevenlabs) | `elevenlabs-gb` |
-| Synthesia | [Careers](https://www.synthesia.io/careers) | [Ashby](https://jobs.ashbyhq.com/synthesia) | `synthesia-gb` |
+| Employer   | Official careers site                       | Public board                                         | Target id       |
+| ---------- | ------------------------------------------- | ---------------------------------------------------- | --------------- |
+| Monzo      | [Careers](https://monzo.com/careers)        | [Greenhouse](https://job-boards.greenhouse.io/monzo) | `monzo-gb`      |
+| Wayve      | [Careers](https://wayve.ai/careers/)        | [Ashby](https://jobs.ashbyhq.com/wayve)              | `wayve-gb`      |
+| ElevenLabs | [Careers](https://elevenlabs.io/careers)    | [Ashby](https://jobs.ashbyhq.com/elevenlabs)         | `elevenlabs-gb` |
+| Synthesia  | [Careers](https://www.synthesia.io/careers) | [Ashby](https://jobs.ashbyhq.com/synthesia)          | `synthesia-gb`  |
 
 On the review date the public board APIs returned complete listings with UK-located postings for
 all four employers (Monzo 51, Wayve 49, ElevenLabs 27, Synthesia 12). Monzo's careers page links
@@ -39,12 +39,12 @@ saves nothing.
 
 ## Marketplace policy
 
-| Source | Current capability | Career Strike behaviour |
-| --- | --- | --- |
-| [Find a job](https://www.jobs.service.gov.uk/) | `USER_DRIVEN_DISCOVERY` | Open the official government job-search service (Department for Work and Pensions); no automated job retrieval is claimed. |
-| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions) | `RESTRICTED` | No scraping or automated extraction; use the official site or a user-supplied listing. |
-| [Indeed UK](https://docs.indeed.com/legal-terms/developer-agreement) | `UNVERIFIED` | No integration until approved partner access and permitted display/reuse are confirmed. |
-| Reed, Totaljobs | `UNVERIFIED` | No automated retrieval; open the official site or add a verified official listing manually. |
+| Source                                                                | Current capability      | Career Strike behaviour                                                                                                    |
+| --------------------------------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| [Find a job](https://www.jobs.service.gov.uk/)                        | `USER_DRIVEN_DISCOVERY` | Open the official government job-search service (Department for Work and Pensions); no automated job retrieval is claimed. |
+| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions) | `RESTRICTED`            | No scraping or automated extraction; use the official site or a user-supplied listing.                                     |
+| [Indeed UK](https://docs.indeed.com/legal-terms/developer-agreement)  | `UNVERIFIED`            | No integration until approved partner access and permitted display/reuse are confirmed.                                    |
+| Reed, Totaljobs                                                       | `UNVERIFIED`            | No automated retrieval; open the official site or add a verified official listing manually.                                |
 
 The `UNVERIFIED` label means Career Strike has no recorded approved access; it does not imply a
 source is prohibited. A source can move only after its official access model, terms, fields,

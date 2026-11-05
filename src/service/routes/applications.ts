@@ -1,10 +1,15 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { ApplicationError, type ApplicationService } from '../../applications/service.js';
-import type { SubmissionEngine } from '../../applications/submission.js';
 import { TransitionError } from '../../applications/states.js';
-import { ACCEPTED_DOCUMENT_TYPES, DocumentError, type DocumentVault, MAX_DOCUMENT_BYTES } from '../../vault/documents.js';
+import type { SubmissionEngine } from '../../applications/submission.js';
 import { PersonalizationError, type PersonalizationService } from '../../personalization/service.js';
+import {
+  ACCEPTED_DOCUMENT_TYPES,
+  DocumentError,
+  type DocumentVault,
+  MAX_DOCUMENT_BYTES,
+} from '../../vault/documents.js';
 
 const ERROR_STATUS: Record<ApplicationError['code'], number> = {
   JOB_NOT_FOUND: 404,
@@ -28,7 +33,10 @@ const Update = z
     reason: z.string().trim().min(1).max(300).optional(),
     changes: z
       .object({
-        fields: z.array(z.object({ key: z.string().min(1).max(100), value: z.string().max(20_000).nullable() }).strict()).max(100).optional(),
+        fields: z
+          .array(z.object({ key: z.string().min(1).max(100), value: z.string().max(20_000).nullable() }).strict())
+          .max(100)
+          .optional(),
         coverLetter: z.string().max(20_000).nullable().optional(),
         resumeDocumentId: z.string().max(100).nullable().optional(),
         method: z.enum(['manual', 'assisted']).optional(),
@@ -37,12 +45,20 @@ const Update = z
   })
   .strict();
 const Approve = z
-  .object({ version: z.number().int().positive(), payloadHash: z.string().regex(/^[0-9a-f]{64}$/), acknowledgeWarnings: z.boolean().default(false) })
+  .object({
+    version: z.number().int().positive(),
+    payloadHash: z.string().regex(/^[0-9a-f]{64}$/),
+    acknowledgeWarnings: z.boolean().default(false),
+  })
   .strict();
 const Reject = z.object({ note: z.string().trim().max(500).nullable().default(null) }).strict();
 const isoDate = z.iso.datetime({ offset: true }).or(z.iso.date());
 const Confirm = z
-  .object({ reference: z.string().trim().max(200).nullable().default(null), submittedAt: isoDate, note: z.string().trim().max(2000).nullable().default(null) })
+  .object({
+    reference: z.string().trim().max(200).nullable().default(null),
+    submittedAt: isoDate,
+    note: z.string().trim().max(2000).nullable().default(null),
+  })
   .strict();
 const OutcomeBody = z
   .object({
@@ -51,7 +67,9 @@ const OutcomeBody = z
     note: z.string().trim().max(2000).nullable().default(null),
   })
   .strict();
-const FollowUpBody = z.object({ dueAt: isoDate, note: z.string().trim().min(1, 'Say what to follow up on').max(500) }).strict();
+const FollowUpBody = z
+  .object({ dueAt: isoDate, note: z.string().trim().min(1, 'Say what to follow up on').max(500) })
+  .strict();
 const VariantEdit = z.object({ content: z.string().trim().min(1).max(20_000) }).strict();
 
 function actorOf(req: FastifyRequest): string {
@@ -59,33 +77,56 @@ function actorOf(req: FastifyRequest): string {
 }
 
 function fail(reply: FastifyReply, err: unknown): FastifyReply {
-  if (err instanceof ApplicationError) return reply.code(ERROR_STATUS[err.code]).send({ error: err.code, message: err.message, details: err.details });
-  if (err instanceof TransitionError) return reply.code(409).send({ error: 'INVALID_TRANSITION', message: err.message });
-  if (err instanceof DocumentError) return reply.code(err.code === 'TOO_LARGE' ? 413 : 400).send({ error: err.code, message: err.message });
-  if (err instanceof PersonalizationError) return reply.code(err.code === 'NOT_FOUND' ? 404 : 400).send({ error: err.code, message: err.message });
+  if (err instanceof ApplicationError)
+    return reply.code(ERROR_STATUS[err.code]).send({ error: err.code, message: err.message, details: err.details });
+  if (err instanceof TransitionError)
+    return reply.code(409).send({ error: 'INVALID_TRANSITION', message: err.message });
+  if (err instanceof DocumentError)
+    return reply.code(err.code === 'TOO_LARGE' ? 413 : 400).send({ error: err.code, message: err.message });
+  if (err instanceof PersonalizationError)
+    return reply.code(err.code === 'NOT_FOUND' ? 404 : 400).send({ error: err.code, message: err.message });
   throw err;
 }
 
 export function registerApplicationRoutes(
   app: FastifyInstance,
-  deps: { applications: ApplicationService; vault: DocumentVault; submissions: SubmissionEngine; personalization: PersonalizationService },
+  deps: {
+    applications: ApplicationService;
+    vault: DocumentVault;
+    submissions: SubmissionEngine;
+    personalization: PersonalizationService;
+  },
 ): void {
   const { applications, vault, submissions, personalization } = deps;
 
   // ---- documents (SENSITIVE; never exposes vault paths) ----
 
-  app.addContentTypeParser(ACCEPTED_DOCUMENT_TYPES, { parseAs: 'buffer', bodyLimit: MAX_DOCUMENT_BYTES + 1 }, (_req, body, done) => done(null, body));
+  app.addContentTypeParser(
+    ACCEPTED_DOCUMENT_TYPES,
+    { parseAs: 'buffer', bodyLimit: MAX_DOCUMENT_BYTES + 1 },
+    (_req, body, done) => done(null, body),
+  );
 
   app.get('/api/documents', async () => ({ documents: vault.list() }));
 
   app.post('/api/documents', { bodyLimit: MAX_DOCUMENT_BYTES + 1 }, async (req, reply) => {
-    const mime = String(req.headers['content-type'] ?? '').split(';')[0]!.trim();
+    const mime = String(req.headers['content-type'] ?? '')
+      .split(';')[0]!
+      .trim();
     const kind = z.enum(['resume', 'cover_letter', 'other']).safeParse(req.headers['x-cs-document-kind']);
     const filename = decodeURIComponent(String(req.headers['x-cs-filename'] ?? 'document'));
-    if (!kind.success) return reply.code(400).send({ error: 'INVALID_KIND', message: 'Say whether this is a résumé, cover letter or other file.' });
-    if (!Buffer.isBuffer(req.body)) return reply.code(415).send({ error: 'UNSUPPORTED_TYPE', message: 'Upload a PDF, Word (.docx) or plain-text file.' });
+    if (!kind.success)
+      return reply
+        .code(400)
+        .send({ error: 'INVALID_KIND', message: 'Say whether this is a résumé, cover letter or other file.' });
+    if (!Buffer.isBuffer(req.body))
+      return reply
+        .code(415)
+        .send({ error: 'UNSUPPORTED_TYPE', message: 'Upload a PDF, Word (.docx) or plain-text file.' });
     try {
-      return reply.code(201).send({ document: vault.save({ kind: kind.data, filename, mime, bytes: req.body }, actorOf(req)) });
+      return reply
+        .code(201)
+        .send({ document: vault.save({ kind: kind.data, filename, mime, bytes: req.body }, actorOf(req)) });
     } catch (err) {
       return fail(reply, err);
     }
@@ -132,30 +173,53 @@ export function registerApplicationRoutes(
   // the server's principal policy; only the candidate's dashboard or local CLI can use them.
   app.get<{ Params: { id: string } }>('/api/applications/:id/personalization', async (req, reply) => {
     const application = await applications.get(req.params.id);
-    return application ? { personalization: personalization.view(req.params.id) } : reply.code(404).send({ error: 'NOT_FOUND' });
+    return application
+      ? { personalization: personalization.view(req.params.id) }
+      : reply.code(404).send({ error: 'NOT_FOUND' });
   });
 
   app.post<{ Params: { id: string } }>('/api/applications/:id/personalize', async (req, reply) => {
     try {
       const generated = personalization.generate(req.params.id);
-      applications.setPersonalization(req.params.id, generated.binding, generated.coverLetter, actorOf(req), 'Generated a tailored local document package');
-      return { application: await applications.get(req.params.id), personalization: personalization.view(req.params.id) };
+      applications.setPersonalization(
+        req.params.id,
+        generated.binding,
+        generated.coverLetter,
+        actorOf(req),
+        'Generated a tailored local document package',
+      );
+      return {
+        application: await applications.get(req.params.id),
+        personalization: personalization.view(req.params.id),
+      };
     } catch (err) {
       return fail(reply, err);
     }
   });
 
-  app.put<{ Params: { id: string; variantId: string } }>('/api/applications/:id/personalization/:variantId', async (req, reply) => {
-    const parsed = VariantEdit.safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
-    try {
-      const edited = personalization.edit(req.params.id, req.params.variantId, parsed.data.content);
-      applications.setPersonalization(req.params.id, edited.binding, edited.coverLetter, actorOf(req), 'Edited a tailored document package');
-      return { application: await applications.get(req.params.id), personalization: personalization.view(req.params.id) };
-    } catch (err) {
-      return fail(reply, err);
-    }
-  });
+  app.put<{ Params: { id: string; variantId: string } }>(
+    '/api/applications/:id/personalization/:variantId',
+    async (req, reply) => {
+      const parsed = VariantEdit.safeParse(req.body);
+      if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
+      try {
+        const edited = personalization.edit(req.params.id, req.params.variantId, parsed.data.content);
+        applications.setPersonalization(
+          req.params.id,
+          edited.binding,
+          edited.coverLetter,
+          actorOf(req),
+          'Edited a tailored document package',
+        );
+        return {
+          application: await applications.get(req.params.id),
+          personalization: personalization.view(req.params.id),
+        };
+      } catch (err) {
+        return fail(reply, err);
+      }
+    },
+  );
 
   app.put<{ Params: { id: string } }>('/api/applications/:id', async (req, reply) => {
     const parsed = Update.safeParse(req.body);
@@ -190,7 +254,9 @@ export function registerApplicationRoutes(
   const dashboardAction = (path: string, run: (id: string, body: unknown) => void | Promise<unknown>) =>
     app.post<{ Params: { id: string } }>(`/api/applications/:id/${path}`, async (req, reply) => {
       if (req.principal?.kind !== 'dashboard') {
-        return reply.code(403).send({ error: 'REQUIRES_DASHBOARD', message: 'Only you can do this, in the Career Strike dashboard.' });
+        return reply
+          .code(403)
+          .send({ error: 'REQUIRES_DASHBOARD', message: 'Only you can do this, in the Career Strike dashboard.' });
       }
       try {
         await run(req.params.id, req.body);
@@ -211,7 +277,10 @@ export function registerApplicationRoutes(
 
   app.post('/api/practice/endpoint', async (req, reply) => {
     if (req.principal?.kind !== 'local-client') return reply.code(403).send({ error: 'LOCAL_CLIENT_REQUIRED' });
-    const body = z.object({ origin: z.string().max(100) }).strict().safeParse(req.body);
+    const body = z
+      .object({ origin: z.string().max(100) })
+      .strict()
+      .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
     try {
       return { origin: submissions.setPracticeOrigin(body.data.origin) };
@@ -227,8 +296,12 @@ export function registerApplicationRoutes(
       return fail(reply, err);
     }
   });
-  dashboardAction('confirm-submitted', (id, body) => applications.confirmSubmitted(id, Confirm.parse(body), 'dashboard'));
-  dashboardAction('mark-unconfirmed', (id, body) => applications.markUnconfirmed(id, Reject.parse(body ?? {}).note, 'dashboard'));
+  dashboardAction('confirm-submitted', (id, body) =>
+    applications.confirmSubmitted(id, Confirm.parse(body), 'dashboard'),
+  );
+  dashboardAction('mark-unconfirmed', (id, body) =>
+    applications.markUnconfirmed(id, Reject.parse(body ?? {}).note, 'dashboard'),
+  );
   dashboardAction('outcome', (id, body) => {
     const o = OutcomeBody.parse(body);
     applications.recordOutcome(id, o.outcome, { occurredAt: o.occurredAt, note: o.note }, 'dashboard');
@@ -242,7 +315,9 @@ export function registerApplicationRoutes(
     const parsed = FollowUpBody.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
     try {
-      return reply.code(201).send({ followUp: applications.addFollowUp(req.params.id, parsed.data.dueAt, parsed.data.note, actorOf(req)) });
+      return reply
+        .code(201)
+        .send({ followUp: applications.addFollowUp(req.params.id, parsed.data.dueAt, parsed.data.note, actorOf(req)) });
     } catch (err) {
       return fail(reply, err);
     }
@@ -253,7 +328,8 @@ export function registerApplicationRoutes(
     ['dismiss', 'DISMISSED'],
   ] as const) {
     app.post<{ Params: { id: string } }>(`/api/follow-ups/:id/${path}`, async (req, reply) => {
-      if (!applications.closeFollowUp(req.params.id, status, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
+      if (!applications.closeFollowUp(req.params.id, status, actorOf(req)))
+        return reply.code(404).send({ error: 'NOT_FOUND' });
       return { ok: true };
     });
   }
@@ -261,7 +337,10 @@ export function registerApplicationRoutes(
   app.post<{ Params: { id: string } }>('/api/applications/:id/approve', async (req, reply) => {
     // A person must approve, in the dashboard. Local clients and AI hosts cannot.
     if (req.principal?.kind !== 'dashboard') {
-      return reply.code(403).send({ error: 'APPROVAL_REQUIRES_DASHBOARD', message: 'Applications can only be approved in the Career Strike dashboard.' });
+      return reply.code(403).send({
+        error: 'APPROVAL_REQUIRES_DASHBOARD',
+        message: 'Applications can only be approved in the Career Strike dashboard.',
+      });
     }
     const parsed = Approve.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });

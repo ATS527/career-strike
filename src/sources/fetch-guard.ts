@@ -1,7 +1,11 @@
 import { SourceError } from './types.js';
 
 // Career Strike only ever contacts these hosts on its own. Each is a documented public job-board API.
-export const ALLOWED_HOSTS: ReadonlySet<string> = new Set(['boards-api.greenhouse.io', 'api.lever.co', 'api.ashbyhq.com']);
+export const ALLOWED_HOSTS: ReadonlySet<string> = new Set([
+  'boards-api.greenhouse.io',
+  'api.lever.co',
+  'api.ashbyhq.com',
+]);
 
 const MAX_BYTES = 20 * 1024 * 1024;
 const TIMEOUT_MS = 20_000;
@@ -69,18 +73,31 @@ export async function guardedGetJson(raw: string, opts: GuardOptions = {}): Prom
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
   let res: Response;
   try {
-    res = await fetchImpl(url.href, { method: 'GET', redirect: 'manual', signal, headers: { accept: 'application/json', 'user-agent': USER_AGENT } });
+    res = await fetchImpl(url.href, {
+      method: 'GET',
+      redirect: 'manual',
+      signal,
+      headers: { accept: 'application/json', 'user-agent': USER_AGENT },
+    });
   } catch (err) {
     if (opts.signal?.aborted) throw err;
-    throw new SourceError('outage', `Could not reach ${url.hostname}: ${err instanceof Error ? err.message : String(err)}`);
+    throw new SourceError(
+      'outage',
+      `Could not reach ${url.hostname}: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
-  if (res.status >= 300 && res.status < 400) throw new BlockedUrlError(`Refusing to follow a redirect from ${url.hostname}`);
+  if (res.status >= 300 && res.status < 400)
+    throw new BlockedUrlError(`Refusing to follow a redirect from ${url.hostname}`);
   if (res.status === 404) throw new SourceError('not_found', `${url.hostname} reports that this board does not exist`);
   if (res.status === 429 || res.status === 503) {
     const retryAfter = retryAfterMs(res.headers.get('retry-after'));
     if (res.status === 429 || retryAfter !== null) {
       const until = retryAfter === null ? '' : ` for ${Math.ceil(retryAfter / 60_000)} min`;
-      throw new SourceError('rate_limited', `${url.hostname} asked Career Strike to slow down${until} (HTTP ${res.status})`, retryAfter);
+      throw new SourceError(
+        'rate_limited',
+        `${url.hostname} asked Career Strike to slow down${until} (HTTP ${res.status})`,
+        retryAfter,
+      );
     }
   }
   if (!res.ok) throw new SourceError('outage', `${url.hostname} returned HTTP ${res.status}`);

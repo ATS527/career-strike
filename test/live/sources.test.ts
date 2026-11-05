@@ -32,11 +32,15 @@ describe.each(BOARDS)('$source live board $board', ({ source, board, applyHost }
     const db = openDb(path.join(tempDir('cs-live-'), 'cs.db'));
     const result = syncBoard(db, source, board, postings);
     expect(result.added).toBe(new Set(postings.map((p) => p.sourceJobId)).size);
-    const { jobs } = listJobs(db, JobQuery.parse({ status: 'OPEN', includeDuplicates: true, limit: 200 }), { excludedEmployers: [] });
+    const { jobs } = listJobs(db, JobQuery.parse({ status: 'OPEN', includeDuplicates: true, limit: 200 }), {
+      excludedEmployers: [],
+    });
     expect(jobs.length).toBeGreaterThan(0);
     const detail = getJob(db, jobs[0]!.id, { excludedEmployers: [] })!;
     expect(detail.sourceRecords[0]).toMatchObject({ source, board });
     expect(detail.lastVerifiedAt).not.toBeNull();
-    console.log(`${source}/${board}: ${postings.length} postings, ${postings.filter((p) => p.salary).length} with published salary`);
+    console.log(
+      `${source}/${board}: ${postings.length} postings, ${postings.filter((p) => p.salary).length} with published salary`,
+    );
   });
 });

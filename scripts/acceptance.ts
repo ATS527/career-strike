@@ -7,7 +7,15 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { type Criterion, type Kind, kindOfTestFile, type Registry, RegistrySchema, serializeRegistry, validateRegistry } from './registry.js';
+import {
+  type Criterion,
+  type Kind,
+  kindOfTestFile,
+  type Registry,
+  RegistrySchema,
+  serializeRegistry,
+  validateRegistry,
+} from './registry.js';
 
 const REGISTRY = 'acceptance/registry.json';
 
@@ -34,8 +42,14 @@ function playwrightResults(suites: PlaywrightSuite[]): FileResult[] {
       const entry = byFile.get(f) ?? { name: path.resolve('test/e2e', f), status: 'passed', assertionResults: [] };
       // A skipped test proved nothing: it never counts as evidence.
       const skipped = (spec.tests ?? []).every((t) => t.status === 'skipped');
-      const errors = (spec.tests ?? []).flatMap((t) => (t.results ?? []).map((r) => r.error?.message).filter((m): m is string => !!m));
-      entry.assertionResults.push({ fullName: spec.title, status: skipped ? 'skipped' : spec.ok ? 'passed' : 'failed', failureMessages: errors });
+      const errors = (spec.tests ?? []).flatMap((t) =>
+        (t.results ?? []).map((r) => r.error?.message).filter((m): m is string => !!m),
+      );
+      entry.assertionResults.push({
+        fullName: spec.title,
+        status: skipped ? 'skipped' : spec.ok ? 'passed' : 'failed',
+        failureMessages: errors,
+      });
       byFile.set(f, entry);
     }
     for (const child of suite.suites ?? []) visit(child, f);
@@ -52,7 +66,6 @@ function playwrightResults(suites: PlaywrightSuite[]): FileResult[] {
 function git(...args: string[]): string {
   return execFileSync('git', args, { encoding: 'utf8' }).trim();
 }
-
 
 function main(): number {
   if (git('status', '--porcelain') !== '') {
@@ -123,21 +136,44 @@ function main(): number {
       failures += 1;
       const first = failed[0]?.assertionResults.find((a) => a.status === 'failed');
       // Keep the first line of the error so a failure can be diagnosed from the registry alone.
-      const reason = (first?.failureMessages?.[0] ?? '').replace(/\u001b\[[0-9;]*m/g, '').split('\n').find((l) => l.trim() !== '')?.trim().slice(0, 240);
+      const reason = (first?.failureMessages?.[0] ?? '')
+        .replace(/\u001b\[[0-9;]*m/g, '')
+        .split('\n')
+        .find((l) => l.trim() !== '')
+        ?.trim()
+        .slice(0, 240);
       const cause =
         missing.length > 0
           ? `No result for ${missing.join(', ')}`
           : `${path.relative(process.cwd(), failed[0]!.name)}: ${first?.fullName ?? 'file failed'}${reason ? ` — ${reason}` : ''}`;
-      return { ...c, status: 'FAIL', failureCause: cause, evidence: { revision, command, exitCode: 1, at, kinds: kindsOf(c.tests) } };
+      return {
+        ...c,
+        status: 'FAIL',
+        failureCause: cause,
+        evidence: { revision, command, exitCode: 1, at, kinds: kindsOf(c.tests) },
+      };
     }
     const kinds = kindsOf(c.tests);
     if (c.requiredEvidence.includes('manual') && c.evidence?.kinds.includes('manual')) {
       kinds.push('manual');
     }
     const lacking = c.requiredEvidence.filter((k) => !kinds.includes(k));
-    const evidence = { revision, command, exitCode: 0, at, kinds, ...(c.evidence?.notes ? { notes: c.evidence.notes } : {}) };
+    const evidence = {
+      revision,
+      command,
+      exitCode: 0,
+      at,
+      kinds,
+      ...(c.evidence?.notes ? { notes: c.evidence.notes } : {}),
+    };
     if (lacking.length > 0) {
-      return { ...c, status: 'IN_PROGRESS', failureCause: null, evidence, nextAction: `Needs ${lacking.join(', ')} evidence` };
+      return {
+        ...c,
+        status: 'IN_PROGRESS',
+        failureCause: null,
+        evidence,
+        nextAction: `Needs ${lacking.join(', ')} evidence`,
+      };
     }
     if (c.heldBecause) return { ...c, status: 'IN_PROGRESS', failureCause: null, evidence };
     return { ...c, status: 'PASS', failureCause: null, evidence, nextAction: 'Re-verify on change' };
@@ -151,7 +187,8 @@ function main(): number {
   }
   fs.writeFileSync(REGISTRY, serializeRegistry(next));
   const selectedIds = new Set(selected.map((c) => c.id));
-  for (const c of updated.filter((x) => selectedIds.has(x.id))) console.log(`${c.status.padEnd(12)} ${c.id}  ${c.failureCause ?? ''}`);
+  for (const c of updated.filter((x) => selectedIds.has(x.id)))
+    console.log(`${c.status.padEnd(12)} ${c.id}  ${c.failureCause ?? ''}`);
   console.log(`Evidence recorded at ${revision.slice(0, 12)}.`);
   return failures > 0 ? 1 : 0;
 }

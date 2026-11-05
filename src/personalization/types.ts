@@ -1,4 +1,10 @@
-export type EvidenceClassification = 'STRONG_MATCH' | 'PARTIAL_MATCH' | 'TRANSFERABLE_EXPERIENCE' | 'MISSING' | 'UNVERIFIED' | 'NOT_APPLICABLE';
+export type EvidenceClassification =
+  | 'STRONG_MATCH'
+  | 'PARTIAL_MATCH'
+  | 'TRANSFERABLE_EXPERIENCE'
+  | 'MISSING'
+  | 'UNVERIFIED'
+  | 'NOT_APPLICABLE';
 
 export interface RequirementMatch {
   requirement: string;

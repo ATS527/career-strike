@@ -85,7 +85,10 @@ export class StrategyProposals {
     const preferred = ((settings['search.preferredRoles'] as string[]) ?? []).map((r) => r.toLowerCase());
     const counts = new Map<string, number>();
     for (const t of interviewTitles) {
-      const family = t.replace(/\b(senior|sr\.?|junior|jr\.?|staff|principal|lead|ii|iii)\b/gi, '').replace(/\s+/g, ' ').trim();
+      const family = t
+        .replace(/\b(senior|sr\.?|junior|jr\.?|staff|principal|lead|ii|iii)\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
       counts.set(family, (counts.get(family) ?? 0) + 1);
     }
     for (const [family, n] of counts) {
@@ -103,13 +106,25 @@ export class StrategyProposals {
     );
     const at = new Date().toISOString();
     for (const c of candidates) {
-      const fingerprint = createHash('sha256').update(`${c.rule}:${JSON.stringify(c.action)}`).digest('hex');
-      insert.run(`prop_${randomBytes(9).toString('base64url')}`, c.rule, fingerprint, c.title, c.rationale, JSON.stringify(c.action), at);
+      const fingerprint = createHash('sha256')
+        .update(`${c.rule}:${JSON.stringify(c.action)}`)
+        .digest('hex');
+      insert.run(
+        `prop_${randomBytes(9).toString('base64url')}`,
+        c.rule,
+        fingerprint,
+        c.title,
+        c.rationale,
+        JSON.stringify(c.action),
+        at,
+      );
     }
   }
 
   list(): Proposal[] {
-    return (this.db.prepare('SELECT * FROM strategy_proposals ORDER BY created_at DESC, rowid DESC').all() as Row[]).map(toProposal);
+    return (
+      this.db.prepare('SELECT * FROM strategy_proposals ORDER BY created_at DESC, rowid DESC').all() as Row[]
+    ).map(toProposal);
   }
 
   /** Apply an accepted proposal. The action is re-validated against the allowlist at this point. */
@@ -123,27 +138,55 @@ export class StrategyProposals {
     this.db.transaction(() => {
       if (decision === 'ACCEPTED') {
         const a = parsed.data;
-        if (a.type === 'set-monitoring') setSetting(this.db, 'monitoring.discoveryIntervalHours', a.hours, 'strategy-proposal');
+        if (a.type === 'set-monitoring')
+          setSetting(this.db, 'monitoring.discoveryIntervalHours', a.hours, 'strategy-proposal');
         if (a.type === 'add-preferred-role') {
           const roles = (getSettings(this.db)['search.preferredRoles'] as string[]) ?? [];
-          if (!roles.includes(a.role)) setSetting(this.db, 'search.preferredRoles', [...roles, a.role], 'strategy-proposal');
+          if (!roles.includes(a.role))
+            setSetting(this.db, 'search.preferredRoles', [...roles, a.role], 'strategy-proposal');
         }
         // study-skill changes no setting: it becomes part of the learning history.
       }
       this.db.prepare('UPDATE strategy_proposals SET status = ?, decided_at = ? WHERE id = ?').run(decision, at, id);
-      this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, 'dashboard', `strategy.${decision.toLowerCase()}`, id);
+      this.db
+        .prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)')
+        .run(at, 'dashboard', `strategy.${decision.toLowerCase()}`, id);
     })();
     return toProposal(this.db.prepare('SELECT * FROM strategy_proposals WHERE id = ?').get(id) as Row);
   }
 
   snapshot(m: Metrics): void {
-    this.db.prepare('INSERT OR REPLACE INTO strategy_snapshots (day, metrics_json) VALUES (?, ?)').run(m.generatedAt.slice(0, 10), JSON.stringify({ totals: m.totals, responseRate: m.responseRate, discoveryHealth: m.discoveryHealth }));
+    this.db
+      .prepare('INSERT OR REPLACE INTO strategy_snapshots (day, metrics_json) VALUES (?, ?)')
+      .run(
+        m.generatedAt.slice(0, 10),
+        JSON.stringify({ totals: m.totals, responseRate: m.responseRate, discoveryHealth: m.discoveryHealth }),
+      );
   }
 
-  history(): { day: string; totals: Metrics['totals']; responseRate: Metrics['responseRate']; discoveryHealth: Metrics['discoveryHealth'] | null }[] {
-    return (this.db.prepare('SELECT * FROM strategy_snapshots ORDER BY day DESC LIMIT 60').all() as { day: string; metrics_json: string }[]).map((r) => {
-      const metrics = JSON.parse(r.metrics_json) as { totals: Metrics['totals']; responseRate: Metrics['responseRate']; discoveryHealth?: Metrics['discoveryHealth'] };
-      return { day: r.day, totals: metrics.totals, responseRate: metrics.responseRate, discoveryHealth: metrics.discoveryHealth ?? null };
+  history(): {
+    day: string;
+    totals: Metrics['totals'];
+    responseRate: Metrics['responseRate'];
+    discoveryHealth: Metrics['discoveryHealth'] | null;
+  }[] {
+    return (
+      this.db.prepare('SELECT * FROM strategy_snapshots ORDER BY day DESC LIMIT 60').all() as {
+        day: string;
+        metrics_json: string;
+      }[]
+    ).map((r) => {
+      const metrics = JSON.parse(r.metrics_json) as {
+        totals: Metrics['totals'];
+        responseRate: Metrics['responseRate'];
+        discoveryHealth?: Metrics['discoveryHealth'];
+      };
+      return {
+        day: r.day,
+        totals: metrics.totals,
+        responseRate: metrics.responseRate,
+        discoveryHealth: metrics.discoveryHealth ?? null,
+      };
     });
   }
 }

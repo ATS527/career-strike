@@ -55,7 +55,9 @@ export class Scheduler {
     const started: string[] = [];
     const skipped: string[] = [];
     for (const board of this.discovery.listBoards()) {
-      const next = this.db.prepare('SELECT next_attempt_at FROM source_boards WHERE id = ?').pluck().get(board.id) as string | null;
+      const next = this.db.prepare('SELECT next_attempt_at FROM source_boards WHERE id = ?').pluck().get(board.id) as
+        | string
+        | null;
       if (next && Date.parse(next) > now) {
         skipped.push(board.id);
         continue;
@@ -63,7 +65,9 @@ export class Scheduler {
       const run = this.discovery.discover(board.id, 'schedule', 'scheduler');
       if (run?.created) started.push(run.task.id);
     }
-    this.db.prepare('UPDATE schedule_slots SET result = ? WHERE schedule = ? AND slot = ?').run(JSON.stringify({ started, skipped }), DISCOVERY_SCHEDULE, slot);
+    this.db
+      .prepare('UPDATE schedule_slots SET result = ? WHERE schedule = ? AND slot = ?')
+      .run(JSON.stringify({ started, skipped }), DISCOVERY_SCHEDULE, slot);
     this.logger.info('scheduler.slot', { slot, started: started.length, skipped: skipped.length });
     return { claimed: true, started, skipped };
   }
@@ -87,7 +91,10 @@ export class Scheduler {
 
   status(): ScheduleStatus[] {
     const interval = this.intervalMs();
-    const last = this.db.prepare('SELECT MAX(slot) FROM schedule_slots WHERE schedule = ?').pluck().get(DISCOVERY_SCHEDULE) as string | null;
+    const last = this.db
+      .prepare('SELECT MAX(slot) FROM schedule_slots WHERE schedule = ?')
+      .pluck()
+      .get(DISCOVERY_SCHEDULE) as string | null;
     const now = this.now();
     return [
       {

@@ -77,7 +77,10 @@ function releasesUrl(opts: ReleaseSourceOptions): string {
   const override = opts.releasesUrl ?? process.env.CAREER_STRIKE_RELEASES_URL;
   if (override) return override;
   const repository = releaseRepository(opts);
-  if (!repository) throw new UpdateError('This copy of Career Strike does not record where its releases are published (it was not built from a GitHub checkout). Install a release package to get updates.');
+  if (!repository)
+    throw new UpdateError(
+      'This copy of Career Strike does not record where its releases are published (it was not built from a GitHub checkout). Install a release package to get updates.',
+    );
   return `https://api.github.com/repos/${repository}/releases`;
 }
 
@@ -91,7 +94,13 @@ function checkUrl(raw: string, overridden: boolean): URL {
   }
   const loopback = url.protocol === 'http:' && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
   if (overridden && loopback) return url;
-  if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443') || !UPDATE_HOSTS.has(url.hostname)) {
+  if (
+    url.protocol !== 'https:' ||
+    url.username ||
+    url.password ||
+    (url.port && url.port !== '443') ||
+    !UPDATE_HOSTS.has(url.hostname)
+  ) {
     throw new UpdateError(`Refusing to contact ${url.host} for updates.`);
   }
   return url;
@@ -120,7 +129,8 @@ async function get(raw: string, accept: string, opts: ReleaseSourceOptions): Pro
       url = checkUrl(new URL(location, url).href, overridden);
       continue;
     }
-    if (res.status === 403 || res.status === 429) throw new UpdateError(`${url.hostname} is limiting requests right now (HTTP ${res.status}). Try again later.`);
+    if (res.status === 403 || res.status === 429)
+      throw new UpdateError(`${url.hostname} is limiting requests right now (HTTP ${res.status}). Try again later.`);
     if (!res.ok) throw new UpdateError(`${url.hostname} returned HTTP ${res.status}.`);
     return res;
   }
@@ -191,7 +201,11 @@ export async function latestRelease(opts: ReleaseSourceOptions = {}): Promise<Re
  * Download a release package into `dir`, check it against the published SHA-256 and confirm the
  * archive is the Career Strike version it claims to be. Returns the verified file path.
  */
-export async function downloadRelease(release: Release, dir: string, opts: ReleaseSourceOptions = {}): Promise<{ file: string; sha256: string }> {
+export async function downloadRelease(
+  release: Release,
+  dir: string,
+  opts: ReleaseSourceOptions = {},
+): Promise<{ file: string; sha256: string }> {
   const [sumBuffer, body] = await Promise.all([
     get(release.checksumUrl, 'application/octet-stream', opts).then((res) => readLimited(res, 4096)),
     get(release.packageUrl, 'application/octet-stream', opts).then((res) => readLimited(res, MAX_PACKAGE_BYTES)),
@@ -201,7 +215,10 @@ export async function downloadRelease(release: Release, dir: string, opts: Relea
   if (!expected) throw new UpdateError('The published checksum could not be read.');
 
   const actual = createHash('sha256').update(body).digest('hex');
-  if (actual !== expected) throw new UpdateError(`The download does not match its published checksum (expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…). Nothing was installed.`);
+  if (actual !== expected)
+    throw new UpdateError(
+      `The download does not match its published checksum (expected ${expected.slice(0, 12)}…, got ${actual.slice(0, 12)}…). Nothing was installed.`,
+    );
 
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const file = path.join(dir, `career-strike-${release.version}.tgz`);

@@ -3,7 +3,16 @@ import { z } from 'zod';
 // The acceptance registry is the single completion matrix. These rules make an
 // unevidenced PASS impossible to commit.
 export const EvidenceKind = z.enum(['unit', 'integration', 'e2e', 'live-source', 'real-host', 'manual', 'ci']);
-export const CriterionStatus = z.enum(['NOT_STARTED', 'IN_PROGRESS', 'VERIFYING', 'PASS', 'FAIL', 'FLAKY', 'BLOCKED', 'NOT_APPLICABLE']);
+export const CriterionStatus = z.enum([
+  'NOT_STARTED',
+  'IN_PROGRESS',
+  'VERIFYING',
+  'PASS',
+  'FAIL',
+  'FLAKY',
+  'BLOCKED',
+  'NOT_APPLICABLE',
+]);
 
 const Evidence = z.object({
   revision: z.string().regex(/^[0-9a-f]{40}$/),
@@ -64,7 +73,8 @@ export function validateRegistry(raw: unknown, fileExists: (p: string) => boolea
         }
       }
     }
-    if (['FAIL', 'FLAKY', 'BLOCKED'].includes(c.status) && !c.failureCause) problems.push(`${c.id}: ${c.status} without failure cause`);
+    if (['FAIL', 'FLAKY', 'BLOCKED'].includes(c.status) && !c.failureCause)
+      problems.push(`${c.id}: ${c.status} without failure cause`);
     if (c.status !== 'NOT_STARTED' && c.status !== 'NOT_APPLICABLE') {
       for (const t of c.tests) if (!fileExists(t)) problems.push(`${c.id}: missing test file ${t}`);
     }

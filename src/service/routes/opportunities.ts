@@ -1,18 +1,34 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
 import { candidateContext } from '../../career/context.js';
+import { type Discovery, DuplicateBoardError } from '../../career/discovery.js';
+import {
+  addEvidence,
+  confirmEvidence,
+  deleteEvidence,
+  listEvidence,
+  NewEvidence,
+  updateEvidence,
+} from '../../career/evidence.js';
 import { addManualJob, getJob, JobQuery, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
-import { addFact, approveAllFacts, approveFact, deleteFact, listFacts, NewFact, suggestSkills, updateFact } from '../../career/profile.js';
-import { extractDocumentText } from '../../vault/text-extraction.js';
-import { addEvidence, confirmEvidence, deleteEvidence, listEvidence, NewEvidence, updateEvidence } from '../../career/evidence.js';
 import { importLinkedInExport, parseLinkedInArchive, parseLinkedInCsvText } from '../../career/linkedin-export.js';
-import type { Db } from '../../store/db.js';
-import { getSettings } from '../../store/settings.js';
+import {
+  addFact,
+  approveAllFacts,
+  approveFact,
+  deleteFact,
+  listFacts,
+  NewFact,
+  suggestSkills,
+  updateFact,
+} from '../../career/profile.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
+import type { Db } from '../../store/db.js';
+import { getSettings } from '../../store/settings.js';
 import type { TaskSupervisor } from '../../supervisor/tasks.js';
 import type { DocumentVault } from '../../vault/documents.js';
+import { extractDocumentText } from '../../vault/text-extraction.js';
 
 const AddBoard = z.union([
   z.object({ source: z.enum(['greenhouse', 'lever', 'ashby']), board: z.string().trim().min(1).max(100) }).strict(),
@@ -32,10 +48,14 @@ function invalid(reply: FastifyReply, issues: z.core.$ZodIssue[]): FastifyReply 
   return reply.code(400).send({ error: 'INVALID_INPUT', issues });
 }
 
-export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; discovery: Discovery; tasks: TaskSupervisor; vault: DocumentVault }): void {
+export function registerOpportunityRoutes(
+  app: FastifyInstance,
+  deps: { db: Db; discovery: Discovery; tasks: TaskSupervisor; vault: DocumentVault },
+): void {
   const { db, discovery, tasks, vault } = deps;
   const ctx = () => candidateContext(db);
-  const practiceOrigin = (): string | null => (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
+  const practiceOrigin = (): string | null =>
+    (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
 
   // ---- monitored boards ----
 
@@ -48,7 +68,8 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
     if (!target) {
       return reply.code(400).send({
         error: 'UNRECOGNISED_BOARD_URL',
-        message: 'Paste a Greenhouse, Lever or Ashby careers page link, e.g. https://jobs.lever.co/company (or a practice board link from career-strike practice)',
+        message:
+          'Paste a Greenhouse, Lever or Ashby careers page link, e.g. https://jobs.lever.co/company (or a practice board link from career-strike practice)',
       });
     }
     try {
@@ -56,7 +77,8 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
       const run = discovery.discover(board.id, 'board-added', actorOf(req));
       return reply.code(201).send({ board: discovery.getBoard(board.id), task: run?.task ?? null });
     } catch (err) {
-      if (err instanceof DuplicateBoardError) return reply.code(409).send({ error: 'ALREADY_MONITORED', message: err.message });
+      if (err instanceof DuplicateBoardError)
+        return reply.code(409).send({ error: 'ALREADY_MONITORED', message: err.message });
       if (err instanceof SourceError) return reply.code(400).send({ error: 'INVALID_BOARD', message: err.message });
       throw err;
     }
@@ -111,7 +133,8 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
   app.put<{ Params: { id: string } }>('/api/jobs/:id/disposition', async (req, reply) => {
     const parsed = DispositionBody.safeParse(req.body);
     if (!parsed.success) return invalid(reply, parsed.error.issues);
-    if (!setDisposition(db, req.params.id, parsed.data.disposition, actorOf(req))) return reply.code(404).send({ error: 'NOT_FOUND' });
+    if (!setDisposition(db, req.params.id, parsed.data.disposition, actorOf(req)))
+      return reply.code(404).send({ error: 'NOT_FOUND' });
     return { job: getJob(db, req.params.id, ctx()) };
   });
 
@@ -141,7 +164,11 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
       if (!bytes) return reply.code(404).send({ error: 'NOT_FOUND' });
       const extracted = extractDocumentText(doc.mime, bytes);
       if (!extracted || !extracted.trim()) {
-        return reply.code(400).send({ error: 'UNSUPPORTED_TYPE', message: 'Skills can be suggested from plain-text, PDF and Word documents only. This document has no readable text.' });
+        return reply.code(400).send({
+          error: 'UNSUPPORTED_TYPE',
+          message:
+            'Skills can be suggested from plain-text, PDF and Word documents only. This document has no readable text.',
+        });
       }
       text = extracted;
     }
@@ -155,7 +182,8 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
   });
 
   app.post('/api/profile/facts/approve-all', async (req) => {
-    const kind = typeof (req.body as { kind?: unknown })?.kind === 'string' ? (req.body as { kind: string }).kind : undefined;
+    const kind =
+      typeof (req.body as { kind?: unknown })?.kind === 'string' ? (req.body as { kind: string }).kind : undefined;
     const count = approveAllFacts(db, actorOf(req), kind as any);
     return { count };
   });
@@ -207,7 +235,9 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
         if (req.body.length >= 4 && req.body[0] === 0x50 && req.body[1] === 0x4b) {
           data = parseLinkedInArchive(req.body);
         } else {
-          const filename = req.headers['x-cs-filename'] ? decodeURIComponent(String(req.headers['x-cs-filename'])) : undefined;
+          const filename = req.headers['x-cs-filename']
+            ? decodeURIComponent(String(req.headers['x-cs-filename']))
+            : undefined;
           data = parseLinkedInCsvText(req.body.toString('utf8'), filename);
         }
       } else if (typeof req.body === 'object' && req.body !== null) {
@@ -227,7 +257,9 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
         } else if (typeof body.csvText === 'string') {
           data = parseLinkedInCsvText(body.csvText, body.filename);
         } else {
-          return reply.code(400).send({ error: 'INVALID_INPUT', message: 'Provide zipBase64, csvText, documentId, or a file payload.' });
+          return reply
+            .code(400)
+            .send({ error: 'INVALID_INPUT', message: 'Provide zipBase64, csvText, documentId, or a file payload.' });
         }
       } else {
         return reply.code(400).send({ error: 'INVALID_INPUT', message: 'Invalid payload.' });
@@ -235,7 +267,9 @@ export function registerOpportunityRoutes(app: FastifyInstance, deps: { db: Db; 
       const result = importLinkedInExport(db, data, actorOf(req));
       return reply.code(200).send({ ok: true, result });
     } catch (err) {
-      return reply.code(400).send({ error: 'IMPORT_FAILED', message: err instanceof Error ? err.message : String(err) });
+      return reply
+        .code(400)
+        .send({ error: 'IMPORT_FAILED', message: err instanceof Error ? err.message : String(err) });
     }
   });
 }

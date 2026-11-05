@@ -10,10 +10,16 @@ async function practiceApplication(cs: CsService, ats: PracticeAts): Promise<str
   await cs.api('PUT', '/api/settings/identity.email', { value: 'jordan@example.com' });
   await fetch(`${cs.origin}/api/documents`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${cs.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+    headers: {
+      authorization: `Bearer ${cs.token}`,
+      'content-type': 'application/pdf',
+      'x-cs-filename': 'cv.pdf',
+      'x-cs-document-kind': 'resume',
+    },
     body: PDF,
   });
-  const id = ((await cs.api('POST', '/api/applications', { jobId })).body as { application: { id: string } }).application.id;
+  const id = ((await cs.api('POST', '/api/applications', { jobId })).body as { application: { id: string } })
+    .application.id;
   await cs.api('POST', `/api/applications/${id}/ready`);
   return id;
 }
@@ -32,7 +38,9 @@ test.describe('practice submission', () => {
     await signIn(page, cs);
     await page.goto(`${cs.origin}/applications/${id}`);
     await page.getByRole('button', { name: 'Approve this exact application' }).click();
-    await expect(page.getByText('This goes to the practice endpoint on this computer, not to an employer.')).toBeVisible();
+    await expect(
+      page.getByText('This goes to the practice endpoint on this computer, not to an employer.'),
+    ).toBeVisible();
     await page.getByRole('button', { name: 'Submit to the practice endpoint' }).click();
     await expect(page.getByText('Submitted', { exact: true })).toBeVisible();
     const receipt = [...ats.receipts.values()][0]!;
@@ -41,7 +49,10 @@ test.describe('practice submission', () => {
     expect(ats.receipts.size).toBe(1);
   });
 
-  test('a lost response is shown as unknown, not resent, and resolved by checking with the endpoint', async ({ page, cs }) => {
+  test('a lost response is shown as unknown, not resent, and resolved by checking with the endpoint', async ({
+    page,
+    cs,
+  }) => {
     const id = await practiceApplication(cs, ats);
     ats.setFault('drop-after-store');
     await signIn(page, cs);

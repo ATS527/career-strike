@@ -54,7 +54,8 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
   const data: unknown = await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401) listeners.forEach((l) => l('unauthenticated'));
-    const code = typeof data === 'object' && data !== null && 'error' in data ? String(data.error) : `HTTP_${res.status}`;
+    const code =
+      typeof data === 'object' && data !== null && 'error' in data ? String(data.error) : `HTTP_${res.status}`;
     throw new ApiError(res.status, code, data);
   }
   return data as T;
@@ -83,7 +84,16 @@ export interface FollowUp {
 
 export interface Overview {
   service: { version: string; schemaVersion: number; startedAt: string | null };
-  applications: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; submitted: number; interviewing: number; offers: number; expiredUnsent: number };
+  applications: {
+    drafts: number;
+    readyForReview: number;
+    approved: number;
+    awaitingConfirmation: number;
+    submitted: number;
+    interviewing: number;
+    offers: number;
+    expiredUnsent: number;
+  };
   followUps: FollowUp[];
   interviews: Interview[];
   aiHosts: { connected: string[]; configured: string[] };
@@ -334,9 +344,25 @@ export interface StoredDocument {
 }
 
 export type ApplicationState =
-  | 'DRAFTED' | 'NEEDS_INFORMATION' | 'READY_FOR_REVIEW' | 'APPROVED' | 'NEEDS_MANUAL_ACTION' | 'SUBMISSION_IN_PROGRESS'
-  | 'SUBMITTED_CONFIRMED' | 'SUBMISSION_UNCONFIRMED' | 'SUBMISSION_FAILED' | 'RESPONSE_RECEIVED' | 'INTERVIEW' | 'OFFER'
-  | 'REJECTED' | 'WITHDRAWN' | 'CLOSED' | 'EXPIRED' | 'DUPLICATE' | 'BLOCKED' | 'CANCELLED';
+  | 'DRAFTED'
+  | 'NEEDS_INFORMATION'
+  | 'READY_FOR_REVIEW'
+  | 'APPROVED'
+  | 'NEEDS_MANUAL_ACTION'
+  | 'SUBMISSION_IN_PROGRESS'
+  | 'SUBMITTED_CONFIRMED'
+  | 'SUBMISSION_UNCONFIRMED'
+  | 'SUBMISSION_FAILED'
+  | 'RESPONSE_RECEIVED'
+  | 'INTERVIEW'
+  | 'OFFER'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+  | 'CLOSED'
+  | 'EXPIRED'
+  | 'DUPLICATE'
+  | 'BLOCKED'
+  | 'CANCELLED';
 
 export interface PayloadField {
   key: string;
@@ -426,10 +452,28 @@ export interface ApplicationView {
   updatedAt: string;
   job: { title: string; employer: string; status: string };
   versions: { version: number; createdBy: string; reason: string; createdAt: string; payloadHash: string }[];
-  events: { from: string | null; to: string; actor: string; note: string | null; evidence: Record<string, unknown> | null; at: string }[];
+  events: {
+    from: string | null;
+    to: string;
+    actor: string;
+    note: string | null;
+    evidence: Record<string, unknown> | null;
+    at: string;
+  }[];
   followUps: FollowUp[];
   duplicateRisk: { applicationId: string; state: ApplicationState; source: string }[];
-  approval: { valid: boolean; reason: string; approval: { id: string; state: string; version: number; issuedAt: string; expiresAt: string; stateReason: string | null } | null };
+  approval: {
+    valid: boolean;
+    reason: string;
+    approval: {
+      id: string;
+      state: string;
+      version: number;
+      issuedAt: string;
+      expiresAt: string;
+      stateReason: string | null;
+    } | null;
+  };
   warnings: { kind: string; message: string }[];
   missingRequired: string[];
   disclosures: string[];
@@ -474,6 +518,13 @@ export interface PrepTopic {
 export interface Prep {
   application: { id: string; state: ApplicationState; title: string; employer: string };
   topics: PrepTopic[];
-  sessions: { id: string; topicId: string; notes: string | null; confidence: number; minutes: number | null; practicedAt: string }[];
+  sessions: {
+    id: string;
+    topicId: string;
+    notes: string | null;
+    confidence: number;
+    minutes: number | null;
+    practicedAt: string;
+  }[];
   interviews: Interview[];
 }

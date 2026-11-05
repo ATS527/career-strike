@@ -25,7 +25,10 @@ function fail(message: string): never {
 /** Release notes for GitHub: the changelog section with links made absolute, plus how to install. */
 function releaseNotes(notes: string, tag: string, repository: string): string {
   const base = `https://github.com/${repository}`;
-  const absolute = notes.replace(/\]\((?!https?:|#)([^)]+)\)/g, (_m, target: string) => `](${base}/blob/${tag}/${target})`);
+  const absolute = notes.replace(
+    /\]\((?!https?:|#)([^)]+)\)/g,
+    (_m, target: string) => `](${base}/blob/${tag}/${target})`,
+  );
   return `${absolute}
 
 ## Install or update
@@ -60,8 +63,10 @@ function cut(version: string, push: boolean): void {
   if (git('branch', '--show-current') !== 'main') fail('Release from main.');
   if (git('status', '--porcelain') !== '') fail('Commit or stash your changes first.');
   git('fetch', '--quiet', 'origin', 'main');
-  if (git('rev-parse', 'HEAD') !== git('rev-parse', 'origin/main')) fail('main is not in sync with origin/main. Pull or push first.');
-  if (!notesFor(version, fs.readFileSync('CHANGELOG.md', 'utf8'))) fail(`Add a "## [${version}] - YYYY-MM-DD" section to CHANGELOG.md first.`);
+  if (git('rev-parse', 'HEAD') !== git('rev-parse', 'origin/main'))
+    fail('main is not in sync with origin/main. Pull or push first.');
+  if (!notesFor(version, fs.readFileSync('CHANGELOG.md', 'utf8')))
+    fail(`Add a "## [${version}] - YYYY-MM-DD" section to CHANGELOG.md first.`);
 
   if (pkgVersion() !== version) {
     execFileSync('npm', ['version', version, '--no-git-tag-version'], { stdio: 'inherit' });

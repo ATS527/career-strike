@@ -15,12 +15,12 @@ These identities and board slugs were cross-checked on 2026-11-01 against the em
 careers site and its public ATS board. They are eligible for live certification, but are **not**
 live integrations until `verify-market` has successfully retrieved an explicitly Japanese posting.
 
-| Employer | Official careers site | Public board | Target id |
-| --- | --- | --- | --- |
-| OpenAI | [Careers](https://openai.com/careers) | [Ashby](https://jobs.ashbyhq.com/openai) | `openai-jp` |
+| Employer  | Official careers site                        | Public board                                             | Target id      |
+| --------- | -------------------------------------------- | -------------------------------------------------------- | -------------- |
+| OpenAI    | [Careers](https://openai.com/careers)        | [Ashby](https://jobs.ashbyhq.com/openai)                 | `openai-jp`    |
 | Anthropic | [Careers](https://www.anthropic.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/anthropic) | `anthropic-jp` |
-| New Relic | [Careers](https://newrelic.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/newrelic) | `newrelic-jp` |
-| Figma | [Careers](https://www.figma.com/careers/) | [Greenhouse](https://job-boards.greenhouse.io/figma) | `figma-jp` |
+| New Relic | [Careers](https://newrelic.com/careers)      | [Greenhouse](https://job-boards.greenhouse.io/newrelic)  | `newrelic-jp`  |
+| Figma     | [Careers](https://www.figma.com/careers/)    | [Greenhouse](https://job-boards.greenhouse.io/figma)     | `figma-jp`     |
 
 On the review date the public board APIs returned complete listings with Japan-located postings
 for all four employers (OpenAI 29, Anthropic 16, New Relic 12, Figma 3). Each of those postings
@@ -39,13 +39,13 @@ saves nothing.
 
 ## Marketplace policy
 
-| Source | Current capability | Career Strike behaviour |
-| --- | --- | --- |
-| [Hello Work](https://www.hellowork.go.jp/) | `USER_DRIVEN_DISCOVERY` | Open the official public employment service (Japanese-language); no automated job retrieval is claimed. |
-| [GaijinPot Jobs](https://gaijinpot.com/) | `USER_DRIVEN_DISCOVERY` | Open the official bilingual jobs board and search directly. |
-| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions) | `RESTRICTED` | No scraping or automated extraction; use the official site or a user-supplied listing. |
-| [Indeed Japan](https://docs.indeed.com/legal-terms/developer-agreement) | `UNVERIFIED` | No integration until approved partner access and permitted display/reuse are confirmed. |
-| Daijob | `UNVERIFIED` | No automated retrieval; open the official site or add a verified official listing manually. |
+| Source                                                                  | Current capability      | Career Strike behaviour                                                                                 |
+| ----------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| [Hello Work](https://www.hellowork.go.jp/)                              | `USER_DRIVEN_DISCOVERY` | Open the official public employment service (Japanese-language); no automated job retrieval is claimed. |
+| [GaijinPot Jobs](https://gaijinpot.com/)                                | `USER_DRIVEN_DISCOVERY` | Open the official bilingual jobs board and search directly.                                             |
+| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions)   | `RESTRICTED`            | No scraping or automated extraction; use the official site or a user-supplied listing.                  |
+| [Indeed Japan](https://docs.indeed.com/legal-terms/developer-agreement) | `UNVERIFIED`            | No integration until approved partner access and permitted display/reuse are confirmed.                 |
+| Daijob                                                                  | `UNVERIFIED`            | No automated retrieval; open the official site or add a verified official listing manually.             |
 
 The `UNVERIFIED` label means Career Strike has no recorded approved access; it does not imply a
 source is prohibited. A source can move only after its official access model, terms, fields,

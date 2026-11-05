@@ -53,9 +53,7 @@ describe('CSV parser', () => {
   it('csvRecords returns records keyed by lowercase headers', () => {
     const text = 'Notes: Exported from LinkedIn\nCompany Name,Title,Started On\nAcme Corp,Engineer,2021\n';
     const recs = csvRecords(text, ['Company Name', 'Title']);
-    expect(recs).toEqual([
-      { 'company name': 'Acme Corp', title: 'Engineer', 'started on': '2021' },
-    ]);
+    expect(recs).toEqual([{ 'company name': 'Acme Corp', title: 'Engineer', 'started on': '2021' }]);
   });
 
   it('csvRecords returns null when required header is missing', () => {

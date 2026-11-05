@@ -3,7 +3,9 @@ import type { Page } from '@playwright/test';
 import { expect, signIn, test } from './fixtures.js';
 
 async function seriousViolations(page: Page): Promise<string[]> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
   return results.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
@@ -22,7 +24,9 @@ test.describe('Candidate Workspace & Global Career Explorer', () => {
     // Fill overview fields
     await page.getByLabel('Full name').fill('Jane Doe');
     await page.getByLabel('Professional headline').fill('Staff Systems Architect · Cloud & Distributed Systems');
-    await page.getByLabel('About you').fill('Passionate engineer with experience building resilient systems and leading platforms.');
+    await page
+      .getByLabel('About you')
+      .fill('Passionate engineer with experience building resilient systems and leading platforms.');
 
     // Save profile draft
     await page.getByRole('button', { name: /Save (draft|profile)/i }).click();
@@ -47,7 +51,9 @@ test.describe('Candidate Workspace & Global Career Explorer', () => {
     // Reload page to verify backend persistence
     await page.reload();
     await expect(page.getByLabel('Full name')).toHaveValue('Jane Doe');
-    await expect(page.getByLabel('Professional headline')).toHaveValue('Staff Systems Architect · Cloud & Distributed Systems');
+    await expect(page.getByLabel('Professional headline')).toHaveValue(
+      'Staff Systems Architect · Cloud & Distributed Systems',
+    );
     await expect(page.getByLabel('GitHub profile')).toHaveValue('https://github.com/janedoe');
     await expect(page.getByLabel('Portfolio or personal website')).toHaveValue('https://janedoe.dev');
   });

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.5/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": [
+      "src/**",
+      "test/**",
+      "scripts/**",
+      "acceptance/**",
+      "*.json",
+      "*.ts",
+      "!!**/dist",
+      "!!**/node_modules",
+      "!!**/*.svg",
+      "!!docs"
+    ]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "a11y": {
+        "noNoninteractiveTabindex": "off",
+        "useSemanticElements": "off",
+        "useAriaPropsSupportedByRole": "off",
+        "noStaticElementInteractions": "off",
+        "useKeyWithClickEvents": "off",
+        "noSvgWithoutTitle": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "warn",
+        "usePlaywrightValidDescribeCallback": "off",
+        "noEmptyPattern": "off"
+      },
+      "complexity": {
+        "useLiteralKeys": "off",
+        "useOptionalChain": "off"
+      },
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off",
+        "useIterableCallbackReturn": "off",
+        "noImplicitAnyLet": "warn",
+        "noControlCharactersInRegex": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always"
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

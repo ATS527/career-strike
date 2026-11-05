@@ -2,9 +2,15 @@ import { expect, signIn, test } from './fixtures.js';
 
 const PDF = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.from('synthetic resume')]);
 
-test('submit on the employer’s site with copied answers, confirm it, record an interview and follow up', async ({ page, context, cs }) => {
+test('submit on the employer’s site with copied answers, confirm it, record an interview and follow up', async ({
+  page,
+  context,
+  cs,
+}) => {
   // The employer's site is stubbed: no request leaves the test machine.
-  await context.route('https://jobs.lever.co/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Employer form (stub)</title>' }));
+  await context.route('https://jobs.lever.co/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Employer form (stub)</title>' }),
+  );
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: cs.origin });
 
   cs.seed('lever', 'track', [{ title: 'Site Reliability Engineer', applyUrl: 'https://jobs.lever.co/track/0/apply' }]);
@@ -12,11 +18,18 @@ test('submit on the employer’s site with copied answers, confirm it, record an
   await cs.api('PUT', '/api/settings/identity.email', { value: 'jordan@example.com' });
   await fetch(`${cs.origin}/api/documents`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${cs.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+    headers: {
+      authorization: `Bearer ${cs.token}`,
+      'content-type': 'application/pdf',
+      'x-cs-filename': 'cv.pdf',
+      'x-cs-document-kind': 'resume',
+    },
     body: PDF,
   });
   const { jobs } = (await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] };
-  const created = (await cs.api('POST', '/api/applications', { jobId: jobs[0]!.id })).body as { application: { id: string } };
+  const created = (await cs.api('POST', '/api/applications', { jobId: jobs[0]!.id })).body as {
+    application: { id: string };
+  };
   const appId = created.application.id;
   await cs.api('POST', `/api/applications/${appId}/ready`);
 
@@ -61,17 +74,26 @@ test('submit on the employer’s site with copied answers, confirm it, record an
 });
 
 test('a submission the candidate is unsure about is never counted as submitted', async ({ page, context, cs }) => {
-  await context.route('https://jobs.lever.co/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>stub</title>' }));
+  await context.route('https://jobs.lever.co/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<title>stub</title>' }),
+  );
   cs.seed('lever', 'unsure', [{ title: 'Data Analyst', applyUrl: 'https://jobs.lever.co/unsure/0/apply' }]);
   await cs.api('PUT', '/api/settings/identity.fullName', { value: 'Jordan Example' });
   await cs.api('PUT', '/api/settings/identity.email', { value: 'jordan@example.com' });
   await fetch(`${cs.origin}/api/documents`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${cs.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+    headers: {
+      authorization: `Bearer ${cs.token}`,
+      'content-type': 'application/pdf',
+      'x-cs-filename': 'cv.pdf',
+      'x-cs-document-kind': 'resume',
+    },
     body: PDF,
   });
   const { jobs } = (await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] };
-  const appId = ((await cs.api('POST', '/api/applications', { jobId: jobs[0]!.id })).body as { application: { id: string } }).application.id;
+  const appId = (
+    (await cs.api('POST', '/api/applications', { jobId: jobs[0]!.id })).body as { application: { id: string } }
+  ).application.id;
   await cs.api('POST', `/api/applications/${appId}/ready`);
   await signIn(page, cs);
   await page.goto(`${cs.origin}/applications/${appId}`);

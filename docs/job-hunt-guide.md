@@ -37,15 +37,15 @@ did not add.
 
 Open **Settings** and set a small, usable starting point:
 
-| Setting | Why it matters | Example |
-| --- | --- | --- |
-| Preferred roles | Helps role and skills matching | Backend engineer, iOS engineer, technical product manager |
-| Target countries and cities | Ranks places you want to work | `IN`, then Bengaluru and Pune |
-| Country of residence and countries you can work in | Checks location eligibility | `IN`; other countries only when you are authorised there |
-| Work authorisation by country | Keeps sponsorship separate from location preference | `DE=needs_sponsorship` |
-| Work arrangement and employment types | Removes roles you do not want | Remote or hybrid; full-time |
-| Salary expectation | Compares only against published salaries | A minimum in the currency and period you choose |
-| Excluded employers | Prevents repeated distractions | Organisations you have decided not to pursue |
+| Setting                                            | Why it matters                                      | Example                                                   |
+| -------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| Preferred roles                                    | Helps role and skills matching                      | Backend engineer, iOS engineer, technical product manager |
+| Target countries and cities                        | Ranks places you want to work                       | `IN`, then Bengaluru and Pune                             |
+| Country of residence and countries you can work in | Checks location eligibility                         | `IN`; other countries only when you are authorised there  |
+| Work authorisation by country                      | Keeps sponsorship separate from location preference | `DE=needs_sponsorship`                                    |
+| Work arrangement and employment types              | Removes roles you do not want                       | Remote or hybrid; full-time                               |
+| Salary expectation                                 | Compares only against published salaries            | A minimum in the currency and period you choose           |
+| Excluded employers                                 | Prevents repeated distractions                      | Organisations you have decided not to pursue              |
 
 Target countries are a preference; they are not proof that you may work there. A job can be a
 good location preference but still be ineligible if it explicitly requires work authorisation you
@@ -118,13 +118,13 @@ Open **Opportunities** and use the filters in this sequence:
 
 The detail view tells you why a role is ranked. Read the factors separately:
 
-| Signal | What it answers | Safe interpretation |
-| --- | --- | --- |
-| Skill fit | Do your saved skills match stated requirements? | Missing skill evidence is not a verdict on your potential. |
-| Eligibility | Does the posting name a country where you may work? | Unknown means the source did not give enough evidence. |
+| Signal             | What it answers                                           | Safe interpretation                                                |
+| ------------------ | --------------------------------------------------------- | ------------------------------------------------------------------ |
+| Skill fit          | Do your saved skills match stated requirements?           | Missing skill evidence is not a verdict on your potential.         |
+| Eligibility        | Does the posting name a country where you may work?       | Unknown means the source did not give enough evidence.             |
 | Work authorisation | Does the stated sponsorship policy fit your saved status? | Only an explicit “no sponsorship” blocks a candidate who needs it. |
-| Target market | Is this in a preferred country or city? | A mismatch lowers preference, not legal eligibility. |
-| Freshness | Has the source listed it recently? | Stale or unverified roles need a manual check. |
+| Target market      | Is this in a preferred country or city?                   | A mismatch lowers preference, not legal eligibility.               |
+| Freshness          | Has the source listed it recently?                        | Stale or unverified roles need a manual check.                     |
 
 Remote is not automatically worldwide. A remote job can be limited to a country, region or time
 zone. Sponsorship is separate again. Keep unknown fields unknown until the employer says more.

@@ -57,7 +57,9 @@ describe('career-strike CLI', () => {
       expect(after.stdout).not.toContain('FAIL');
     } else {
       expect(after.status).toBe(1);
-      expect(after.stdout.split('\n').filter((l) => l.startsWith('FAIL'))).toEqual([expect.stringMatching(/^FAIL\s+dashboard-files\s+missing/)]);
+      expect(after.stdout.split('\n').filter((l) => l.startsWith('FAIL'))).toEqual([
+        expect.stringMatching(/^FAIL\s+dashboard-files\s+missing/),
+      ]);
     }
   });
 
@@ -67,7 +69,10 @@ describe('career-strike CLI', () => {
     expect(stopped.status).toBe(3);
     expect(JSON.parse(stopped.stdout)).toEqual({ state: 'stopped' });
 
-    const server = spawn(process.execPath, [...CLI, 'serve', '--port', '0'], { env: env(home), stdio: ['ignore', 'pipe', 'pipe'] });
+    const server = spawn(process.execPath, [...CLI, 'serve', '--port', '0'], {
+      env: env(home),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     try {
       await waitForOutput(server, /listening on http:\/\/127\.0\.0\.1:(\d+)/);
       const status = runCli(home, ['status', '--json']);
@@ -114,7 +119,9 @@ describe('career-strike CLI', () => {
       const devUrl = new URL(devDash.stdout.trim());
       expect(devUrl.origin).toBe('http://127.0.0.1:5173');
       expect(devUrl.pathname).toBe('/auth/launch');
-      expect((await fetch(new URL(`${devUrl.pathname}${devUrl.search}`, url.origin), { redirect: 'manual' })).status).toBe(303);
+      expect(
+        (await fetch(new URL(`${devUrl.pathname}${devUrl.search}`, url.origin), { redirect: 'manual' })).status,
+      ).toBe(303);
     } finally {
       const stop = runCli(home, ['stop']);
       expect(stop.status, stop.stderr).toBe(0);

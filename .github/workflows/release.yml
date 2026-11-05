@@ -3,7 +3,7 @@ name: Release
 # Pushing a tag such as v0.3.0 (see `npm run release`) builds, tests and publishes that version.
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ["v*.*.*"]
 
 permissions:
   contents: read
@@ -32,6 +32,7 @@ jobs:
 
       - name: Warm the npm cache for the offline packaged-install test
         run: npm install --global --prefix "$RUNNER_TEMP/warm-cache" --no-fund --no-audit $(node -p "Object.entries(require('./package.json').dependencies).map(([n, v]) => n + '@' + v).join(' ')")
+      - run: npm run lint
       - run: npm run typecheck
       - run: npm test
       - run: npx playwright install --with-deps chromium

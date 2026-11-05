@@ -8,7 +8,13 @@ import { inspectDb, openDb } from '../../src/store/db.js';
 import { setSetting } from '../../src/store/settings.js';
 import { notesFor } from '../../src/updates/changelog.js';
 import { UpdateChecker } from '../../src/updates/checker.js';
-import { downloadRelease, type FetchImpl, latestRelease, listReleases, UpdateError } from '../../src/updates/releases.js';
+import {
+  downloadRelease,
+  type FetchImpl,
+  latestRelease,
+  listReleases,
+  UpdateError,
+} from '../../src/updates/releases.js';
 import { readHistory } from '../../src/updates/state.js';
 import { type SystemOps, Updater } from '../../src/updates/updater.js';
 import { compareVersions, parseVersion } from '../../src/updates/version.js';
@@ -40,7 +46,10 @@ function releaseJson(version: string, extra: Record<string, unknown> = {}) {
     published_at: '2026-11-01T00:00:00Z',
     assets: [
       { name: `career-strike-${version}.tgz`, browser_download_url: `${DL}/v${version}/career-strike-${version}.tgz` },
-      { name: `career-strike-${version}.tgz.sha256`, browser_download_url: `${DL}/v${version}/career-strike-${version}.tgz.sha256` },
+      {
+        name: `career-strike-${version}.tgz.sha256`,
+        browser_download_url: `${DL}/v${version}/career-strike-${version}.tgz.sha256`,
+      },
     ],
     ...extra,
   };
@@ -54,10 +63,14 @@ function fakeGitHub(releases: unknown[], opts: { sha?: string; body?: Buffer } =
     const u = new URL(url);
     if (url.startsWith(API)) return new Response(JSON.stringify(releases), { status: 200 });
     if (u.hostname === 'github.com') {
-      return new Response(null, { status: 302, headers: { location: `https://release-assets.githubusercontent.com${u.pathname}` } });
+      return new Response(null, {
+        status: 302,
+        headers: { location: `https://release-assets.githubusercontent.com${u.pathname}` },
+      });
     }
     if (u.hostname === 'release-assets.githubusercontent.com') {
-      if (u.pathname.endsWith('.sha256')) return new Response(`${opts.sha ?? SHA}  ${path.basename(u.pathname, '.sha256')}\n`);
+      if (u.pathname.endsWith('.sha256'))
+        return new Response(`${opts.sha ?? SHA}  ${path.basename(u.pathname, '.sha256')}\n`);
       return new Response(opts.body ?? PACKAGE);
     }
     return new Response('not found', { status: 404 });
@@ -74,7 +87,8 @@ describe('versions', () => {
   });
 
   it('reads one version’s section from the changelog', () => {
-    const text = '# Changelog\n\n## [0.3.0] - 2026-12-01\n\n- Later\n\n## [0.2.0] - 2026-11-01\n\n### Added\n- Updates\n\n## [0.1.0]\n- First\n';
+    const text =
+      '# Changelog\n\n## [0.3.0] - 2026-12-01\n\n- Later\n\n## [0.2.0] - 2026-11-01\n\n### Added\n- Updates\n\n## [0.1.0]\n- First\n';
     expect(notesFor('0.2.0', text)).toBe('### Added\n- Updates');
     expect(notesFor('0.4.0', text)).toBeNull();
     // The bundled changelog has notes for the version being built.
@@ -99,15 +113,23 @@ describe('release source', () => {
   });
 
   it('needs to know where releases are published', async () => {
-    await expect(listReleases({ repository: null, fetchImpl: fakeGitHub([]) })).rejects.toThrow(/does not record where its releases are published/);
+    await expect(listReleases({ repository: null, fetchImpl: fakeGitHub([]) })).rejects.toThrow(
+      /does not record where its releases are published/,
+    );
     expect(await listReleases({ repository: REPO, fetchImpl: fakeGitHub([releaseJson('0.3.0')]) })).toHaveLength(1);
   });
 
   it('contacts only GitHub over https and never follows a redirect elsewhere', async () => {
-    await expect(listReleases({ releasesUrl: 'https://example.com/releases', fetchImpl: fakeGitHub([]) })).rejects.toThrow(/Refusing to contact example.com/);
+    await expect(
+      listReleases({ releasesUrl: 'https://example.com/releases', fetchImpl: fakeGitHub([]) }),
+    ).rejects.toThrow(/Refusing to contact example.com/);
     const offsite = (async (url: string) =>
-      url.startsWith(API) ? new Response(null, { status: 302, headers: { location: 'https://evil.example/x' } }) : new Response('')) as FetchImpl;
-    await expect(listReleases({ releasesUrl: API, fetchImpl: offsite })).rejects.toThrow(/Refusing to contact evil.example/);
+      url.startsWith(API)
+        ? new Response(null, { status: 302, headers: { location: 'https://evil.example/x' } })
+        : new Response('')) as FetchImpl;
+    await expect(listReleases({ releasesUrl: API, fetchImpl: offsite })).rejects.toThrow(
+      /Refusing to contact evil.example/,
+    );
     const limited = (async () => new Response('', { status: 403 })) as FetchImpl;
     await expect(listReleases({ releasesUrl: API, fetchImpl: limited })).rejects.toThrow(/limiting requests/);
   });
@@ -120,7 +142,9 @@ describe('release source', () => {
     expect(fs.readFileSync(ok.file)).toEqual(PACKAGE);
 
     const bad = tempDir();
-    await expect(downloadRelease(release!, bad, { releasesUrl: API, fetchImpl: fakeGitHub([], { sha: 'a'.repeat(64) }) })).rejects.toThrow(/does not match its published checksum/);
+    await expect(
+      downloadRelease(release!, bad, { releasesUrl: API, fetchImpl: fakeGitHub([], { sha: 'a'.repeat(64) }) }),
+    ).rejects.toThrow(/does not match its published checksum/);
     expect(fs.readdirSync(bad)).toEqual([]);
   });
 });
@@ -141,11 +165,21 @@ describe('weekly update checks', () => {
 
     expect(await checker.tick()).toBe(false);
     expect(fetchImpl.calls).toEqual([]);
-    expect(checker.status()).toMatchObject({ current: VERSION, checks: 'off', checkedAt: null, updateAvailable: false });
+    expect(checker.status()).toMatchObject({
+      current: VERSION,
+      checks: 'off',
+      checkedAt: null,
+      updateAvailable: false,
+    });
 
     setSetting(db, 'monitoring.updateChecks', 'weekly', 'test');
     expect(await checker.tick()).toBe(true);
-    expect(checker.status()).toMatchObject({ checks: 'weekly', updateAvailable: true, latest: { version: NEXT }, error: null });
+    expect(checker.status()).toMatchObject({
+      checks: 'weekly',
+      updateAvailable: true,
+      latest: { version: NEXT },
+      error: null,
+    });
 
     now += 6 * 24 * 3600_000;
     expect(await checker.tick()).toBe(false);
@@ -156,7 +190,10 @@ describe('weekly update checks', () => {
 
   it('keeps the last good answer when a check fails, and says why', async () => {
     const { paths, db } = setup();
-    await new UpdateChecker(db, paths, undefined, { releasesUrl: API, fetchImpl: fakeGitHub([releaseJson(NEXT)]) }).check();
+    await new UpdateChecker(db, paths, undefined, {
+      releasesUrl: API,
+      fetchImpl: fakeGitHub([releaseJson(NEXT)]),
+    }).check();
     const down = (async () => {
       throw new Error('offline');
     }) as FetchImpl;
@@ -237,7 +274,13 @@ describe('career-strike update', () => {
     const h = harness();
     const r = await h.updater.update();
     expect(r).toEqual({ result: 'updated', from: VERSION, to: NEXT, provenance: 'unavailable', restarted: true });
-    expect(h.ops.log).toEqual([`pack ${VERSION}`, 'stop', `install ${NEXT}`, 'run --version', 'run start --port 47999']);
+    expect(h.ops.log).toEqual([
+      `pack ${VERSION}`,
+      'stop',
+      `install ${NEXT}`,
+      'run --version',
+      'run start --port 47999',
+    ]);
     const last = readHistory(h.paths).last!;
     expect(last).toMatchObject({ from: VERSION, to: NEXT, schemaBefore: inspectDb(h.paths.db) });
     expect(fs.existsSync(path.join(last.backupDir!, 'career-strike.db'))).toBe(true);
@@ -252,7 +295,15 @@ describe('career-strike update', () => {
 
   it('says so when there is nothing newer, and refuses to "update" to an older release', async () => {
     const h = harness();
-    const current = new Updater({ paths: h.paths, currentVersion: NEXT, packageRoot: '/x', prefix: '/p', source: { repository: REPO, fetchImpl: h.fetchImpl }, ops: h.ops, log: () => {} });
+    const current = new Updater({
+      paths: h.paths,
+      currentVersion: NEXT,
+      packageRoot: '/x',
+      prefix: '/p',
+      source: { repository: REPO, fetchImpl: h.fetchImpl },
+      ops: h.ops,
+      log: () => {},
+    });
     expect(await current.update()).toEqual({ result: 'up-to-date', current: NEXT, latest: NEXT });
     await expect(current.update({ to: VERSION })).rejects.toThrow(/not newer.*--undo/);
     await expect(h.updater.update({ to: '9.9.9' })).rejects.toThrow(/no published release 9.9.9/);
@@ -260,15 +311,34 @@ describe('career-strike update', () => {
 
   it('changes nothing when the candidate declines', async () => {
     const h = harness();
-    const asking = new Updater({ paths: h.paths, currentVersion: VERSION, packageRoot: '/x', prefix: '/p', source: { repository: REPO, fetchImpl: h.fetchImpl }, ops: h.ops, log: () => {}, confirm: async () => false });
+    const asking = new Updater({
+      paths: h.paths,
+      currentVersion: VERSION,
+      packageRoot: '/x',
+      prefix: '/p',
+      source: { repository: REPO, fetchImpl: h.fetchImpl },
+      ops: h.ops,
+      log: () => {},
+      confirm: async () => false,
+    });
     expect(await asking.update()).toEqual({ result: 'declined' });
     expect(h.ops.log).toEqual([]);
   });
 
   it.each([
     ['a checksum mismatch', {}, { sha: 'b'.repeat(64) }, /published checksum/],
-    ['a package that is not the release it claims', { inspectPackage: () => ({ name: 'career-strike', version: '6.6.6' }) }, {}, /not the Career Strike release/],
-    ['a provenance failure', { verifyProvenance: () => ({ failed: 'no attestation' }) }, {}, /provenance could not be verified: no attestation/],
+    [
+      'a package that is not the release it claims',
+      { inspectPackage: () => ({ name: 'career-strike', version: '6.6.6' }) },
+      {},
+      /not the Career Strike release/,
+    ],
+    [
+      'a provenance failure',
+      { verifyProvenance: () => ({ failed: 'no attestation' }) },
+      {},
+      /provenance could not be verified: no attestation/,
+    ],
   ] as const)('installs nothing after %s', async (_name, over, github, error) => {
     const h = harness(over as Partial<SystemOps>, github);
     await expect(h.updater.update()).rejects.toThrow(error);
@@ -293,7 +363,16 @@ describe('career-strike update', () => {
     const r = await h.updater.update();
     expect(r).toMatchObject({ result: 'rolled-back', from: VERSION, to: NEXT });
     expect(r.result === 'rolled-back' && r.reason).toMatch(/did not start.*migration failed/);
-    expect(h.ops.log).toEqual([`pack ${VERSION}`, 'stop', `install ${NEXT}`, 'run --version', 'run start --port 47999', 'run stop', `install ${VERSION}`, 'run start --port 47999']);
+    expect(h.ops.log).toEqual([
+      `pack ${VERSION}`,
+      'stop',
+      `install ${NEXT}`,
+      'run --version',
+      'run start --port 47999',
+      'run stop',
+      `install ${VERSION}`,
+      'run start --port 47999',
+    ]);
     expect(inspectDb(h.paths.db)).toBe(schemaBefore);
     expect(readHistory(h.paths).last).toBeNull();
   });
@@ -301,7 +380,15 @@ describe('career-strike update', () => {
   it('can be undone, restoring the data only if the new version changed it', async () => {
     const h = harness({ runningPort: async () => null });
     await h.updater.update();
-    const after = new Updater({ paths: h.paths, currentVersion: NEXT, packageRoot: '/x', prefix: '/p', source: { repository: REPO, fetchImpl: h.fetchImpl }, ops: h.ops, log: () => {} });
+    const after = new Updater({
+      paths: h.paths,
+      currentVersion: NEXT,
+      packageRoot: '/x',
+      prefix: '/p',
+      source: { repository: REPO, fetchImpl: h.fetchImpl },
+      ops: h.ops,
+      log: () => {},
+    });
     const schemaBefore = inspectDb(h.paths.db);
     migrateOnStart(h.paths);
     h.ops.log.length = 0;

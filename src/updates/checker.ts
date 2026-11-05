@@ -58,7 +58,10 @@ export class UpdateChecker {
       latest,
       updateAvailable: latest !== null && compareVersions(latest.version, VERSION) > 0,
       error: check?.error ?? null,
-      whatsNew: last && last.to === VERSION && history.acknowledged !== VERSION ? { from: last.from, to: last.to, notes: notesFor(VERSION) } : null,
+      whatsNew:
+        last && last.to === VERSION && history.acknowledged !== VERSION
+          ? { from: last.from, to: last.to, notes: notesFor(VERSION) }
+          : null,
     };
   }
 
@@ -74,7 +77,9 @@ export class UpdateChecker {
     const checkedAt = new Date(this.now()).toISOString();
     try {
       const r = await latestRelease(this.source);
-      const latest = r ? { version: r.version, name: r.name, url: r.url, notes: r.notes, publishedAt: r.publishedAt } : null;
+      const latest = r
+        ? { version: r.version, name: r.name, url: r.url, notes: r.notes, publishedAt: r.publishedAt }
+        : null;
       writeCheck(this.paths, { checkedAt, latest, error: null });
       this.logger.info('updates.checked', { latest: latest?.version ?? null });
     } catch (err) {

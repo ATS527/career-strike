@@ -40,11 +40,17 @@ describe('LinkedIn export reader', () => {
         'Company Name,Title,Description,Started On,Finished On\nAcme Corp,Senior Engineer,"Built microservices",Jan 2021,Dec 2023\nBeta Co,Tech Lead,"Led team",Jan 2024,Present\n',
       ),
       'Skills.csv': strToU8('Name\nTypeScript\nKubernetes\nk8s\n'),
-      'Education.csv': strToU8('School Name,Degree Name,Field Of Study,Started On,Finished On\nTech University,B.S.,Computer Science,2016,2020\n'),
+      'Education.csv': strToU8(
+        'School Name,Degree Name,Field Of Study,Started On,Finished On\nTech University,B.S.,Computer Science,2016,2020\n',
+      ),
       'Certifications.csv': strToU8('Name,Authority,Started On\nAWS Solutions Architect,Amazon Web Services,2022\n'),
-      'Languages.csv': strToU8('Name,Proficiency\nEnglish,Native or bilingual proficiency\nGerman,Elementary proficiency\n'),
+      'Languages.csv': strToU8(
+        'Name,Proficiency\nEnglish,Native or bilingual proficiency\nGerman,Elementary proficiency\n',
+      ),
       'Projects.csv': strToU8('Title,Description,Url\nOpenSource Lib,"A fast parser",https://github.com/example/lib\n'),
-      'Profile.csv': strToU8('First Name,Last Name,Headline,Summary\nJordan,Example,Staff Engineer,Passionate builder\n'),
+      'Profile.csv': strToU8(
+        'First Name,Last Name,Headline,Summary\nJordan,Example,Staff Engineer,Passionate builder\n',
+      ),
     });
 
     const parsed = parseLinkedInArchive(archive);

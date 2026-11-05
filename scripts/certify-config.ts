@@ -6,8 +6,7 @@ import { execFile, execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
-import { isDeepStrictEqual } from 'node:util';
+import { isDeepStrictEqual, promisify } from 'node:util';
 import { parse } from 'jsonc-parser';
 import { HOSTS, type Host, hostVersion, opencodeConfigFile, settlesTo } from '../src/mcp/hosts.js';
 import { RegistrySchema, serializeRegistry, validateRegistry } from './registry.js';
@@ -26,7 +25,9 @@ function mcpSection(host: Host): unknown {
     case 'claude-code': {
       // ~/.claude.json also holds Claude's own changing state; compare only user-scope MCP servers.
       const file = path.join(os.homedir(), '.claude.json');
-      return fs.existsSync(file) ? ((JSON.parse(fs.readFileSync(file, 'utf8')) as { mcpServers?: unknown }).mcpServers ?? null) : null;
+      return fs.existsSync(file)
+        ? ((JSON.parse(fs.readFileSync(file, 'utf8')) as { mcpServers?: unknown }).mcpServers ?? null)
+        : null;
     }
     case 'opencode': {
       const file = opencodeConfigFile();
@@ -43,7 +44,8 @@ async function main(): Promise<number> {
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'cs-cert-config-'));
   const env = { ...process.env, CAREER_STRIKE_HOME: path.join(root, 'data'), CAREER_STRIKE_SECRET_STORE: 'file' };
-  const results: { host: Host; version: string | null; checks: { name: string; passed: boolean; detail: string }[] }[] = [];
+  const results: { host: Host; version: string | null; checks: { name: string; passed: boolean; detail: string }[] }[] =
+    [];
   try {
     await run(process.execPath, [CLI, 'init'], { env });
     for (const host of HOSTS) {
@@ -53,15 +55,29 @@ async function main(): Promise<number> {
       await run(process.execPath, [CLI, 'connect', host], { env, timeout: 120_000 });
       checks.push({ name: 'listed after connect', passed: await settlesTo(host, true), detail: `${host} mcp list` });
       const during = JSON.stringify(mcpSection(host));
-      checks.push({ name: 'config holds a command, no token', passed: during.includes('career-strike') && !/csm_[A-Za-z0-9_-]{20,}/.test(during), detail: 'no MCP token in host config' });
+      checks.push({
+        name: 'config holds a command, no token',
+        passed: during.includes('career-strike') && !/csm_[A-Za-z0-9_-]{20,}/.test(during),
+        detail: 'no MCP token in host config',
+      });
       await run(process.execPath, [CLI, 'disconnect', host], { env, timeout: 120_000 }).catch(() => undefined);
-      checks.push({ name: 'not listed after disconnect', passed: await settlesTo(host, false), detail: `${host} mcp list` });
-      checks.push({ name: 'configuration identical to before', passed: isDeepStrictEqual(before, mcpSection(host)), detail: 'MCP section compared before connect and after disconnect' });
+      checks.push({
+        name: 'not listed after disconnect',
+        passed: await settlesTo(host, false),
+        detail: `${host} mcp list`,
+      });
+      checks.push({
+        name: 'configuration identical to before',
+        passed: isDeepStrictEqual(before, mcpSection(host)),
+        detail: 'MCP section compared before connect and after disconnect',
+      });
       for (const c of checks) console.log(`${c.passed ? 'PASS' : 'FAIL'}  ${host}: ${c.name}`);
       results.push({ host, version, checks });
     }
   } finally {
-    for (const host of HOSTS) if (await settlesTo(host, false, 1).then((x) => !x)) await run(process.execPath, [CLI, 'disconnect', host], { env }).catch(() => undefined);
+    for (const host of HOSTS)
+      if (await settlesTo(host, false, 1).then((x) => !x))
+        await run(process.execPath, [CLI, 'disconnect', host], { env }).catch(() => undefined);
     await run(process.execPath, [CLI, 'stop'], { env }).catch(() => undefined);
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -81,7 +97,14 @@ async function main(): Promise<number> {
             tests: [out],
             status: passed ? ('PASS' as const) : ('FAIL' as const),
             failureCause: passed ? null : 'See config-roundtrip.json',
-            evidence: { revision, command: 'npx tsx scripts/certify-config.ts', exitCode: passed ? 0 : 1, at, kinds: ['real-host' as const], notes: results.map((r) => `${r.host} ${r.version}`).join('; ') },
+            evidence: {
+              revision,
+              command: 'npx tsx scripts/certify-config.ts',
+              exitCode: passed ? 0 : 1,
+              at,
+              kinds: ['real-host' as const],
+              notes: results.map((r) => `${r.host} ${r.version}`).join('; '),
+            },
             nextAction: passed ? 'Re-run when host CLIs change' : 'Investigate',
           },
     ),

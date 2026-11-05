@@ -16,22 +16,34 @@ async function prepare(cs: CsService) {
   for (const [key, value] of [
     ['identity.fullName', 'Jordan Example'],
     ['identity.email', 'jordan@example.com'],
-  ] as const) expect((await cs.api('PUT', `/api/settings/${key}`, { value })).status).toBe(200);
+  ] as const)
+    expect((await cs.api('PUT', `/api/settings/${key}`, { value })).status).toBe(200);
   await cs.api('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'TypeScript', years: 5 } });
-  await cs.api('POST', '/api/profile/facts', { kind: 'role', value: { title: 'Platform Engineer', employer: 'Synthetic Co', startYear: 2019 } });
+  await cs.api('POST', '/api/profile/facts', {
+    kind: 'role',
+    value: { title: 'Platform Engineer', employer: 'Synthetic Co', startYear: 2019 },
+  });
   const { jobs } = (await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] };
   return jobs[0]!.id;
 }
 
 test.describe('applications', () => {
-  test('upload a résumé, prepare, review the exact package, approve, and see edits cancel the approval', async ({ page, cs }) => {
+  test('upload a résumé, prepare, review the exact package, approve, and see edits cancel the approval', async ({
+    page,
+    cs,
+  }) => {
     const jobId = await prepare(cs);
     await signIn(page, cs);
 
     await page.goto(`${cs.origin}/profile`);
-    await page.getByLabel('File (PDF, .docx or .txt, up to 10 MB)').setInputFiles({ name: 'Jordan Resume.pdf', mimeType: 'application/pdf', buffer: PDF });
+    await page
+      .getByLabel('File (PDF, .docx or .txt, up to 10 MB)')
+      .setInputFiles({ name: 'Jordan Resume.pdf', mimeType: 'application/pdf', buffer: PDF });
     await expect(page.getByTestId('documents')).toContainText('Jordan Resume.pdf');
-    await expect(page.getByRole('link', { name: 'Download Jordan Resume.pdf' })).toHaveAttribute('href', /\/api\/documents\/doc_/);
+    await expect(page.getByRole('link', { name: 'Download Jordan Resume.pdf' })).toHaveAttribute(
+      'href',
+      /\/api\/documents\/doc_/,
+    );
 
     await page.goto(`${cs.origin}/jobs/${jobId}`);
     await page.getByRole('button', { name: 'Prepare an application' }).click();
@@ -43,7 +55,9 @@ test.describe('applications', () => {
     await expect(pkg).toContainText('Your email address');
     await expect(pkg).toContainText('Résumé: Jordan Resume.pdf');
     await expect(pkg).toContainText('jobs.lever.co');
-    await expect(pkg.locator('.letter')).toContainText('I have worked as Platform Engineer at Synthetic Co since 2019.');
+    await expect(pkg.locator('.letter')).toContainText(
+      'I have worked as Platform Engineer at Synthetic Co since 2019.',
+    );
     await expect(pkg).not.toContainText('Kubernetes (');
 
     await page.getByRole('button', { name: 'Mark ready for review' }).click();
@@ -51,7 +65,10 @@ test.describe('applications', () => {
     await page.getByRole('button', { name: 'Approve this exact application' }).click();
     await expect(page.getByText('Approved — not yet submitted', { exact: true })).toBeVisible();
     await expect(page.getByText('Approval is valid')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open the official application/ })).toHaveAttribute('href', 'https://jobs.lever.co/apply/0/apply');
+    await expect(page.getByRole('link', { name: /Open the official application/ })).toHaveAttribute(
+      'href',
+      'https://jobs.lever.co/apply/0/apply',
+    );
 
     // Any edit makes a new version and cancels the approval.
     await expect(page.getByText('Changing anything creates a new version and cancels your approval.')).toBeVisible();
@@ -60,7 +77,9 @@ test.describe('applications', () => {
     await expect(page.getByText('Draft', { exact: true })).toBeVisible();
     await expect(page.getByText('Version 2')).toBeVisible();
     const app = (await cs.api('GET', '/api/applications')).body as { applications: { id: string }[] };
-    const view = (await cs.api('GET', `/api/applications/${app.applications[0]!.id}`)).body as { application: { approval: { valid: boolean; approval: { state: string } } } };
+    const view = (await cs.api('GET', `/api/applications/${app.applications[0]!.id}`)).body as {
+      application: { approval: { valid: boolean; approval: { state: string } } };
+    };
     expect(view.application.approval).toMatchObject({ valid: false, approval: { state: 'INVALIDATED' } });
   });
 
@@ -68,7 +87,12 @@ test.describe('applications', () => {
     const jobId = await prepare(cs);
     const PDFUP = await fetch(`${cs.origin}/api/documents`, {
       method: 'POST',
-      headers: { authorization: `Bearer ${cs.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+      headers: {
+        authorization: `Bearer ${cs.token}`,
+        'content-type': 'application/pdf',
+        'x-cs-filename': 'cv.pdf',
+        'x-cs-document-kind': 'resume',
+      },
       body: PDF,
     });
     expect(PDFUP.status).toBe(201);
@@ -107,7 +131,12 @@ test.describe('applications', () => {
     const jobId = await prepare(cs);
     await fetch(`${cs.origin}/api/documents`, {
       method: 'POST',
-      headers: { authorization: `Bearer ${cs.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+      headers: {
+        authorization: `Bearer ${cs.token}`,
+        'content-type': 'application/pdf',
+        'x-cs-filename': 'cv.pdf',
+        'x-cs-document-kind': 'resume',
+      },
       body: PDF,
     });
     const created = (await cs.api('POST', '/api/applications', { jobId })).body as { application: { id: string } };

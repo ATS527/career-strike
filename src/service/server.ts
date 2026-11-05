@@ -1,38 +1,38 @@
 import path from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
-import { Discovery } from '../career/discovery.js';
+import { ApplicationService } from '../applications/service.js';
+import { SubmissionEngine } from '../applications/submission.js';
 import { candidateContext } from '../career/context.js';
+import { Discovery } from '../career/discovery.js';
 import { backfillRequirements, JobQuery, jobCounts, listJobs } from '../career/jobs.js';
 import { nextActions } from '../career/next-actions.js';
 import { type Logger, nullLogger } from '../core/log.js';
 import { type AppPaths, appPaths } from '../core/paths.js';
-import { type Db, schemaVersion } from '../store/db.js';
-import { describeSettings, getSettings, SettingError, setSetting } from '../store/settings.js';
-import { buildExportPayload, deleteAllData, listBackups } from '../store/lifecycle.js';
-import { createAdapters } from '../sources/adapters.js';
-import type { SourceAdapter, SourceId } from '../sources/types.js';
-import { Scheduler } from '../supervisor/scheduler.js';
-import { TaskSupervisor } from '../supervisor/tasks.js';
-import { ApplicationService } from '../applications/service.js';
-import { PersonalizationService } from '../personalization/service.js';
-import { SubmissionEngine } from '../applications/submission.js';
-import { Disclosures } from '../vault/disclosures.js';
-import { DocumentVault } from '../vault/documents.js';
-import type { SecretStore } from '../vault/secrets.js';
-import { McpClientStore, type Scope } from '../mcp/clients.js';
-import { registerApplicationRoutes } from './routes/applications.js';
-import { runDoctorChecks } from './diagnostics.js';
 import { InterviewService } from '../interview/service.js';
 import { computeMetrics, MIN_SAMPLE, observations } from '../learning/metrics.js';
 import { ProposalError, StrategyProposals } from '../learning/proposals.js';
+import { McpClientStore, type Scope } from '../mcp/clients.js';
+import { PersonalizationService } from '../personalization/service.js';
+import { createAdapters } from '../sources/adapters.js';
+import type { SourceAdapter, SourceId } from '../sources/types.js';
+import { type Db, schemaVersion } from '../store/db.js';
+import { buildExportPayload, deleteAllData, listBackups } from '../store/lifecycle.js';
+import { describeSettings, getSettings, SettingError, setSetting } from '../store/settings.js';
+import { Scheduler } from '../supervisor/scheduler.js';
+import { TaskSupervisor } from '../supervisor/tasks.js';
+import { UpdateChecker } from '../updates/checker.js';
+import { Disclosures } from '../vault/disclosures.js';
+import { DocumentVault } from '../vault/documents.js';
+import type { SecretStore } from '../vault/secrets.js';
+import { runDoctorChecks } from './diagnostics.js';
+import { registerApplicationRoutes } from './routes/applications.js';
 import { registerInterviewRoutes } from './routes/interviews.js';
 import { registerMcpRoutes } from './routes/mcp.js';
 import { registerOpportunityRoutes } from './routes/opportunities.js';
 import { registerReadinessRoutes } from './routes/readiness.js';
 import { registerUpdateRoutes } from './routes/updates.js';
-import { UpdateChecker } from '../updates/checker.js';
 import { isAllowedHost, isAllowedOrigin, SECURITY_HEADERS, tokensEqual } from './security.js';
-import { clearedSessionCookie, readCookie, SESSION_COOKIE, sessionCookie, SessionStore } from './sessions.js';
+import { clearedSessionCookie, readCookie, SESSION_COOKIE, SessionStore, sessionCookie } from './sessions.js';
 import { DASHBOARD_CSP, type StaticAsset } from './static.js';
 
 export interface ServerOptions {
@@ -83,7 +83,8 @@ export function buildServer({
   const app = Fastify({ logger: false, bodyLimit: 64 * 1024, forceCloseConnections: true });
   const sessions = new SessionStore(db);
   const mcpClients = new McpClientStore(db);
-  const practiceOrigin = (): string | null => (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
+  const practiceOrigin = (): string | null =>
+    (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
   const sources = adapters ?? createAdapters(undefined, { practiceOrigin });
   const tasks = new TaskSupervisor(db, logger);
   const interrupted = tasks.recoverInterrupted();
@@ -97,9 +98,9 @@ export function buildServer({
     vault,
     async (jobId) => {
       // Only Greenhouse publishes application forms publicly; elsewhere the standard fields are used.
-      const src = db.prepare("SELECT board, source_job_id FROM job_sources WHERE job_id = ? AND source = 'greenhouse' LIMIT 1").get(jobId) as
-        | { board: string; source_job_id: string }
-        | undefined;
+      const src = db
+        .prepare("SELECT board, source_job_id FROM job_sources WHERE job_id = ? AND source = 'greenhouse' LIMIT 1")
+        .get(jobId) as { board: string; source_job_id: string } | undefined;
       if (!src || !sources.greenhouse.applicationQuestions) return null;
       return sources.greenhouse.applicationQuestions(src.board, src.source_job_id);
     },
@@ -119,7 +120,8 @@ export function buildServer({
   // Submissions are never in this list: they are recovered as unconfirmed, never resumed.
   for (const t of interrupted) {
     const boardId = t.kind.startsWith('discover:') ? t.kind.slice('discover:'.length) : null;
-    if (boardId && t.attempt < 3 && discovery.getBoard(boardId)) discovery.discover(boardId, 'recovery', 'career-strike', t.attempt + 1);
+    if (boardId && t.attempt < 3 && discovery.getBoard(boardId))
+      discovery.discover(boardId, 'recovery', 'career-strike', t.attempt + 1);
   }
   const scheduler = new Scheduler(db, discovery, logger);
   scheduler.start();
@@ -186,13 +188,19 @@ export function buildServer({
       if (name === 'cache-control' && reply.hasHeader(name)) continue;
       reply.header(name, value);
     }
-    if (String(reply.getHeader('content-type') ?? '').startsWith('text/html')) reply.header('content-security-policy', DASHBOARD_CSP);
+    if (String(reply.getHeader('content-type') ?? '').startsWith('text/html'))
+      reply.header('content-security-policy', DASHBOARD_CSP);
     return payload;
   });
 
   app.addHook('onResponse', async (req, reply) => {
     // Path only: query strings can carry launch tokens.
-    logger.info('http.request', { method: req.method, path: pathOf(req), status: reply.statusCode, ms: Math.round(reply.elapsedTime) });
+    logger.info('http.request', {
+      method: req.method,
+      path: pathOf(req),
+      status: reply.statusCode,
+      ms: Math.round(reply.elapsedTime),
+    });
   });
 
   // Never echo internal error messages; they can contain paths or data.
@@ -200,14 +208,15 @@ export function buildServer({
     // Another process holds the database write lock (for example a restore or a second service).
     if (/^SQLITE_(BUSY|LOCKED)/.test(String((err as { code?: unknown }).code ?? ''))) {
       logger.warn('db.busy', { path: pathOf(req) });
-      return reply
-        .code(503)
-        .header('retry-after', '2')
-        .send({ error: 'DATABASE_BUSY', message: 'Your Career Strike data is in use by another program. Nothing was changed; try again in a moment.' });
+      return reply.code(503).header('retry-after', '2').send({
+        error: 'DATABASE_BUSY',
+        message: 'Your Career Strike data is in use by another program. Nothing was changed; try again in a moment.',
+      });
     }
     const statusCode = (err as { statusCode?: number }).statusCode;
     const status = statusCode !== undefined && statusCode >= 400 && statusCode < 500 ? statusCode : 500;
-    if (status === 500) logger.error('http.error', { path: pathOf(req), message: err instanceof Error ? err.message : String(err) });
+    if (status === 500)
+      logger.error('http.error', { path: pathOf(req), message: err instanceof Error ? err.message : String(err) });
     reply.code(status).send({ error: status === 500 ? 'INTERNAL_ERROR' : 'BAD_REQUEST' });
   });
 
@@ -259,7 +268,8 @@ export function buildServer({
     const ctx = candidateContext(db);
     const fresh = listJobs(db, JobQuery.parse({ status: 'OPEN', disposition: 'none', limit: 200 }), ctx).jobs;
     const byState = applications.counts();
-    const sum = (...states: string[]): number => states.reduce((n, st) => n + ((byState as Record<string, number>)[st] ?? 0), 0);
+    const sum = (...states: string[]): number =>
+      states.reduce((n, st) => n + ((byState as Record<string, number>)[st] ?? 0), 0);
     const appCounts = {
       drafts: sum('DRAFTED', 'NEEDS_INFORMATION', 'BLOCKED'),
       readyForReview: sum('READY_FOR_REVIEW'),
@@ -279,7 +289,10 @@ export function buildServer({
     };
     return {
       service: { version, schemaVersion: schemaVersion(db), startedAt: startedAt ?? null },
-      aiHosts: { connected: mcpClients.connected().map((c) => c.name), configured: mcpClients.list().map((c) => c.name) },
+      aiHosts: {
+        connected: mcpClients.connected().map((c) => c.name),
+        configured: mcpClients.list().map((c) => c.name),
+      },
       jobs: counts,
       sources: {
         boards: boards.length,
@@ -294,16 +307,33 @@ export function buildServer({
       interviews: upcomingInterviews.slice(0, 5),
       nextActions: nextActions({
         settings,
-        disclosureRequests: disclosures.list().filter((d) => d.state === 'PENDING').map((d) => ({ id: d.id, provider: d.provider })),
+        disclosureRequests: disclosures
+          .list()
+          .filter((d) => d.state === 'PENDING')
+          .map((d) => ({ id: d.id, provider: d.provider })),
         jobs: counts,
         boards,
         matches,
         availability: ctx.settings?.joiningAvailability,
         applications: appCounts,
-        followUpsDue: followUps.filter((f) => Date.parse(f.dueAt) <= Date.now()).map((f) => ({ id: f.id, note: f.note, title: f.title, employer: f.employer, applicationId: f.applicationId })),
+        followUpsDue: followUps
+          .filter((f) => Date.parse(f.dueAt) <= Date.now())
+          .map((f) => ({
+            id: f.id,
+            note: f.note,
+            title: f.title,
+            employer: f.employer,
+            applicationId: f.applicationId,
+          })),
         interviewsSoon: upcomingInterviews
           .filter((i) => Date.parse(i.scheduledAt) - Date.now() <= 7 * 24 * 3600_000)
-          .map((i) => ({ applicationId: i.applicationId, stage: i.stage, scheduledAt: i.scheduledAt, employer: i.employer ?? '', title: i.title ?? '' })),
+          .map((i) => ({
+            applicationId: i.applicationId,
+            stage: i.stage,
+            scheduledAt: i.scheduledAt,
+            employer: i.employer ?? '',
+            title: i.title ?? '',
+          })),
       }),
     };
   });
@@ -321,21 +351,30 @@ export function buildServer({
     const metrics = computeMetrics(db);
     proposals.refresh(metrics);
     proposals.snapshot(metrics);
-    return { metrics, minSample: MIN_SAMPLE, observations: observations(metrics), proposals: proposals.list(), history: proposals.history() };
+    return {
+      metrics,
+      minSample: MIN_SAMPLE,
+      observations: observations(metrics),
+      proposals: proposals.list(),
+      history: proposals.history(),
+    };
   });
 
-  app.post<{ Params: { id: string; decision: string } }>('/api/strategy/proposals/:id/:decision', async (req, reply) => {
-    // Accepting a proposal changes settings: only the candidate, in the dashboard.
-    if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD' });
-    const decision = req.params.decision;
-    if (decision !== 'accept' && decision !== 'dismiss') return reply.code(404).send({ error: 'NOT_FOUND' });
-    try {
-      return { proposal: proposals.decide(req.params.id, decision === 'accept' ? 'ACCEPTED' : 'DISMISSED') };
-    } catch (err) {
-      if (err instanceof ProposalError) return reply.code(409).send({ error: 'PROPOSAL', message: err.message });
-      throw err;
-    }
-  });
+  app.post<{ Params: { id: string; decision: string } }>(
+    '/api/strategy/proposals/:id/:decision',
+    async (req, reply) => {
+      // Accepting a proposal changes settings: only the candidate, in the dashboard.
+      if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD' });
+      const decision = req.params.decision;
+      if (decision !== 'accept' && decision !== 'dismiss') return reply.code(404).send({ error: 'NOT_FOUND' });
+      try {
+        return { proposal: proposals.decide(req.params.id, decision === 'accept' ? 'ACCEPTED' : 'DISMISSED') };
+      } catch (err) {
+        if (err instanceof ProposalError) return reply.code(409).send({ error: 'PROPOSAL', message: err.message });
+        throw err;
+      }
+    },
+  );
 
   app.get('/api/activity', async (req, reply) => {
     if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
@@ -344,7 +383,15 @@ export function buildServer({
       running: recent.filter((t) => t.live),
       recent,
       schedules: scheduler.status(),
-      boards: discovery.listBoards().map((b) => ({ id: b.id, source: b.source, board: b.board, health: b.health, consecutiveFailures: b.consecutiveFailures, nextAttemptAt: b.nextAttemptAt, lastError: b.lastError })),
+      boards: discovery.listBoards().map((b) => ({
+        id: b.id,
+        source: b.source,
+        board: b.board,
+        health: b.health,
+        consecutiveFailures: b.consecutiveFailures,
+        nextAttemptAt: b.nextAttemptAt,
+        lastError: b.lastError,
+      })),
     };
   });
   registerMcpRoutes(app, { db, clients: mcpClients, discovery, applications, disclosures });
@@ -370,7 +417,10 @@ export function buildServer({
   app.get('/api/data/export', async (req, reply) => {
     if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
     const payload = buildExportPayload(db, currentPaths);
-    reply.header('content-disposition', `attachment; filename="career-strike-export-${new Date().toISOString().slice(0, 10)}.json"`);
+    reply.header(
+      'content-disposition',
+      `attachment; filename="career-strike-export-${new Date().toISOString().slice(0, 10)}.json"`,
+    );
     reply.type('application/json; charset=utf-8');
     return payload;
   });
@@ -415,7 +465,9 @@ export function buildServer({
     // Exact built files, or the app shell for client-side routes such as /settings or /jobs/abc-1.
     const asset = assets.get(routePath) ?? (CLIENT_ROUTE.test(routePath) ? assets.get('/index.html') : undefined);
     if (!asset) return reject(reply, 404, 'NOT_FOUND');
-    reply.type(asset.contentType).header('cache-control', asset.immutable ? 'public, max-age=31536000, immutable' : 'no-store');
+    reply
+      .type(asset.contentType)
+      .header('cache-control', asset.immutable ? 'public, max-age=31536000, immutable' : 'no-store');
     return asset.body;
   });
 

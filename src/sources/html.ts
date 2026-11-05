@@ -4,7 +4,19 @@ import type { TextBlock } from './types.js';
 const BLOCK_TAGS = new Set(['p', 'div', 'section', 'article', 'br', 'tr', 'blockquote', 'pre', 'ul', 'ol', 'table']);
 const HEADING_TAGS = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 // Content inside these is never text the candidate should see.
-const DROP_TAGS = new Set(['script', 'style', 'noscript', 'template', 'iframe', 'object', 'embed', 'svg', 'math', 'head', 'title']);
+const DROP_TAGS = new Set([
+  'script',
+  'style',
+  'noscript',
+  'template',
+  'iframe',
+  'object',
+  'embed',
+  'svg',
+  'math',
+  'head',
+  'title',
+]);
 
 const MAX_BLOCKS = 400;
 const MAX_TEXT = 4000;
@@ -75,5 +87,8 @@ export function textToBlocks(text: string): TextBlock[] {
     .map((chunk) => chunk.replace(/\s+/g, ' ').trim())
     .filter(Boolean)
     .slice(0, MAX_BLOCKS)
-    .map((chunk) => ({ type: /^[-*•]\s/.test(chunk) ? 'item' : 'paragraph', text: chunk.replace(/^[-*•]\s+/, '').slice(0, MAX_TEXT) }));
+    .map((chunk) => ({
+      type: /^[-*•]\s/.test(chunk) ? 'item' : 'paragraph',
+      text: chunk.replace(/^[-*•]\s+/, '').slice(0, MAX_TEXT),
+    }));
 }

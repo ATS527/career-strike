@@ -3,7 +3,9 @@ import type { Page } from '@playwright/test';
 import { expect, signIn, test } from './fixtures.js';
 
 async function seriousViolations(page: Page): Promise<string[]> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
   return results.violations
     .filter((v) => v.impact === 'serious' || v.impact === 'critical')
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
@@ -26,8 +28,23 @@ for (const scheme of ['light', 'dark'] as const) {
     cs.seed('lever', 'a11y', [{ title: 'Accessible Role' }, { title: 'Second Role', remotePolicy: 'unknown' }]);
     const ids = ((await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] }).jobs.map((j) => j.id);
     await cs.api('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'TypeScript' } });
-    const created = (await cs.api('POST', '/api/applications', { jobId: ids[0] })).body as { application: { id: string } };
-    for (const route of ['/activity', '/applications', `/applications/${created.application.id}`, `/applications/${created.application.id}/prep`, '/opportunities', `/jobs/${ids[0]}`, `/opportunities/compare?ids=${ids.join(',')}`, '/opportunities/sources', '/opportunities/new', '/profile', '/resume', '/insights']) {
+    const created = (await cs.api('POST', '/api/applications', { jobId: ids[0] })).body as {
+      application: { id: string };
+    };
+    for (const route of [
+      '/activity',
+      '/applications',
+      `/applications/${created.application.id}`,
+      `/applications/${created.application.id}/prep`,
+      '/opportunities',
+      `/jobs/${ids[0]}`,
+      `/opportunities/compare?ids=${ids.join(',')}`,
+      '/opportunities/sources',
+      '/opportunities/new',
+      '/profile',
+      '/resume',
+      '/insights',
+    ]) {
       await page.goto(`${cs.origin}${route}`);
       await expect(page.locator('main h1')).toBeVisible();
       expect(await seriousViolations(page), route).toEqual([]);
@@ -64,15 +81,34 @@ for (const width of [375, 768, 1280]) {
   test(`layout fits a ${width}px viewport with actions reachable`, async ({ page, cs }) => {
     await page.setViewportSize({ width, height: 900 });
     await signIn(page, cs);
-    cs.seed('greenhouse', 'layout', [{ title: 'A Rather Long Synthetic Job Title For Layout Testing Purposes' }, { title: 'Short' }]);
+    cs.seed('greenhouse', 'layout', [
+      { title: 'A Rather Long Synthetic Job Title For Layout Testing Purposes' },
+      { title: 'Short' },
+    ]);
     const ids = ((await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] }).jobs.map((j) => j.id);
-    await cs.api('POST', '/api/profile/facts', { kind: 'role', value: { title: 'Synthetic Engineer', startYear: 2019 } });
-    for (const route of ['/', '/settings', '/opportunities', `/jobs/${ids[0]}`, '/opportunities/sources', '/opportunities/new', '/profile', '/resume', '/activity', '/insights']) {
+    await cs.api('POST', '/api/profile/facts', {
+      kind: 'role',
+      value: { title: 'Synthetic Engineer', startYear: 2019 },
+    });
+    for (const route of [
+      '/',
+      '/settings',
+      '/opportunities',
+      `/jobs/${ids[0]}`,
+      '/opportunities/sources',
+      '/opportunities/new',
+      '/profile',
+      '/resume',
+      '/activity',
+      '/insights',
+    ]) {
       await page.goto(`${cs.origin}${route}`);
       await expect(page.locator('main h1')).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `${route} overflows horizontally`).toBeLessThanOrEqual(0);
-      await expect(page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings' })).toBeInViewport();
+      await expect(
+        page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Settings' }),
+      ).toBeInViewport();
     }
     await page.goto(`${cs.origin}/settings`);
     const save = page.locator('[data-setting="search.excludedEmployers"]').getByRole('button', { name: 'Save' });

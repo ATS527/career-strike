@@ -17,8 +17,18 @@ describe('log redaction', () => {
 
   it('drops secret fields and reduces content fields to their length', () => {
     expect(
-      redactFields({ authorization: 'x', csrf: 'y', resume: 'Synthetic resume text', nested: { coverLetter: 'abc', ok: 'fine' } }),
-    ).toEqual({ authorization: '[REDACTED]', csrf: '[REDACTED]', resume: '[21 chars]', nested: { coverLetter: '[3 chars]', ok: 'fine' } });
+      redactFields({
+        authorization: 'x',
+        csrf: 'y',
+        resume: 'Synthetic resume text',
+        nested: { coverLetter: 'abc', ok: 'fine' },
+      }),
+    ).toEqual({
+      authorization: '[REDACTED]',
+      csrf: '[REDACTED]',
+      resume: '[21 chars]',
+      nested: { coverLetter: '[3 chars]', ok: 'fine' },
+    });
   });
 
   it('writes owner-only JSON lines that never contain the secret', () => {

@@ -2,9 +2,18 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { ApplicationService } from '../../applications/service.js';
 import { candidateContext } from '../../career/context.js';
-import { DuplicateBoardError, type Discovery } from '../../career/discovery.js';
-import { addManualJob, getJob, JobQuery, type JobSummary, jobCounts, listJobs, ManualJobInput, setDisposition } from '../../career/jobs.js';
-import { isMcpClientName, type McpClientStore, type Scope, SCOPES } from '../../mcp/clients.js';
+import { type Discovery, DuplicateBoardError } from '../../career/discovery.js';
+import {
+  addManualJob,
+  getJob,
+  JobQuery,
+  type JobSummary,
+  jobCounts,
+  listJobs,
+  ManualJobInput,
+  setDisposition,
+} from '../../career/jobs.js';
+import { isMcpClientName, type McpClientStore, SCOPES, type Scope } from '../../mcp/clients.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { Db } from '../../store/db.js';
@@ -45,7 +54,13 @@ const SearchQuery = z
 
 export function registerMcpRoutes(
   app: FastifyInstance,
-  deps: { db: Db; clients: McpClientStore; discovery: Discovery; applications: ApplicationService; disclosures: Disclosures },
+  deps: {
+    db: Db;
+    clients: McpClientStore;
+    discovery: Discovery;
+    applications: ApplicationService;
+    disclosures: Disclosures;
+  },
 ): void {
   const { db, clients, discovery, applications, disclosures } = deps;
 
@@ -85,7 +100,9 @@ export function registerMcpRoutes(
     if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
     // No candidate context and no dispositions: results must not reveal the profile, excluded
     // employers or which jobs the candidate rejected (even by their absence).
-    const { total, jobs } = listJobs(db, JobQuery.parse({ ...parsed.data, disposition: 'any' }), { excludedEmployers: [] });
+    const { total, jobs } = listJobs(db, JobQuery.parse({ ...parsed.data, disposition: 'any' }), {
+      excludedEmployers: [],
+    });
     return { total, jobs: jobs.map(publicJob) };
   });
 
@@ -117,21 +134,35 @@ export function registerMcpRoutes(
     const parsed = ManualJobInput.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: parsed.error.issues });
     const id = addManualJob(db, parsed.data);
-    return reply.code(201).send({ id, status: 'UNVERIFIED', note: 'Saved as unverified: Career Strike has not checked that this posting exists.' });
+    return reply.code(201).send({
+      id,
+      status: 'UNVERIFIED',
+      note: 'Saved as unverified: Career Strike has not checked that this posting exists.',
+    });
   });
 
   app.post('/api/mcp/boards', async (req, reply) => {
     if (!require(req, reply, 'public:write')) return reply;
-    const body = z.object({ url: z.string().trim().min(1).max(2000) }).strict().safeParse(req.body);
+    const body = z
+      .object({ url: z.string().trim().min(1).max(2000) })
+      .strict()
+      .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
-    const target = boardFromUrl(body.data.url, (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null);
-    if (!target) return reply.code(400).send({ error: 'UNRECOGNISED_BOARD_URL', message: 'Give a Greenhouse, Lever or Ashby careers page link.' });
+    const target = boardFromUrl(
+      body.data.url,
+      (db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null,
+    );
+    if (!target)
+      return reply
+        .code(400)
+        .send({ error: 'UNRECOGNISED_BOARD_URL', message: 'Give a Greenhouse, Lever or Ashby careers page link.' });
     try {
       const board = discovery.addBoard(target.source, target.board);
       const run = discovery.discover(board.id, 'board-added', (req.principal as { name: string }).name);
       return reply.code(201).send({ source: board.source, board: board.board, fetching: Boolean(run) });
     } catch (err) {
-      if (err instanceof DuplicateBoardError) return reply.code(409).send({ error: 'ALREADY_MONITORED', message: err.message });
+      if (err instanceof DuplicateBoardError)
+        return reply.code(409).send({ error: 'ALREADY_MONITORED', message: err.message });
       if (err instanceof SourceError) return reply.code(400).send({ error: 'INVALID_BOARD', message: err.message });
       throw err;
     }
@@ -141,10 +172,14 @@ export function registerMcpRoutes(
 
   app.put<{ Params: { id: string } }>('/api/mcp/jobs/:id/disposition', async (req, reply) => {
     if (!require(req, reply, 'dispositions:write')) return reply;
-    const body = z.object({ disposition: z.enum(['none', 'shortlisted', 'excluded']) }).strict().safeParse(req.body);
+    const body = z
+      .object({ disposition: z.enum(['none', 'shortlisted', 'excluded']) })
+      .strict()
+      .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
     const actor = `ai:${(req.principal as { name: string }).name}`;
-    if (!setDisposition(db, req.params.id, body.data.disposition, actor)) return reply.code(404).send({ error: 'NOT_FOUND', message: `No job with id ${req.params.id}.` });
+    if (!setDisposition(db, req.params.id, body.data.disposition, actor))
+      return reply.code(404).send({ error: 'NOT_FOUND', message: `No job with id ${req.params.id}.` });
     return { ok: true };
   });
 
@@ -152,18 +187,28 @@ export function registerMcpRoutes(
 
   app.get('/api/mcp/shortlist', async (req, reply) => {
     if (!require(req, reply, 'personal:read')) return reply;
-    const { jobs } = listJobs(db, JobQuery.parse({ disposition: 'shortlisted', status: 'all', limit: 100 }), { excludedEmployers: [] });
+    const { jobs } = listJobs(db, JobQuery.parse({ disposition: 'shortlisted', status: 'all', limit: 100 }), {
+      excludedEmployers: [],
+    });
     return { jobs: jobs.map(publicJob) };
   });
 
   app.get('/api/mcp/applications', async (req, reply) => {
     if (!require(req, reply, 'personal:read')) return reply;
-    return { applications: applications.list().map((a) => ({ jobId: a.jobId, title: a.title, employer: a.employer, state: a.state, updatedAt: a.updatedAt })) };
+    return {
+      applications: applications
+        .list()
+        .map((a) => ({ jobId: a.jobId, title: a.title, employer: a.employer, state: a.state, updatedAt: a.updatedAt })),
+    };
   });
 
   app.get('/api/mcp/boards', async (req, reply) => {
     if (!require(req, reply, 'personal:read')) return reply;
-    return { boards: discovery.listBoards().map((b) => ({ source: b.source, board: b.board, health: b.health, lastSuccessAt: b.lastSuccessAt })) };
+    return {
+      boards: discovery
+        .listBoards()
+        .map((b) => ({ source: b.source, board: b.board, health: b.health, lastSuccessAt: b.lastSuccessAt })),
+    };
   });
 
   // ---- sensitive (needs a grant) ----
@@ -171,7 +216,8 @@ export function registerMcpRoutes(
   app.get<{ Params: { id: string } }>('/api/mcp/jobs/:id/fit', async (req, reply) => {
     if (!require(req, reply, 'sensitive:read')) return reply;
     const job = getJob(db, req.params.id, candidateContext(db));
-    if (!job?.fitDetail) return reply.code(404).send({ error: 'NOT_FOUND', message: `No job with id ${req.params.id}.` });
+    if (!job?.fitDetail)
+      return reply.code(404).send({ error: 'NOT_FOUND', message: `No job with id ${req.params.id}.` });
     const f = job.fitDetail;
     return {
       fit: {
@@ -187,19 +233,32 @@ export function registerMcpRoutes(
   // ---- single-use disclosure: asked for by an assistant, previewed and approved by the candidate ----
 
   const DISCLOSURE_STATUS: Record<DisclosureError['code'], number> = {
-    NOT_FOUND: 404, NOT_PENDING: 409, PREVIEW_CHANGED: 409, NOTHING_SELECTED: 400, NOT_REQUESTED: 400,
-    TOO_MANY_PENDING: 429, WAITING: 409, DECLINED: 403, ALREADY_DELIVERED: 410, EXPIRED: 410,
+    NOT_FOUND: 404,
+    NOT_PENDING: 409,
+    PREVIEW_CHANGED: 409,
+    NOTHING_SELECTED: 400,
+    NOT_REQUESTED: 400,
+    TOO_MANY_PENDING: 429,
+    WAITING: 409,
+    DECLINED: 403,
+    ALREADY_DELIVERED: 410,
+    EXPIRED: 410,
   };
   const disclosureFail = (reply: FastifyReply, err: unknown): FastifyReply => {
-    if (err instanceof DisclosureError) return reply.code(DISCLOSURE_STATUS[err.code]).send({ error: err.code, message: err.message });
+    if (err instanceof DisclosureError)
+      return reply.code(DISCLOSURE_STATUS[err.code]).send({ error: err.code, message: err.message });
     throw err;
   };
-  const mcpClient = (req: FastifyRequest) => req.principal as Extract<FastifyRequest['principal'], { kind: 'mcp-client' }>;
+  const mcpClient = (req: FastifyRequest) =>
+    req.principal as Extract<FastifyRequest['principal'], { kind: 'mcp-client' }>;
 
   app.post('/api/mcp/disclosures', async (req, reply) => {
     if (!require(req, reply, 'public:read')) return reply;
     const body = z
-      .object({ purpose: z.string().trim().min(10, 'Say what the information is for').max(300), fields: z.array(z.enum(DISCLOSABLE_FIELDS)).min(1).max(DISCLOSABLE_FIELDS.length) })
+      .object({
+        purpose: z.string().trim().min(10, 'Say what the information is for').max(300),
+        fields: z.array(z.enum(DISCLOSABLE_FIELDS)).min(1).max(DISCLOSABLE_FIELDS.length),
+      })
       .strict()
       .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
@@ -209,7 +268,8 @@ export function registerMcpRoutes(
       return reply.code(201).send({
         requestId: d.id,
         state: d.state,
-        message: 'Requested. Nothing is shared until the candidate reviews the exact values in the Career Strike dashboard and approves. Then call cs_get_personal_info once with this requestId.',
+        message:
+          'Requested. Nothing is shared until the candidate reviews the exact values in the Career Strike dashboard and approves. Then call cs_get_personal_info once with this requestId.',
       });
     } catch (err) {
       return disclosureFail(reply, err);
@@ -243,8 +303,17 @@ export function registerMcpRoutes(
   });
 
   app.post<{ Params: { id: string } }>('/api/disclosures/:id/approve', async (req, reply) => {
-    if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD', message: 'Only the candidate can approve sharing, in the dashboard.' });
-    const body = z.object({ fields: z.array(z.enum(DISCLOSABLE_FIELDS)).max(DISCLOSABLE_FIELDS.length), previewHash: z.string().regex(/^[0-9a-f]{64}$/) }).strict().safeParse(req.body);
+    if (req.principal?.kind !== 'dashboard')
+      return reply
+        .code(403)
+        .send({ error: 'REQUIRES_DASHBOARD', message: 'Only the candidate can approve sharing, in the dashboard.' });
+    const body = z
+      .object({
+        fields: z.array(z.enum(DISCLOSABLE_FIELDS)).max(DISCLOSABLE_FIELDS.length),
+        previewHash: z.string().regex(/^[0-9a-f]{64}$/),
+      })
+      .strict()
+      .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
     try {
       return { disclosure: disclosures.approve(req.params.id, body.data.fields, body.data.previewHash, 'dashboard') };
@@ -272,7 +341,12 @@ export function registerMcpRoutes(
   app.post('/api/mcp-clients', async (req, reply) => {
     // Creating credentials is a local-CLI action (career-strike connect), never an MCP or browser one.
     if (req.principal?.kind !== 'local-client') return reply.code(403).send({ error: 'LOCAL_CLIENT_REQUIRED' });
-    const body = z.object({ name: z.string().refine(isMcpClientName, 'Use lowercase letters, numbers and hyphens; start with a letter.') }).strict().safeParse(req.body);
+    const body = z
+      .object({
+        name: z.string().refine(isMcpClientName, 'Use lowercase letters, numbers and hyphens; start with a letter.'),
+      })
+      .strict()
+      .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
     return reply.code(201).send(clients.create(body.data.name, 'local-client'));
   });
@@ -280,7 +354,10 @@ export function registerMcpRoutes(
   app.put<{ Params: { id: string } }>('/api/mcp-clients/:id/scopes', async (req, reply) => {
     // Grants are the candidate's decision, made in the dashboard.
     if (req.principal?.kind !== 'dashboard') return reply.code(403).send({ error: 'REQUIRES_DASHBOARD' });
-    const body = z.object({ scopes: z.array(z.enum(Object.keys(SCOPES) as [Scope, ...Scope[]])).max(10) }).strict().safeParse(req.body);
+    const body = z
+      .object({ scopes: z.array(z.enum(Object.keys(SCOPES) as [Scope, ...Scope[]])).max(10) })
+      .strict()
+      .safeParse(req.body);
     if (!body.success) return reply.code(400).send({ error: 'INVALID_INPUT', issues: body.error.issues });
     const client = clients.setScopes(req.params.id, body.data.scopes, 'dashboard');
     return client ? { client } : reply.code(404).send({ error: 'NOT_FOUND' });
@@ -288,7 +365,8 @@ export function registerMcpRoutes(
 
   app.post<{ Params: { id: string } }>('/api/mcp-clients/:id/revoke', async (req, reply) => {
     if (req.principal?.kind === 'mcp-client') return reply.code(403).send({ error: 'FORBIDDEN' });
-    if (!clients.revoke(req.params.id, req.principal?.kind === 'dashboard' ? 'dashboard' : 'local-client')) return reply.code(404).send({ error: 'NOT_FOUND' });
+    if (!clients.revoke(req.params.id, req.principal?.kind === 'dashboard' ? 'dashboard' : 'local-client'))
+      return reply.code(404).send({ error: 'NOT_FOUND' });
     return { ok: true };
   });
 }

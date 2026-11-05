@@ -1,0 +1,15 @@
+# Lefthook configuration for Career Strike
+# Refer for explanation to following link:
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: false
+  commands:
+    privacy-scan:
+      run: node --import tsx scripts/privacy-scan.ts
+    biome:
+      glob: "*.{js,ts,jsx,tsx,json,css}"
+      run: npx @biomejs/biome check --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true
+    check:
+      run: npm run check

@@ -18,8 +18,10 @@ export function normalizeLinkedInUrl(raw: string): LinkedInUrlResult {
   } catch {
     return { ok: false, reason: 'That is not a web address.' };
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return { ok: false, reason: 'Only https:// LinkedIn addresses are accepted.' };
-  if (url.username || url.password || url.port) return { ok: false, reason: 'That address contains a user name, password or port.' };
+  if (url.protocol !== 'https:' && url.protocol !== 'http:')
+    return { ok: false, reason: 'Only https:// LinkedIn addresses are accepted.' };
+  if (url.username || url.password || url.port)
+    return { ok: false, reason: 'That address contains a user name, password or port.' };
   if (!HOST.test(url.hostname.toLowerCase())) return { ok: false, reason: 'That is not a linkedin.com address.' };
   const m = /^\/in\/([^/]+)\/?$/i.exec(url.pathname);
   if (!m) return { ok: false, reason: 'Use your member profile address, which looks like linkedin.com/in/your-name.' };

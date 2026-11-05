@@ -57,8 +57,16 @@ export function statusText(status: EffectiveStatus, lastVerifiedAt: string | nul
 
 export function formatSalary(s: PublishedSalary | null): string | null {
   if (!s) return null;
-  const money = new Intl.NumberFormat(undefined, { style: 'currency', currency: s.currency, maximumFractionDigits: 0, notation: 'compact' });
-  const range = s.min !== null && s.max !== null ? `${money.format(s.min)}–${money.format(s.max)}` : money.format((s.min ?? s.max)!);
+  const money = new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: s.currency,
+    maximumFractionDigits: 0,
+    notation: 'compact',
+  });
+  const range =
+    s.min !== null && s.max !== null
+      ? `${money.format(s.min)}–${money.format(s.max)}`
+      : money.format((s.min ?? s.max)!);
   return `${range} per ${s.interval}`;
 }
 

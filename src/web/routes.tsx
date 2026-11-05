@@ -1,6 +1,5 @@
 import { createRootRoute, createRoute, createRouter, notFound } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { Shell } from './Shell';
 import { Activity } from './pages/Activity';
 import { AddJob } from './pages/AddJob';
 import { ApplicationPage } from './pages/ApplicationPage';
@@ -17,6 +16,7 @@ import { Profile } from './pages/Profile';
 import { ResumeStudio } from './pages/ResumeStudio';
 import { Settings } from './pages/Settings';
 import { Sources } from './pages/Sources';
+import { Shell } from './Shell';
 
 // The dashboard route tree. Record ids are opaque slugs; anything else is "not found" rather
 // than a request to the API.
@@ -27,7 +27,8 @@ const requireId = ({ params }: { params: { id: string } }): void => {
 
 const rootRoute = createRootRoute({ component: Shell, notFoundComponent: NotFound });
 
-const page = (path: string, component: () => ReactNode) => createRoute({ getParentRoute: () => rootRoute, path, component });
+const page = (path: string, component: () => ReactNode) =>
+  createRoute({ getParentRoute: () => rootRoute, path, component });
 
 const jobRoute = createRoute({
   getParentRoute: () => rootRoute,

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildDraft, DEFAULT_QUESTIONS, type DraftInput, factGuard } from '../../src/applications/drafts.js';
 import { canonicalJson, disclosures, missingRequired, payloadHash } from '../../src/applications/payload.js';
-import { APPLICATION_STATES, allowedTransitions, canTransition, isSubmitted, isTerminal } from '../../src/applications/states.js';
+import {
+  APPLICATION_STATES,
+  allowedTransitions,
+  canTransition,
+  isSubmitted,
+  isTerminal,
+} from '../../src/applications/states.js';
 import type { CandidateProfile } from '../../src/career/profile.js';
 import type { Fit } from '../../src/matching/fit.js';
 import { createAdapters } from '../../src/sources/adapters.js';
@@ -36,7 +42,8 @@ describe('application state machine', () => {
   });
 
   it('has terminal states with no way out', () => {
-    for (const s of ['REJECTED', 'WITHDRAWN', 'CLOSED', 'EXPIRED', 'DUPLICATE', 'CANCELLED'] as const) expect(isTerminal(s)).toBe(true);
+    for (const s of ['REJECTED', 'WITHDRAWN', 'CLOSED', 'EXPIRED', 'DUPLICATE', 'CANCELLED'] as const)
+      expect(isTerminal(s)).toBe(true);
     for (const s of APPLICATION_STATES) for (const t of allowedTransitions(s)) expect(APPLICATION_STATES).toContain(t);
   });
 });
@@ -50,16 +57,39 @@ const profile: CandidateProfile = {
   totalYears: 7,
 };
 
-const fit = { matchedSkills: ['TypeScript', 'Kubernetes'], missingRequiredSkills: ['Rust'], immediateStart: { asked: true, candidateAvailable: true } } as unknown as Fit;
+const fit = {
+  matchedSkills: ['TypeScript', 'Kubernetes'],
+  missingRequiredSkills: ['Rust'],
+  immediateStart: { asked: true, candidateAvailable: true },
+} as unknown as Fit;
 
 const input = (over: Partial<DraftInput> = {}): DraftInput => ({
-  job: { id: 'job_1', canonicalKey: 'greenhouse:synthetic:1', employer: 'Synthetic Labs', title: 'Senior Platform Engineer', applyUrl: 'https://careers.example.com/1' },
+  job: {
+    id: 'job_1',
+    canonicalKey: 'greenhouse:synthetic:1',
+    employer: 'Synthetic Labs',
+    title: 'Senior Platform Engineer',
+    applyUrl: 'https://careers.example.com/1',
+  },
   questions: null,
-  identity: { fullName: 'Jordan Example', email: 'jordan@example.com', phone: '+1 555 0100', links: ['https://www.linkedin.com/in/example'] },
+  identity: {
+    fullName: 'Jordan Example',
+    email: 'jordan@example.com',
+    phone: '+1 555 0100',
+    links: ['https://www.linkedin.com/in/example'],
+  },
   profile,
   fit,
   joiningAvailability: 'immediate',
-  resume: { id: 'doc_1', kind: 'resume', filename: 'resume.pdf', mime: 'application/pdf', sizeBytes: 10, sha256: 'a'.repeat(64), createdAt: 'x' },
+  resume: {
+    id: 'doc_1',
+    kind: 'resume',
+    filename: 'resume.pdf',
+    mime: 'application/pdf',
+    sizeBytes: 10,
+    sha256: 'a'.repeat(64),
+    createdAt: 'x',
+  },
   ...over,
 });
 
@@ -82,11 +112,23 @@ describe('drafts', () => {
     const field = (k: string) => payload.fields.find((f) => f.key === k)!;
     expect(field('full_name')).toMatchObject({ value: 'Jordan Example', source: 'identity' });
     expect(field('resume')).toMatchObject({ value: 'resume.pdf', source: 'document', kind: 'file' });
-    expect(payload.attachments).toEqual([{ documentId: 'doc_1', kind: 'resume', filename: 'resume.pdf', sha256: 'a'.repeat(64) }]);
+    expect(payload.attachments).toEqual([
+      { documentId: 'doc_1', kind: 'resume', filename: 'resume.pdf', sha256: 'a'.repeat(64) },
+    ]);
     expect(missingRequired(payload)).toEqual([]);
-    expect(disclosures(payload)).toEqual(['Your full name', 'Your email address', 'Your phone number', 'Profile links (1)', 'Résumé: resume.pdf', 'Cover letter text']);
+    expect(disclosures(payload)).toEqual([
+      'Your full name',
+      'Your email address',
+      'Your phone number',
+      'Profile links (1)',
+      'Résumé: resume.pdf',
+      'Cover letter text',
+    ]);
 
-    const bare = buildDraft(input({ identity: { fullName: null, email: null, phone: null, links: [] }, resume: null }), 'manual').payload;
+    const bare = buildDraft(
+      input({ identity: { fullName: null, email: null, phone: null, links: [] }, resume: null }),
+      'manual',
+    ).payload;
     expect(missingRequired(bare)).toEqual(['Full name', 'Email', 'Résumé/CV']);
     expect(bare.coverLetter).toContain('[Your name]');
   });
@@ -96,9 +138,30 @@ describe('drafts', () => {
       ...DEFAULT_QUESTIONS.filter((q) => q.key === 'email'),
       { key: 'first_name', label: 'First Name', required: true, kind: 'text' as const, options: [], voluntary: false },
       { key: 'last_name', label: 'Last Name', required: true, kind: 'text' as const, options: [], voluntary: false },
-      { key: 'question_1', label: 'LinkedIn Profile', required: false, kind: 'text' as const, options: [], voluntary: false },
-      { key: 'question_2', label: 'Why do you want to work here?', required: true, kind: 'long_text' as const, options: [], voluntary: false },
-      { key: 'voluntary:Gender', label: 'Gender', required: false, kind: 'choice' as const, options: [], voluntary: true },
+      {
+        key: 'question_1',
+        label: 'LinkedIn Profile',
+        required: false,
+        kind: 'text' as const,
+        options: [],
+        voluntary: false,
+      },
+      {
+        key: 'question_2',
+        label: 'Why do you want to work here?',
+        required: true,
+        kind: 'long_text' as const,
+        options: [],
+        voluntary: false,
+      },
+      {
+        key: 'voluntary:Gender',
+        label: 'Gender',
+        required: false,
+        kind: 'choice' as const,
+        options: [],
+        voluntary: true,
+      },
     ];
     const { payload } = buildDraft(input({ questions }), 'manual');
     expect(payload.fields.map((f) => [f.key, f.value])).toEqual([
@@ -110,7 +173,12 @@ describe('drafts', () => {
     ]);
     expect(payload.notAnswered).toEqual(['Gender']);
     // This form does not ask for a phone number, so the phone is not part of what is disclosed.
-    expect(payload.identity).toEqual({ fullName: 'Jordan Example', email: 'jordan@example.com', phone: null, links: ['https://www.linkedin.com/in/example'] });
+    expect(payload.identity).toEqual({
+      fullName: 'Jordan Example',
+      email: 'jordan@example.com',
+      phone: null,
+      links: ['https://www.linkedin.com/in/example'],
+    });
     expect(disclosures(payload)).not.toContain('Your phone number');
     expect(missingRequired(payload)).toEqual(['Why do you want to work here?']);
   });
@@ -124,7 +192,9 @@ describe('drafts', () => {
 
 describe('payload hashing', () => {
   it('is independent of key order and changes with any material change', () => {
-    expect(canonicalJson({ b: 1, a: { d: [2, { y: 1, x: 2 }], c: null } })).toBe('{"a":{"c":null,"d":[2,{"x":2,"y":1}]},"b":1}');
+    expect(canonicalJson({ b: 1, a: { d: [2, { y: 1, x: 2 }], c: null } })).toBe(
+      '{"a":{"c":null,"d":[2,{"x":2,"y":1}]},"b":1}',
+    );
     const { payload } = buildDraft(input(), 'manual');
     const h = payloadHash(payload);
     expect(payloadHash(JSON.parse(JSON.stringify(payload)))).toBe(h);
@@ -145,10 +215,23 @@ describe('Greenhouse application form', () => {
         'boards-api.greenhouse.io': {
           questions: [
             { label: 'First Name', required: true, fields: [{ name: 'first_name', type: 'input_text', values: [] }] },
-            { label: 'Resume/CV', required: true, fields: [{ name: 'resume_text', type: 'textarea', values: [] }, { name: 'resume', type: 'input_file', values: [] }] },
-            { label: 'Visa sponsorship?', required: true, fields: [{ name: 'q9', type: 'multi_value_single_select', values: [{ label: 'Yes' }, { label: 'No' }] }] },
+            {
+              label: 'Resume/CV',
+              required: true,
+              fields: [
+                { name: 'resume_text', type: 'textarea', values: [] },
+                { name: 'resume', type: 'input_file', values: [] },
+              ],
+            },
+            {
+              label: 'Visa sponsorship?',
+              required: true,
+              fields: [{ name: 'q9', type: 'multi_value_single_select', values: [{ label: 'Yes' }, { label: 'No' }] }],
+            },
           ],
-          location_questions: [{ label: 'Latitude', required: true, fields: [{ name: 'latitude', type: 'input_hidden', values: [] }] }],
+          location_questions: [
+            { label: 'Latitude', required: true, fields: [{ name: 'latitude', type: 'input_hidden', values: [] }] },
+          ],
           demographic_questions: { header: 'Voluntary', questions: [{ label: 'Gender' }] },
           compliance: 'unexpected shape',
         },
@@ -158,12 +241,25 @@ describe('Greenhouse application form', () => {
     expect(qs).toEqual([
       { key: 'first_name', label: 'First Name', required: true, kind: 'text', options: [], voluntary: false },
       { key: 'resume', label: 'Resume/CV', required: true, kind: 'file', options: [], voluntary: false },
-      { key: 'q9', label: 'Visa sponsorship?', required: true, kind: 'choice', options: ['Yes', 'No'], voluntary: false },
+      {
+        key: 'q9',
+        label: 'Visa sponsorship?',
+        required: true,
+        kind: 'choice',
+        options: ['Yes', 'No'],
+        voluntary: false,
+      },
       { key: 'voluntary:Gender', label: 'Gender', required: false, kind: 'choice', options: [], voluntary: true },
     ]);
     await expect(adapters.greenhouse.applicationQuestions!('synthetic', '../1')).rejects.toThrow();
     // Responses that omit optional sections entirely still parse.
-    const minimal = createAdapters(fakeFetch({ 'boards-api.greenhouse.io': { questions: [{ label: 'Email', fields: [{ name: 'email', type: 'input_text' }] }] } }));
+    const minimal = createAdapters(
+      fakeFetch({
+        'boards-api.greenhouse.io': {
+          questions: [{ label: 'Email', fields: [{ name: 'email', type: 'input_text' }] }],
+        },
+      }),
+    );
     expect(await minimal.greenhouse.applicationQuestions!('synthetic', '1')).toEqual([
       { key: 'email', label: 'Email', required: false, kind: 'text', options: [], voluntary: false },
     ]);

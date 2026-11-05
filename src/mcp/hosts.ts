@@ -41,9 +41,12 @@ export async function register(hostName: Host, launch: LaunchSpec): Promise<stri
       return (await host('codex', ['mcp', 'add', SERVER_NAME, ...envFlags('--env'), '--', ...cmd])).stdout;
     case 'claude-code':
       // Claude's -e is variadic: it must come after the server name or it swallows it.
-      return (await host('claude-code', ['mcp', 'add', '--scope', 'user', SERVER_NAME, ...envFlags('-e'), '--', ...cmd])).stdout;
+      return (
+        await host('claude-code', ['mcp', 'add', '--scope', 'user', SERVER_NAME, ...envFlags('-e'), '--', ...cmd])
+      ).stdout;
     case 'opencode':
-      return (await host('opencode', ['mcp', 'add', '--global', ...envFlags('--env'), SERVER_NAME, '--', ...cmd])).stdout;
+      return (await host('opencode', ['mcp', 'add', '--global', ...envFlags('--env'), SERVER_NAME, '--', ...cmd]))
+        .stdout;
   }
 }
 
@@ -83,7 +86,11 @@ export async function isRegistered(hostName: Host): Promise<boolean> {
  * Wait until the host reports the expected registration state. OpenCode's background service
  * can take a few seconds to reload its configuration after a change.
  */
-export async function settlesTo(hostName: Host, expected: boolean, attempts = hostName === 'opencode' ? 8 : 2): Promise<boolean> {
+export async function settlesTo(
+  hostName: Host,
+  expected: boolean,
+  attempts = hostName === 'opencode' ? 8 : 2,
+): Promise<boolean> {
   for (let i = 0; i < attempts; i++) {
     if ((await isRegistered(hostName)) === expected) return true;
     await new Promise((r) => setTimeout(r, 1500));
@@ -110,14 +117,19 @@ export function removeFromOpencodeConfig(file: string | null = opencodeConfigFil
   const config = parse(text) as { mcp?: Record<string, unknown> & { servers?: Record<string, unknown> } } | undefined;
   // OpenCode 2.x writes mcp.servers.<name>; older versions used mcp.<name>.
   const entryPath =
-    config?.mcp?.servers && SERVER_NAME in config.mcp.servers ? ['mcp', 'servers', SERVER_NAME] : config?.mcp && SERVER_NAME in config.mcp ? ['mcp', SERVER_NAME] : null;
+    config?.mcp?.servers && SERVER_NAME in config.mcp.servers
+      ? ['mcp', 'servers', SERVER_NAME]
+      : config?.mcp && SERVER_NAME in config.mcp
+        ? ['mcp', SERVER_NAME]
+        : null;
   if (!entryPath) return 'not-registered';
   fs.writeFileSync(`${file}.career-strike-backup`, text, { mode: 0o600 });
   const fmt = { formattingOptions: { insertSpaces: true, tabSize: 2 } };
   let next = applyEdits(text, modify(text, entryPath, undefined, fmt));
   // Leave no empty containers behind that Career Strike's registration created.
   const after = parse(next) as { mcp?: Record<string, unknown> & { servers?: Record<string, unknown> } };
-  if (after.mcp?.servers && Object.keys(after.mcp.servers).length === 0) next = applyEdits(next, modify(next, ['mcp', 'servers'], undefined, fmt));
+  if (after.mcp?.servers && Object.keys(after.mcp.servers).length === 0)
+    next = applyEdits(next, modify(next, ['mcp', 'servers'], undefined, fmt));
   const final = parse(next) as { mcp?: Record<string, unknown> };
   if (final.mcp && Object.keys(final.mcp).length === 0) next = applyEdits(next, modify(next, ['mcp'], undefined, fmt));
   fs.writeFileSync(file, next);

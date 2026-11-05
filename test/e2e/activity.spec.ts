@@ -10,7 +10,10 @@ test.describe('agent activity', () => {
     await ats.close();
   });
 
-  test('real work is shown while it runs, can be cancelled, and schedules and backoff are visible', async ({ page, cs }) => {
+  test('real work is shown while it runs, can be cancelled, and schedules and backoff are visible', async ({
+    page,
+    cs,
+  }) => {
     expect((await cs.api('POST', '/api/practice/endpoint', { origin: ats.origin })).status).toBe(200);
     await signIn(page, cs);
     await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Activity' }).click();
@@ -41,8 +44,13 @@ test.describe('agent activity', () => {
     // Scheduled monitoring is off until turned on, then its next run is shown.
     await page.goto(`${cs.origin}/settings#monitoring.discoveryIntervalHours`);
     await page.getByRole('radio', { name: 'Every 6 hours' }).check();
-    await page.locator('[data-setting="monitoring.discoveryIntervalHours"]').getByRole('button', { name: 'Save' }).click();
-    await expect(page.locator('[data-setting="monitoring.discoveryIntervalHours"]').getByRole('status')).toHaveText('Saved');
+    await page
+      .locator('[data-setting="monitoring.discoveryIntervalHours"]')
+      .getByRole('button', { name: 'Save' })
+      .click();
+    await expect(page.locator('[data-setting="monitoring.discoveryIntervalHours"]').getByRole('status')).toHaveText(
+      'Saved',
+    );
     await page.goto(`${cs.origin}/activity`);
     await expect(page.getByTestId('schedules')).toContainText('Check monitored job boards: every 6 hours · next');
 
@@ -52,7 +60,9 @@ test.describe('agent activity', () => {
     await page.locator('[data-board="demo"]').getByRole('button', { name: 'Fetch now' }).click();
     await expect(page.locator('[data-board="demo"]')).toContainText('Fetch failed');
     await page.goto(`${cs.origin}/activity`);
-    await expect(page.getByTestId('schedules')).toContainText('Board “demo” failed 1 time; scheduled checks wait until');
+    await expect(page.getByTestId('schedules')).toContainText(
+      'Board “demo” failed 1 time; scheduled checks wait until',
+    );
     await expect(page.getByTestId('schedules')).toContainText('returned HTTP 503');
   });
 });

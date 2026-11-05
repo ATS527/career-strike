@@ -7,9 +7,16 @@ import type { Db } from '../store/db.js';
 import { getSettings } from '../store/settings.js';
 import type { DocumentVault } from '../vault/documents.js';
 import type { SecretStore } from '../vault/secrets.js';
-import { buildDraft, factGuard, type FormQuestion, type GuardWarning, type Identity } from './drafts.js';
-import { ApplicationPayload, disclosures, identityHash, missingRequired, payloadHash, type PersonalizationBinding } from './payload.js';
-import { allowedTransitions, type ApplicationState, canTransition, TransitionError } from './states.js';
+import { buildDraft, type FormQuestion, factGuard, type GuardWarning, type Identity } from './drafts.js';
+import {
+  ApplicationPayload,
+  disclosures,
+  identityHash,
+  missingRequired,
+  type PersonalizationBinding,
+  payloadHash,
+} from './payload.js';
+import { type ApplicationState, allowedTransitions, canTransition, TransitionError } from './states.js';
 
 export const APPROVAL_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -141,7 +148,8 @@ export class ApplicationService {
     /** Which delivery method a job's application link allows; only the owned practice endpoint is automatable. */
     private readonly methodFor: (applyUrl: string | null) => 'manual' | 'test-ats' = () => 'manual',
     /** Document personalization is optional, but a bound package must remain current before approval. */
-    private readonly personalizationCurrent: (applicationId: string, binding: PersonalizationBinding) => boolean = () => true,
+    private readonly personalizationCurrent: (applicationId: string, binding: PersonalizationBinding) => boolean = () =>
+      true,
   ) {}
 
   // ---- reading ----
@@ -153,21 +161,48 @@ export class ApplicationService {
           `SELECT a.id, a.job_id, a.state, a.current_version, a.updated_at, j.title, j.employer
            FROM applications a JOIN jobs j ON j.id = a.job_id ORDER BY a.updated_at DESC`,
         )
-        .all() as { id: string; job_id: string; state: ApplicationState; current_version: number; updated_at: string; title: string; employer: string }[]
-    ).map((r) => ({ id: r.id, jobId: r.job_id, state: r.state, title: r.title, employer: r.employer, version: r.current_version, updatedAt: r.updated_at }));
+        .all() as {
+        id: string;
+        job_id: string;
+        state: ApplicationState;
+        current_version: number;
+        updated_at: string;
+        title: string;
+        employer: string;
+      }[]
+    ).map((r) => ({
+      id: r.id,
+      jobId: r.job_id,
+      state: r.state,
+      title: r.title,
+      employer: r.employer,
+      version: r.current_version,
+      updatedAt: r.updated_at,
+    }));
   }
 
   byJob(jobId: string): string | null {
-    return (this.db.prepare('SELECT id FROM applications WHERE job_id = ?').pluck().get(jobId) as string | undefined) ?? null;
+    return (
+      (this.db.prepare('SELECT id FROM applications WHERE job_id = ?').pluck().get(jobId) as string | undefined) ?? null
+    );
   }
 
   async get(id: string): Promise<ApplicationView | null> {
     const app = this.row(id);
     if (!app) return null;
     const { payload, hash } = this.version(id, app.current_version);
-    const job = this.db.prepare('SELECT title, employer, status FROM jobs WHERE id = ?').get(app.job_id) as { title: string; employer: string; status: string };
+    const job = this.db.prepare('SELECT title, employer, status FROM jobs WHERE id = ?').get(app.job_id) as {
+      title: string;
+      employer: string;
+      status: string;
+    };
     const profile = candidateContext(this.db).profile!;
-    const texts = [payload.coverLetter ?? '', ...payload.fields.filter((f) => f.kind === 'long_text' && f.key !== 'cover_letter_text').map((f) => f.value ?? '')];
+    const texts = [
+      payload.coverLetter ?? '',
+      ...payload.fields
+        .filter((f) => f.kind === 'long_text' && f.key !== 'cover_letter_text')
+        .map((f) => f.value ?? ''),
+    ];
     const warnings = dedupe(texts.flatMap((t) => factGuard(t, profile)));
     return {
       id: app.id,
@@ -182,11 +217,29 @@ export class ApplicationService {
       job,
       versions: (
         this.db
-          .prepare('SELECT version, created_by, reason, created_at, payload_hash FROM application_versions WHERE application_id = ? ORDER BY version DESC')
-          .all(id) as { version: number; created_by: string; reason: string; created_at: string; payload_hash: string }[]
-      ).map((v) => ({ version: v.version, createdBy: v.created_by, reason: v.reason, createdAt: v.created_at, payloadHash: v.payload_hash })),
+          .prepare(
+            'SELECT version, created_by, reason, created_at, payload_hash FROM application_versions WHERE application_id = ? ORDER BY version DESC',
+          )
+          .all(id) as {
+          version: number;
+          created_by: string;
+          reason: string;
+          created_at: string;
+          payload_hash: string;
+        }[]
+      ).map((v) => ({
+        version: v.version,
+        createdBy: v.created_by,
+        reason: v.reason,
+        createdAt: v.created_at,
+        payloadHash: v.payload_hash,
+      })),
       events: (
-        this.db.prepare('SELECT from_state, to_state, actor, note, evidence_json, at FROM application_events WHERE application_id = ? ORDER BY id').all(id) as {
+        this.db
+          .prepare(
+            'SELECT from_state, to_state, actor, note, evidence_json, at FROM application_events WHERE application_id = ? ORDER BY id',
+          )
+          .all(id) as {
           from_state: string | null;
           to_state: string;
           actor: string;
@@ -194,7 +247,14 @@ export class ApplicationService {
           evidence_json: string | null;
           at: string;
         }[]
-      ).map((e) => ({ from: e.from_state, to: e.to_state, actor: e.actor, note: e.note, evidence: e.evidence_json ? JSON.parse(e.evidence_json) : null, at: e.at })),
+      ).map((e) => ({
+        from: e.from_state,
+        to: e.to_state,
+        actor: e.actor,
+        note: e.note,
+        evidence: e.evidence_json ? JSON.parse(e.evidence_json) : null,
+        at: e.at,
+      })),
       followUps: this.followUps(id),
       duplicateRisk: (
         this.db
@@ -219,16 +279,23 @@ export class ApplicationService {
     const ctx = candidateContext(this.db);
     const job = getJob(this.db, jobId, ctx);
     if (!job) throw new ApplicationError('JOB_NOT_FOUND', 'That job does not exist.');
-    if (job.status === 'CLOSED') throw new ApplicationError('JOB_CLOSED', 'This posting has closed, so there is nothing to apply to.');
+    if (job.status === 'CLOSED')
+      throw new ApplicationError('JOB_CLOSED', 'This posting has closed, so there is nothing to apply to.');
     const existing = this.byJob(jobId);
-    if (existing) throw new ApplicationError('ALREADY_EXISTS', 'You already have an application for this job.', { applicationId: existing });
+    if (existing)
+      throw new ApplicationError('ALREADY_EXISTS', 'You already have an application for this job.', {
+        applicationId: existing,
+      });
 
     let questions: FormQuestion[] | null = null;
     try {
       questions = await this.questionsFor(jobId);
     } catch (err) {
       // The form could not be read; fall back to the standard fields rather than guessing.
-      this.logger.warn('applications.questions-unavailable', { jobId, message: err instanceof Error ? err.message : String(err) });
+      this.logger.warn('applications.questions-unavailable', {
+        jobId,
+        message: err instanceof Error ? err.message : String(err),
+      });
     }
     const settings = getSettings(this.db);
     const resume = this.vault.list().find((d) => d.kind === 'resume') ?? null;
@@ -248,10 +315,14 @@ export class ApplicationService {
 
     const id = `app_${randomBytes(9).toString('base64url')}`;
     const at = new Date().toISOString();
-    const reason = questions ? 'First draft from your approved profile and the employer’s published form' : 'First draft from your approved profile';
+    const reason = questions
+      ? 'First draft from your approved profile and the employer’s published form'
+      : 'First draft from your approved profile';
     this.db.transaction(() => {
       this.db
-        .prepare("INSERT INTO applications (id, job_id, state, mode, current_version, created_at, updated_at) VALUES (?, ?, 'DRAFTED', ?, 1, ?, ?)")
+        .prepare(
+          "INSERT INTO applications (id, job_id, state, mode, current_version, created_at, updated_at) VALUES (?, ?, 'DRAFTED', ?, 1, ?, ?)",
+        )
         .run(id, jobId, payload.destination.method === 'test-ats' ? 'automated' : 'manual', at, at);
       this.insertVersion(id, 1, payload, 'career-strike', reason, at);
       this.event(id, null, 'DRAFTED', actor, reason, at);
@@ -273,9 +344,15 @@ export class ApplicationService {
 
     for (const change of changes.fields ?? []) {
       const field = next.fields.find((f) => f.key === change.key);
-      if (!field) throw new ApplicationError('INVALID_CHANGE', `There is no field “${change.key}” on this application.`);
+      if (!field)
+        throw new ApplicationError('INVALID_CHANGE', `There is no field “${change.key}” on this application.`);
       if (field.kind === 'file') throw new ApplicationError('INVALID_CHANGE', 'Choose files with the document picker.');
-      if (field.kind === 'choice' && change.value !== null && field.options.length && !field.options.includes(change.value)) {
+      if (
+        field.kind === 'choice' &&
+        change.value !== null &&
+        field.options.length &&
+        !field.options.includes(change.value)
+      ) {
         throw new ApplicationError('INVALID_CHANGE', `“${change.value}” is not one of the employer’s options.`);
       }
       field.value = change.value === null || change.value.trim() === '' ? null : change.value;
@@ -301,7 +378,8 @@ export class ApplicationService {
       } else if (resumeField) Object.assign(resumeField, { value: null, source: 'empty' });
     }
     if (changes.method) {
-      if (next.destination.method === 'test-ats') throw new ApplicationError('INVALID_CHANGE', 'Practice applications are always submitted automatically.');
+      if (next.destination.method === 'test-ats')
+        throw new ApplicationError('INVALID_CHANGE', 'Practice applications are always submitted automatically.');
       next.destination.method = changes.method;
     }
 
@@ -314,14 +392,23 @@ export class ApplicationService {
     this.db.transaction(() => {
       this.insertVersion(id, version, parsed.data, actor, reason, at);
       const mode = parsed.data.destination.method === 'test-ats' ? 'automated' : parsed.data.destination.method;
-      this.db.prepare('UPDATE applications SET current_version = ?, mode = ?, updated_at = ? WHERE id = ?').run(version, mode, at, id);
+      this.db
+        .prepare('UPDATE applications SET current_version = ?, mode = ?, updated_at = ? WHERE id = ?')
+        .run(version, mode, at, id);
       this.invalidateApprovals(id, `Version ${version} changed what would be submitted`, 'INVALIDATED');
-      if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED') this.transition(id, app.state, 'DRAFTED', actor, 'Edited after review; needs a fresh review', at);
+      if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED')
+        this.transition(id, app.state, 'DRAFTED', actor, 'Edited after review; needs a fresh review', at);
     })();
   }
 
   /** Bind reviewed, immutable document variants to the exact application payload. */
-  setPersonalization(id: string, binding: PersonalizationBinding, coverLetter: string | null, actor: string, reason: string): void {
+  setPersonalization(
+    id: string,
+    binding: PersonalizationBinding,
+    coverLetter: string | null,
+    actor: string,
+    reason: string,
+  ): void {
     const app = this.requireRow(id);
     if (!['DRAFTED', 'NEEDS_INFORMATION', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED'].includes(app.state)) {
       throw new ApplicationError('NOT_EDITABLE', `An application in state ${app.state} can no longer be edited.`);
@@ -335,7 +422,8 @@ export class ApplicationService {
     next.coverLetter = field ? coverLetter : null;
     if (field) Object.assign(field, { value: coverLetter, source: coverLetter ? 'draft' : 'empty' });
     const parsed = ApplicationPayload.safeParse(next);
-    if (!parsed.success) throw new ApplicationError('INVALID_CHANGE', 'The document package is invalid.', parsed.error.issues);
+    if (!parsed.success)
+      throw new ApplicationError('INVALID_CHANGE', 'The document package is invalid.', parsed.error.issues);
     if (payloadHash(parsed.data) === currentHash) return;
     const version = app.current_version + 1;
     const at = new Date().toISOString();
@@ -343,7 +431,8 @@ export class ApplicationService {
       this.insertVersion(id, version, parsed.data, actor, reason, at);
       this.db.prepare('UPDATE applications SET current_version = ?, updated_at = ? WHERE id = ?').run(version, at, id);
       this.invalidateApprovals(id, `Version ${version} changed the reviewed document package`, 'INVALIDATED');
-      if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED') this.transition(id, app.state, 'DRAFTED', actor, 'Document package changed; needs a fresh review', at);
+      if (app.state === 'READY_FOR_REVIEW' || app.state === 'APPROVED')
+        this.transition(id, app.state, 'DRAFTED', actor, 'Document package changed; needs a fresh review', at);
     })();
   }
 
@@ -353,24 +442,42 @@ export class ApplicationService {
     const app = this.requireRow(id);
     const { payload } = this.version(id, app.current_version);
     const missing = missingRequired(payload);
-    if (missing.length) throw new ApplicationError('INCOMPLETE', `Fill in the required items first: ${missing.join(', ')}.`, { missing });
-    if (!payload.destination.url) throw new ApplicationError('INCOMPLETE', 'This job has no official application link to send you to.');
+    if (missing.length)
+      throw new ApplicationError('INCOMPLETE', `Fill in the required items first: ${missing.join(', ')}.`, { missing });
+    if (!payload.destination.url)
+      throw new ApplicationError('INCOMPLETE', 'This job has no official application link to send you to.');
     if (payload.personalization && !this.personalizationCurrent(id, payload.personalization)) {
-      throw new ApplicationError('STALE_DOCUMENTS', 'Your tailored documents are stale. Generate and review a new package before continuing.');
+      throw new ApplicationError(
+        'STALE_DOCUMENTS',
+        'Your tailored documents are stale. Generate and review a new package before continuing.',
+      );
     }
-    this.db.transaction(() => this.transition(id, app.state, 'READY_FOR_REVIEW', actor, 'Ready for your review', new Date().toISOString()))();
+    this.db.transaction(() =>
+      this.transition(id, app.state, 'READY_FOR_REVIEW', actor, 'Ready for your review', new Date().toISOString()),
+    )();
   }
 
   /** After a failed submission, start again from a draft. A new approval will be required. */
   redraft(id: string, actor: string): void {
     const app = this.requireRow(id);
     if (app.state !== 'SUBMISSION_FAILED') throw new TransitionError(app.state, 'DRAFTED');
-    this.db.transaction(() => this.transition(id, app.state, 'DRAFTED', actor, 'Prepared again after a failed submission; needs a new approval', new Date().toISOString()))();
+    this.db.transaction(() =>
+      this.transition(
+        id,
+        app.state,
+        'DRAFTED',
+        actor,
+        'Prepared again after a failed submission; needs a new approval',
+        new Date().toISOString(),
+      ),
+    )();
   }
 
   saveForLater(id: string, actor: string): void {
     const app = this.requireRow(id);
-    this.db.transaction(() => this.transition(id, app.state, 'DRAFTED', actor, 'Saved for later', new Date().toISOString()))();
+    this.db.transaction(() =>
+      this.transition(id, app.state, 'DRAFTED', actor, 'Saved for later', new Date().toISOString()),
+    )();
   }
 
   reject(id: string, actor: string, note: string | null): void {
@@ -378,7 +485,14 @@ export class ApplicationService {
     const at = new Date().toISOString();
     this.db.transaction(() => {
       this.invalidateApprovals(id, 'Application rejected at review', 'REVOKED');
-      this.transition(id, app.state, 'CANCELLED', actor, note ? `Rejected at review: ${note}` : 'Rejected at review', at);
+      this.transition(
+        id,
+        app.state,
+        'CANCELLED',
+        actor,
+        note ? `Rejected at review: ${note}` : 'Rejected at review',
+        at,
+      );
     })();
   }
 
@@ -387,18 +501,32 @@ export class ApplicationService {
    * an HMAC (key in the OS keychain) over the version, payload hash, destination and identity, and
    * can be used once. Only the dashboard can call this.
    */
-  async approve(id: string, reviewed: { version: number; payloadHash: string; acknowledgeWarnings: boolean }, actor: string): Promise<ApprovalStatus> {
+  async approve(
+    id: string,
+    reviewed: { version: number; payloadHash: string; acknowledgeWarnings: boolean },
+    actor: string,
+  ): Promise<ApprovalStatus> {
     const view = await this.get(id);
     if (!view) throw new ApplicationError('NOT_FOUND', 'Application not found.');
     if (!canTransition(view.state, 'APPROVED')) throw new TransitionError(view.state, 'APPROVED');
     if (reviewed.version !== view.version || reviewed.payloadHash !== view.payloadHash) {
-      throw new ApplicationError('STALE_REVIEW', 'The application changed after you reviewed it. Review the current version.');
+      throw new ApplicationError(
+        'STALE_REVIEW',
+        'The application changed after you reviewed it. Review the current version.',
+      );
     }
     if (view.payload.personalization && !this.personalizationCurrent(id, view.payload.personalization)) {
-      throw new ApplicationError('STALE_DOCUMENTS', 'Your tailored documents changed or became stale. Generate and review them again.');
+      throw new ApplicationError(
+        'STALE_DOCUMENTS',
+        'Your tailored documents changed or became stale. Generate and review them again.',
+      );
     }
     if (view.warnings.length > 0 && !reviewed.acknowledgeWarnings) {
-      throw new ApplicationError('WARNINGS_NOT_ACKNOWLEDGED', 'Confirm the flagged statements are accurate before approving.', view.warnings);
+      throw new ApplicationError(
+        'WARNINGS_NOT_ACKNOWLEDGED',
+        'Confirm the flagged statements are accurate before approving.',
+        view.warnings,
+      );
     }
     const key = await this.secrets.getOrCreate('approval-key');
     const issued = new Date();
@@ -434,19 +562,38 @@ export class ApplicationService {
   async verifyApproval(id: string, now = Date.now()): Promise<ApprovalCheck> {
     const app = this.row(id);
     if (!app) return { valid: false, reason: 'Application not found.', approval: null };
-    const latest = this.db.prepare('SELECT * FROM approvals WHERE application_id = ? ORDER BY issued_at DESC, rowid DESC LIMIT 1').get(id) as
-      | ApprovalRow
-      | undefined;
+    const latest = this.db
+      .prepare('SELECT * FROM approvals WHERE application_id = ? ORDER BY issued_at DESC, rowid DESC LIMIT 1')
+      .get(id) as ApprovalRow | undefined;
     if (!latest) return { valid: false, reason: 'Not approved.', approval: null };
     const status = toStatus(latest);
-    if (latest.state !== 'ACTIVE') return { valid: false, reason: `Approval is ${latest.state.toLowerCase()}${latest.state_reason ? `: ${latest.state_reason}` : ''}.`, approval: status };
+    if (latest.state !== 'ACTIVE')
+      return {
+        valid: false,
+        reason: `Approval is ${latest.state.toLowerCase()}${latest.state_reason ? `: ${latest.state_reason}` : ''}.`,
+        approval: status,
+      };
     if (Date.parse(latest.expires_at) <= now) {
-      this.db.prepare("UPDATE approvals SET state = 'EXPIRED', state_reason = 'Approval is older than 7 days' WHERE id = ? AND state = 'ACTIVE'").run(latest.id);
-      return { valid: false, reason: 'Approval expired. Review and approve again.', approval: { ...status, state: 'EXPIRED' } };
+      this.db
+        .prepare(
+          "UPDATE approvals SET state = 'EXPIRED', state_reason = 'Approval is older than 7 days' WHERE id = ? AND state = 'ACTIVE'",
+        )
+        .run(latest.id);
+      return {
+        valid: false,
+        reason: 'Approval expired. Review and approve again.',
+        approval: { ...status, state: 'EXPIRED' },
+      };
     }
     const key = await this.secrets.getOrCreate('approval-key');
-    if (!macMatches(key, latest)) return { valid: false, reason: 'Approval signature does not verify; it was not issued by this Career Strike.', approval: status };
-    if (latest.version !== app.current_version) return { valid: false, reason: 'Approval covers an older version.', approval: status };
+    if (!macMatches(key, latest))
+      return {
+        valid: false,
+        reason: 'Approval signature does not verify; it was not issued by this Career Strike.',
+        approval: status,
+      };
+    if (latest.version !== app.current_version)
+      return { valid: false, reason: 'Approval covers an older version.', approval: status };
     // Re-hash the stored payload so a modified record cannot borrow an earlier approval.
     let current: { payload: ApplicationPayload; hash: string };
     try {
@@ -454,9 +601,12 @@ export class ApplicationService {
     } catch {
       return { valid: false, reason: 'The approved version is unreadable.', approval: status };
     }
-    if (current.hash !== latest.payload_hash) return { valid: false, reason: 'What would be submitted differs from what was approved.', approval: status };
-    if (destinationKey(current.payload) !== latest.destination) return { valid: false, reason: 'The destination differs from the approved one.', approval: status };
-    if (identityHash(current.payload) !== latest.identity_hash) return { valid: false, reason: 'The identity differs from the approved one.', approval: status };
+    if (current.hash !== latest.payload_hash)
+      return { valid: false, reason: 'What would be submitted differs from what was approved.', approval: status };
+    if (destinationKey(current.payload) !== latest.destination)
+      return { valid: false, reason: 'The destination differs from the approved one.', approval: status };
+    if (identityHash(current.payload) !== latest.identity_hash)
+      return { valid: false, reason: 'The identity differs from the approved one.', approval: status };
     return { valid: true, reason: 'Approval matches exactly what would be submitted.', approval: status };
   }
 
@@ -472,17 +622,29 @@ export class ApplicationService {
       throw new ApplicationError('INVALID_CHANGE', 'Practice applications are submitted automatically, not by hand.');
     }
     const check = await this.verifyApproval(id);
-    if (!check.valid || !check.approval) throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
+    if (!check.valid || !check.approval)
+      throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
     const at = new Date().toISOString();
     this.db.transaction(() => {
       const consumed = this.db
-        .prepare("UPDATE approvals SET state = 'CONSUMED', consumed_at = ?, state_reason = 'Used for a manual submission' WHERE id = ? AND state = 'ACTIVE'")
+        .prepare(
+          "UPDATE approvals SET state = 'CONSUMED', consumed_at = ?, state_reason = 'Used for a manual submission' WHERE id = ? AND state = 'ACTIVE'",
+        )
         .run(at, check.approval!.id).changes;
-      if (consumed !== 1) throw new ApplicationError('APPROVAL_INVALID', 'Cannot submit: this approval has already been used.');
-      this.transition(id, app.state, 'NEEDS_MANUAL_ACTION', actor, `Submitting version ${app.current_version} on the employer’s site`, at, {
-        approvalId: check.approval!.id,
-        payloadHash: check.approval!.payloadHash,
-      });
+      if (consumed !== 1)
+        throw new ApplicationError('APPROVAL_INVALID', 'Cannot submit: this approval has already been used.');
+      this.transition(
+        id,
+        app.state,
+        'NEEDS_MANUAL_ACTION',
+        actor,
+        `Submitting version ${app.current_version} on the employer’s site`,
+        at,
+        {
+          approvalId: check.approval!.id,
+          payloadHash: check.approval!.payloadHash,
+        },
+      );
     })();
   }
 
@@ -501,7 +663,10 @@ export class ApplicationService {
     const app = this.requireRow(id);
     const { payload, hash } = this.version(id, app.current_version);
     if (payload.destination.method !== 'test-ats') {
-      throw new ApplicationError('NOT_AUTOMATABLE', 'Real employers do not allow automated submission. Submit it on their site.');
+      throw new ApplicationError(
+        'NOT_AUTOMATABLE',
+        'Real employers do not allow automated submission. Submit it on their site.',
+      );
     }
     const duplicate = this.db
       .prepare(
@@ -514,41 +679,76 @@ export class ApplicationService {
     if (duplicate) {
       this.db.transaction(() => {
         this.invalidateApprovals(id, 'Duplicate of an application already submitted', 'REVOKED');
-        this.transition(id, app.state, 'DUPLICATE', 'career-strike', 'You already submitted an application for this role', new Date().toISOString(), { duplicateOf: duplicate });
+        this.transition(
+          id,
+          app.state,
+          'DUPLICATE',
+          'career-strike',
+          'You already submitted an application for this role',
+          new Date().toISOString(),
+          { duplicateOf: duplicate },
+        );
       })();
-      throw new ApplicationError('DUPLICATE', 'You have already submitted an application for this role, so this one was not sent.', { duplicateOf: duplicate });
+      throw new ApplicationError(
+        'DUPLICATE',
+        'You have already submitted an application for this role, so this one was not sent.',
+        { duplicateOf: duplicate },
+      );
     }
     const check = await this.verifyApproval(id);
-    if (!check.valid || !check.approval) throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
+    if (!check.valid || !check.approval)
+      throw new ApplicationError('APPROVAL_INVALID', `Cannot submit: ${check.reason}`);
     const attemptId = `sub_${randomBytes(9).toString('base64url')}`;
     const at = new Date().toISOString();
     this.db.transaction(() => {
       const consumed = this.db
-        .prepare("UPDATE approvals SET state = 'CONSUMED', consumed_at = ?, state_reason = 'Used for an automated submission' WHERE id = ? AND state = 'ACTIVE'")
+        .prepare(
+          "UPDATE approvals SET state = 'CONSUMED', consumed_at = ?, state_reason = 'Used for an automated submission' WHERE id = ? AND state = 'ACTIVE'",
+        )
         .run(at, check.approval!.id).changes;
-      if (consumed !== 1) throw new ApplicationError('APPROVAL_INVALID', 'Cannot submit: this approval has already been used.');
+      if (consumed !== 1)
+        throw new ApplicationError('APPROVAL_INVALID', 'Cannot submit: this approval has already been used.');
       this.db
-        .prepare("INSERT INTO submission_attempts (id, application_id, approval_id, endpoint, state, started_at) VALUES (?, ?, ?, ?, 'IN_PROGRESS', ?)")
+        .prepare(
+          "INSERT INTO submission_attempts (id, application_id, approval_id, endpoint, state, started_at) VALUES (?, ?, ?, ?, 'IN_PROGRESS', ?)",
+        )
         .run(attemptId, id, check.approval!.id, endpoint, at);
-      this.transition(id, app.state, 'SUBMISSION_IN_PROGRESS', actor, `Submitting version ${app.current_version} to ${new URL(endpoint).host}`, at, {
-        attemptId,
-        approvalId: check.approval!.id,
-        payloadHash: hash,
-      });
+      this.transition(
+        id,
+        app.state,
+        'SUBMISSION_IN_PROGRESS',
+        actor,
+        `Submitting version ${app.current_version} to ${new URL(endpoint).host}`,
+        at,
+        {
+          attemptId,
+          approvalId: check.approval!.id,
+          payloadHash: hash,
+        },
+      );
     })();
     // The approval id is the idempotency key: the endpoint can recognise any repeat of this attempt.
     return { attemptId, idempotencyKey: check.approval.id, payload, payloadHash: hash };
   }
 
   /** Record what delivery achieved. Only a verified receipt confirms; ambiguity stays unconfirmed. */
-  finishAttempt(attemptId: string, outcome: { state: 'CONFIRMED'; receipt: unknown } | { state: 'UNCONFIRMED' | 'FAILED'; error: string }, actor = 'career-strike'): void {
-    const attempt = this.db.prepare('SELECT application_id, state FROM submission_attempts WHERE id = ?').get(attemptId) as
-      | { application_id: string; state: string }
-      | undefined;
+  finishAttempt(
+    attemptId: string,
+    outcome: { state: 'CONFIRMED'; receipt: unknown } | { state: 'UNCONFIRMED' | 'FAILED'; error: string },
+    actor = 'career-strike',
+  ): void {
+    const attempt = this.db
+      .prepare('SELECT application_id, state FROM submission_attempts WHERE id = ?')
+      .get(attemptId) as { application_id: string; state: string } | undefined;
     if (!attempt) throw new ApplicationError('NOT_FOUND', 'Submission attempt not found.');
     const app = this.requireRow(attempt.application_id);
     const at = new Date().toISOString();
-    const to: ApplicationState = outcome.state === 'CONFIRMED' ? 'SUBMITTED_CONFIRMED' : outcome.state === 'FAILED' ? 'SUBMISSION_FAILED' : 'SUBMISSION_UNCONFIRMED';
+    const to: ApplicationState =
+      outcome.state === 'CONFIRMED'
+        ? 'SUBMITTED_CONFIRMED'
+        : outcome.state === 'FAILED'
+          ? 'SUBMISSION_FAILED'
+          : 'SUBMISSION_UNCONFIRMED';
     const note =
       outcome.state === 'CONFIRMED'
         ? 'The endpoint returned a receipt, verified by looking it up'
@@ -558,47 +758,93 @@ export class ApplicationService {
     this.db.transaction(() => {
       this.db
         .prepare('UPDATE submission_attempts SET state = ?, ended_at = ?, receipt_json = ?, error = ? WHERE id = ?')
-        .run(outcome.state, at, outcome.state === 'CONFIRMED' ? JSON.stringify(outcome.receipt) : null, outcome.state === 'CONFIRMED' ? null : outcome.error, attemptId);
-      if (app.state !== to) this.transition(app.id, app.state, to, actor, note, at, outcome.state === 'CONFIRMED' ? { type: 'endpoint-receipt', receipt: outcome.receipt } : null);
+        .run(
+          outcome.state,
+          at,
+          outcome.state === 'CONFIRMED' ? JSON.stringify(outcome.receipt) : null,
+          outcome.state === 'CONFIRMED' ? null : outcome.error,
+          attemptId,
+        );
+      if (app.state !== to)
+        this.transition(
+          app.id,
+          app.state,
+          to,
+          actor,
+          note,
+          at,
+          outcome.state === 'CONFIRMED' ? { type: 'endpoint-receipt', receipt: outcome.receipt } : null,
+        );
     })();
   }
 
   /** The latest attempt for reconciliation: its idempotency key and endpoint. */
   latestAttempt(id: string): { id: string; approvalId: string; endpoint: string; state: string } | null {
     const row = this.db
-      .prepare('SELECT id, approval_id, endpoint, state FROM submission_attempts WHERE application_id = ? ORDER BY started_at DESC, rowid DESC LIMIT 1')
+      .prepare(
+        'SELECT id, approval_id, endpoint, state FROM submission_attempts WHERE application_id = ? ORDER BY started_at DESC, rowid DESC LIMIT 1',
+      )
       .get(id) as { id: string; approval_id: string; endpoint: string; state: string } | undefined;
     return row ? { id: row.id, approvalId: row.approval_id, endpoint: row.endpoint, state: row.state } : null;
   }
 
   /** After a restart, a submission that was in flight has an unknown outcome. It is never resumed. */
   recoverInterruptedSubmissions(): number {
-    const rows = this.db.prepare("SELECT id FROM submission_attempts WHERE state = 'IN_PROGRESS'").pluck().all() as string[];
-    for (const attemptId of rows) this.finishAttempt(attemptId, { state: 'UNCONFIRMED', error: 'the service stopped while it was being sent' });
+    const rows = this.db
+      .prepare("SELECT id FROM submission_attempts WHERE state = 'IN_PROGRESS'")
+      .pluck()
+      .all() as string[];
+    for (const attemptId of rows)
+      this.finishAttempt(attemptId, { state: 'UNCONFIRMED', error: 'the service stopped while it was being sent' });
     return rows.length;
   }
 
   /** Only the candidate's explicit confirmation (with what they saw) marks a manual submission as sent. */
-  confirmSubmitted(id: string, evidence: { reference: string | null; submittedAt: string; note: string | null }, actor: string): void {
+  confirmSubmitted(
+    id: string,
+    evidence: { reference: string | null; submittedAt: string; note: string | null },
+    actor: string,
+  ): void {
     const app = this.requireRow(id);
-    if (app.state !== 'NEEDS_MANUAL_ACTION' && app.state !== 'SUBMISSION_UNCONFIRMED') throw new TransitionError(app.state, 'SUBMITTED_CONFIRMED');
+    if (app.state !== 'NEEDS_MANUAL_ACTION' && app.state !== 'SUBMISSION_UNCONFIRMED')
+      throw new TransitionError(app.state, 'SUBMITTED_CONFIRMED');
     const at = new Date().toISOString();
     this.db.transaction(() =>
-      this.transition(id, app.state, 'SUBMITTED_CONFIRMED', actor, 'You confirmed you submitted it', at, { type: 'candidate-confirmation', ...evidence }),
+      this.transition(id, app.state, 'SUBMITTED_CONFIRMED', actor, 'You confirmed you submitted it', at, {
+        type: 'candidate-confirmation',
+        ...evidence,
+      }),
     )();
   }
 
   markUnconfirmed(id: string, note: string | null, actor: string): void {
     const app = this.requireRow(id);
     this.db.transaction(() =>
-      this.transition(id, app.state, 'SUBMISSION_UNCONFIRMED', actor, note ? `Not sure it was sent: ${note}` : 'Not sure it was sent', new Date().toISOString()),
+      this.transition(
+        id,
+        app.state,
+        'SUBMISSION_UNCONFIRMED',
+        actor,
+        note ? `Not sure it was sent: ${note}` : 'Not sure it was sent',
+        new Date().toISOString(),
+      ),
     )();
   }
 
   /** Record what happened after submission, with the candidate's description of the evidence. */
-  recordOutcome(id: string, outcome: Outcome, evidence: { occurredAt: string; note: string | null }, actor: string): void {
+  recordOutcome(
+    id: string,
+    outcome: Outcome,
+    evidence: { occurredAt: string; note: string | null },
+    actor: string,
+  ): void {
     const app = this.requireRow(id);
-    this.db.transaction(() => this.transition(id, app.state, outcome, actor, evidence.note ?? OUTCOME_NOTE[outcome], new Date().toISOString(), { type: 'candidate-report', ...evidence }))();
+    this.db.transaction(() =>
+      this.transition(id, app.state, outcome, actor, evidence.note ?? OUTCOME_NOTE[outcome], new Date().toISOString(), {
+        type: 'candidate-report',
+        ...evidence,
+      }),
+    )();
   }
 
   /** Unsent applications for postings that have closed can no longer be submitted. */
@@ -613,7 +859,14 @@ export class ApplicationService {
     this.db.transaction(() => {
       for (const r of rows) {
         this.invalidateApprovals(r.id, 'The posting closed before it was submitted', 'REVOKED');
-        this.transition(r.id, r.state, 'EXPIRED', actor, 'The employer took the posting down before it was submitted', at);
+        this.transition(
+          r.id,
+          r.state,
+          'EXPIRED',
+          actor,
+          'The employer took the posting down before it was submitted',
+          at,
+        );
       }
     })();
     return rows.length;
@@ -626,16 +879,27 @@ export class ApplicationService {
     const id = `fu_${randomBytes(9).toString('base64url')}`;
     const at = new Date().toISOString();
     this.db.transaction(() => {
-      this.db.prepare("INSERT INTO follow_ups (id, application_id, due_at, note, status, created_at) VALUES (?, ?, ?, ?, 'OPEN', ?)").run(id, applicationId, dueAt, note, at);
-      this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'follow-up.added', id);
+      this.db
+        .prepare(
+          "INSERT INTO follow_ups (id, application_id, due_at, note, status, created_at) VALUES (?, ?, ?, ?, 'OPEN', ?)",
+        )
+        .run(id, applicationId, dueAt, note, at);
+      this.db
+        .prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)')
+        .run(at, actor, 'follow-up.added', id);
     })();
     return this.followUps(applicationId).find((f) => f.id === id)!;
   }
 
   closeFollowUp(id: string, status: 'DONE' | 'DISMISSED', actor: string): boolean {
     const at = new Date().toISOString();
-    const changed = this.db.prepare("UPDATE follow_ups SET status = ?, closed_at = ? WHERE id = ? AND status = 'OPEN'").run(status, at, id).changes;
-    if (changed) this.db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, `follow-up.${status.toLowerCase()}`, id);
+    const changed = this.db
+      .prepare("UPDATE follow_ups SET status = ?, closed_at = ? WHERE id = ? AND status = 'OPEN'")
+      .run(status, at, id).changes;
+    if (changed)
+      this.db
+        .prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)')
+        .run(at, actor, `follow-up.${status.toLowerCase()}`, id);
     return changed === 1;
   }
 
@@ -652,12 +916,19 @@ export class ApplicationService {
   }
 
   private followUps(applicationId: string): FollowUp[] {
-    return (this.db.prepare('SELECT * FROM follow_ups WHERE application_id = ? ORDER BY due_at').all(applicationId) as FollowUpRow[]).map(toFollowUp);
+    return (
+      this.db
+        .prepare('SELECT * FROM follow_ups WHERE application_id = ? ORDER BY due_at')
+        .all(applicationId) as FollowUpRow[]
+    ).map(toFollowUp);
   }
 
   /** Counts by state for the dashboard. */
   counts(): Record<ApplicationState, number> {
-    const rows = this.db.prepare('SELECT state, COUNT(*) AS n FROM applications GROUP BY state').all() as { state: ApplicationState; n: number }[];
+    const rows = this.db.prepare('SELECT state, COUNT(*) AS n FROM applications GROUP BY state').all() as {
+      state: ApplicationState;
+      n: number;
+    }[];
     return Object.fromEntries(rows.map((r) => [r.state, r.n])) as Record<ApplicationState, number>;
   }
 
@@ -675,15 +946,22 @@ export class ApplicationService {
 
   /** Load a version and recompute its hash from the stored JSON rather than trusting the stored hash. */
   private version(id: string, version: number): { payload: ApplicationPayload; hash: string } {
-    const row = this.db.prepare('SELECT payload_json FROM application_versions WHERE application_id = ? AND version = ?').get(id, version) as
-      | { payload_json: string }
-      | undefined;
+    const row = this.db
+      .prepare('SELECT payload_json FROM application_versions WHERE application_id = ? AND version = ?')
+      .get(id, version) as { payload_json: string } | undefined;
     if (!row) throw new ApplicationError('NOT_FOUND', 'Application version not found.');
     const payload = ApplicationPayload.parse(JSON.parse(row.payload_json));
     return { payload, hash: payloadHash(payload) };
   }
 
-  private insertVersion(id: string, version: number, payload: ApplicationPayload, createdBy: string, reason: string, at: string): void {
+  private insertVersion(
+    id: string,
+    version: number,
+    payload: ApplicationPayload,
+    createdBy: string,
+    reason: string,
+    at: string,
+  ): void {
     this.db
       .prepare(
         'INSERT INTO application_versions (application_id, version, payload_json, payload_hash, created_by, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -692,19 +970,41 @@ export class ApplicationService {
   }
 
   private invalidateApprovals(id: string, reason: string, state: 'INVALIDATED' | 'REVOKED'): void {
-    this.db.prepare("UPDATE approvals SET state = ?, state_reason = ? WHERE application_id = ? AND state = 'ACTIVE'").run(state, reason, id);
+    this.db
+      .prepare("UPDATE approvals SET state = ?, state_reason = ? WHERE application_id = ? AND state = 'ACTIVE'")
+      .run(state, reason, id);
   }
 
-  private transition(id: string, from: ApplicationState, to: ApplicationState, actor: string, note: string, at: string, evidence: unknown = null): void {
+  private transition(
+    id: string,
+    from: ApplicationState,
+    to: ApplicationState,
+    actor: string,
+    note: string,
+    at: string,
+    evidence: unknown = null,
+  ): void {
     if (!canTransition(from, to)) throw new TransitionError(from, to);
-    const changed = this.db.prepare('UPDATE applications SET state = ?, updated_at = ? WHERE id = ? AND state = ?').run(to, at, id, from).changes;
+    const changed = this.db
+      .prepare('UPDATE applications SET state = ?, updated_at = ? WHERE id = ? AND state = ?')
+      .run(to, at, id, from).changes;
     if (changed !== 1) throw new TransitionError(from, to);
     this.event(id, from, to, actor, note, at, evidence);
   }
 
-  private event(id: string, from: ApplicationState | null, to: ApplicationState, actor: string, note: string, at: string, evidence: unknown = null): void {
+  private event(
+    id: string,
+    from: ApplicationState | null,
+    to: ApplicationState,
+    actor: string,
+    note: string,
+    at: string,
+    evidence: unknown = null,
+  ): void {
     this.db
-      .prepare('INSERT INTO application_events (application_id, from_state, to_state, actor, note, evidence_json, at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .prepare(
+        'INSERT INTO application_events (application_id, from_state, to_state, actor, note, evidence_json, at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      )
       .run(id, from, to, actor, note, evidence === null ? null : JSON.stringify(evidence), at);
   }
 }
@@ -729,15 +1029,22 @@ interface FollowUpRow {
 }
 
 function toFollowUp(r: FollowUpRow): FollowUp {
-  return { id: r.id, applicationId: r.application_id, dueAt: r.due_at, note: r.note, status: r.status, createdAt: r.created_at, closedAt: r.closed_at };
+  return {
+    id: r.id,
+    applicationId: r.application_id,
+    dueAt: r.due_at,
+    note: r.note,
+    status: r.status,
+    createdAt: r.created_at,
+    closedAt: r.closed_at,
+  };
 }
 
 export function identityFrom(settings: Record<string, unknown>): Identity {
   const profileLinks = (settings['identity.profileLinks'] as string[] | undefined) ?? [];
   const linkedin = (settings['candidate.linkedinUrl'] as string | null | undefined) ?? null;
-  const links = linkedin && !profileLinks.some((l) => /linkedin\.com/i.test(l))
-    ? [linkedin, ...profileLinks]
-    : profileLinks;
+  const links =
+    linkedin && !profileLinks.some((l) => /linkedin\.com/i.test(l)) ? [linkedin, ...profileLinks] : profileLinks;
   return {
     fullName: (settings['identity.fullName'] as string | null) ?? null,
     email: (settings['identity.email'] as string | null) ?? null,
@@ -750,10 +1057,31 @@ function destinationKey(payload: ApplicationPayload): string {
   return `${payload.destination.method}:${payload.destination.url ?? ''}`;
 }
 
-type MacFields = Pick<ApprovalRow, 'id' | 'application_id' | 'version' | 'payload_hash' | 'destination' | 'identity_hash' | 'nonce' | 'issued_at' | 'expires_at'>;
+type MacFields = Pick<
+  ApprovalRow,
+  | 'id'
+  | 'application_id'
+  | 'version'
+  | 'payload_hash'
+  | 'destination'
+  | 'identity_hash'
+  | 'nonce'
+  | 'issued_at'
+  | 'expires_at'
+>;
 
 function computeMac(key: Buffer, r: MacFields): string {
-  const material = JSON.stringify([r.id, r.application_id, r.version, r.payload_hash, r.destination, r.identity_hash, r.nonce, r.issued_at, r.expires_at]);
+  const material = JSON.stringify([
+    r.id,
+    r.application_id,
+    r.version,
+    r.payload_hash,
+    r.destination,
+    r.identity_hash,
+    r.nonce,
+    r.issued_at,
+    r.expires_at,
+  ]);
   return createHmac('sha256', key).update(material).digest('hex');
 }
 
@@ -764,7 +1092,15 @@ function macMatches(key: Buffer, r: ApprovalRow): boolean {
 }
 
 function toStatus(r: ApprovalRow): ApprovalStatus {
-  return { id: r.id, state: r.state, version: r.version, payloadHash: r.payload_hash, issuedAt: r.issued_at, expiresAt: r.expires_at, stateReason: r.state_reason };
+  return {
+    id: r.id,
+    state: r.state,
+    version: r.version,
+    payloadHash: r.payload_hash,
+    issuedAt: r.issued_at,
+    expiresAt: r.expires_at,
+    stateReason: r.state_reason,
+  };
 }
 
 function dedupe(warnings: GuardWarning[]): GuardWarning[] {

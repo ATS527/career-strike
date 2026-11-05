@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { strToU8, zipSync } from 'fflate';
 import { afterEach, describe, expect, it } from 'vitest';
-import { appPaths, type AppPaths } from '../../src/core/paths.js';
+import { type AppPaths, appPaths } from '../../src/core/paths.js';
 import { localRequest } from '../../src/service/http-client.js';
 import { type RunningService, startService } from '../../src/service/service.js';
 import { dashboardSession, tempDir } from '../helpers.js';
@@ -27,11 +27,21 @@ describe('LinkedIn integration', () => {
     const { call, dash } = await setup();
 
     // 1. Invalid LinkedIn URL rejected
-    const bad = await call('PUT', '/api/settings/candidate.linkedinUrl', { value: 'https://linkedin.com/company/acme' }, dash.headers);
+    const bad = await call(
+      'PUT',
+      '/api/settings/candidate.linkedinUrl',
+      { value: 'https://linkedin.com/company/acme' },
+      dash.headers,
+    );
     expect(bad.status).toBe(400);
 
     // 2. Valid URL normalized
-    const ok = await call('PUT', '/api/settings/candidate.linkedinUrl', { value: 'linkedin.com/in/jordan-example' }, dash.headers);
+    const ok = await call(
+      'PUT',
+      '/api/settings/candidate.linkedinUrl',
+      { value: 'linkedin.com/in/jordan-example' },
+      dash.headers,
+    );
     expect(ok.status).toBe(200);
     expect(ok.body).toEqual({
       key: 'candidate.linkedinUrl',
@@ -41,19 +51,25 @@ describe('LinkedIn integration', () => {
     // 3. /api/settings returns candidate.linkedinUrl
     const settings = await call('GET', '/api/settings', undefined, dash.headers);
     expect(settings.status).toBe(200);
-    expect((settings.body as { settings: Record<string, unknown> }).settings['candidate.linkedinUrl']).toBe('https://www.linkedin.com/in/jordan-example/');
+    expect((settings.body as { settings: Record<string, unknown> }).settings['candidate.linkedinUrl']).toBe(
+      'https://www.linkedin.com/in/jordan-example/',
+    );
   });
 
   it('imports LinkedIn export archive into unapproved facts and unconfirmed evidence', async () => {
     const { call, dash } = await setup();
 
     const archive = zipSync({
-      'Positions.csv': strToU8('Company Name,Title,Started On,Finished On\nAcme Corp,Staff Engineer,Jan 2021,Present\n'),
+      'Positions.csv': strToU8(
+        'Company Name,Title,Started On,Finished On\nAcme Corp,Staff Engineer,Jan 2021,Present\n',
+      ),
       'Skills.csv': strToU8('Name\nTypeScript\nDocker\n'),
       'Education.csv': strToU8('School Name,Degree Name,Started On,Finished On\nTech Institute,B.S.,2015,2019\n'),
       'Certifications.csv': strToU8('Name,Authority,Started On\nCKA,Cloud Native Foundation,2022\n'),
       'Languages.csv': strToU8('Name,Proficiency\nEnglish,Native or bilingual proficiency\n'),
-      'Projects.csv': strToU8('Title,Description,Url\nCareer Strike Tool,"Privacy-first job hunt",https://example.com/project\n'),
+      'Projects.csv': strToU8(
+        'Title,Description,Url\nCareer Strike Tool,"Privacy-first job hunt",https://example.com/project\n',
+      ),
     });
 
     const res = await call(
@@ -166,14 +182,24 @@ describe('LinkedIn integration', () => {
 
     await call('PUT', '/api/settings/identity.fullName', { value: 'Jordan Example' }, dash.headers);
     await call('PUT', '/api/settings/identity.email', { value: 'jordan@example.com' }, dash.headers);
-    await call('PUT', '/api/settings/candidate.linkedinUrl', { value: 'https://www.linkedin.com/in/jordan-example/' }, dash.headers);
+    await call(
+      'PUT',
+      '/api/settings/candidate.linkedinUrl',
+      { value: 'https://www.linkedin.com/in/jordan-example/' },
+      dash.headers,
+    );
 
     // Add manual job
-    const jobRes = await call('POST', '/api/jobs', {
-      title: 'Full Stack Engineer',
-      employer: 'TechCorp',
-      url: 'https://jobs.example.com/apply/123',
-    }, dash.headers);
+    const jobRes = await call(
+      'POST',
+      '/api/jobs',
+      {
+        title: 'Full Stack Engineer',
+        employer: 'TechCorp',
+        url: 'https://jobs.example.com/apply/123',
+      },
+      dash.headers,
+    );
     expect(jobRes.status).toBe(201);
     const jobId = (jobRes.body as { job: { id: string } }).job?.id;
 

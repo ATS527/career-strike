@@ -26,7 +26,12 @@ const SENIOR = new Set(['senior', 'staff', 'principal', 'lead', 'director', 'exe
  * Preparation topics for one application. Everything the employer asked for comes first, with
  * the posting's own words; general categories are labelled as Career Strike's suggestions.
  */
-export function prepTopics(input: { title: string; employer: string; requirements: PostingRequirements; fit: Fit | null }): PrepTopic[] {
+export function prepTopics(input: {
+  title: string;
+  employer: string;
+  requirements: PostingRequirements;
+  fit: Fit | null;
+}): PrepTopic[] {
   const { title, employer, requirements, fit } = input;
   const missing = new Set((fit?.missingRequiredSkills ?? []).map((s) => s.toLowerCase()));
   const topics: PrepTopic[] = [];
@@ -62,7 +67,10 @@ export function prepTopics(input: { title: string; employer: string; requirement
       source: 'posting',
       quote: requirements.yearsRequired.evidence,
       gap: fit?.factors.find((f) => f.id === 'experience')?.verdict === 'gap',
-      prompts: ['Walk through your career so far in two minutes, ending with why this role is the next step.', 'Pick the project that best shows the depth this role needs and rehearse it.'],
+      prompts: [
+        'Walk through your career so far in two minutes, ending with why this role is the next step.',
+        'Pick the project that best shows the depth this role needs and rehearse it.',
+      ],
     });
   }
 
@@ -74,7 +82,10 @@ export function prepTopics(input: { title: string; employer: string; requirement
       source: 'inferred',
       quote: null,
       gap: false,
-      prompts: ['Practise thinking aloud while solving a medium-sized problem in your strongest language.', 'Review testing a function you have just written, including edge cases.'],
+      prompts: [
+        'Practise thinking aloud while solving a medium-sized problem in your strongest language.',
+        'Review testing a function you have just written, including edge cases.',
+      ],
     });
     if (requirements.seniority && SENIOR.has(requirements.seniority.level)) {
       topics.push({
@@ -113,7 +124,10 @@ export function prepTopics(input: { title: string; employer: string; requirement
     source: 'inferred',
     quote: null,
     gap: false,
-    prompts: [`Read ${employer}’s posting again and note what they build and for whom.`, `Prepare two questions to ask them about the team and the first 90 days.`],
+    prompts: [
+      `Read ${employer}’s posting again and note what they build and for whom.`,
+      `Prepare two questions to ask them about the team and the first 90 days.`,
+    ],
   });
   return topics;
 }

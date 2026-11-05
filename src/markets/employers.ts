@@ -1,6 +1,6 @@
-import { normaliseLocation, type CountryCode } from './countries.js';
 import type { NormalizedPosting, SourceAdapter, SourceId } from '../sources/types.js';
 import type { Db } from '../store/db.js';
+import { type CountryCode, normaliseLocation } from './countries.js';
 
 /**
  * Curated employer targets are deliberately small. An entry requires corroboration of the
@@ -640,10 +640,13 @@ export interface EmployerTargetRegistryRecord extends EmployerTarget {
 
 /** Runtime target evidence comes only from an adopted board, never from a documentation review. */
 export function employerTargetRecord(db: Db, target: EmployerTarget): EmployerTargetRegistryRecord {
-  const board = db.prepare('SELECT health, last_success_at FROM source_boards WHERE source = ? AND board = ?').get(target.source, target.board) as
+  const board = db
+    .prepare('SELECT health, last_success_at FROM source_boards WHERE source = ? AND board = ?')
+    .get(target.source, target.board) as
     | { health: 'NEVER_RUN' | 'OK' | 'DEGRADED' | 'NOT_FOUND'; last_success_at: string | null }
     | undefined;
-  const monitoringState = !board || board.health === 'NEVER_RUN' ? 'NOT_ADOPTED' : board.health === 'OK' ? 'HEALTHY' : board.health;
+  const monitoringState =
+    !board || board.health === 'NEVER_RUN' ? 'NOT_ADOPTED' : board.health === 'OK' ? 'HEALTHY' : board.health;
   return {
     ...target,
     lastSuccessfulRetrievalAt: board?.last_success_at ?? null,
@@ -673,9 +676,14 @@ export async function verifyTargetDiscovery(
   if (target.source !== adapter.id) throw new Error(`Target ${target.id} requires the ${target.source} adapter.`);
   if (!target.countries.includes(country)) throw new Error(`Target ${target.id} is not approved for ${country}.`);
   const postings = await adapter.list(target.board);
-  const countryPostings = postings.filter((posting) => (posting.market?.location.countryCode ?? normaliseLocation(posting.locationText).countryCode) === country);
+  const countryPostings = postings.filter(
+    (posting) =>
+      (posting.market?.location.countryCode ?? normaliseLocation(posting.locationText).countryCode) === country,
+  );
   if (countryPostings.length === 0) {
-    throw new Error(`The ${target.employer} board returned no postings with explicit ${country} location evidence; ${country} remains CONFIGURED.`);
+    throw new Error(
+      `The ${target.employer} board returned no postings with explicit ${country} location evidence; ${country} remains CONFIGURED.`,
+    );
   }
   return { target, postings, countryPostings, verifiedAt: now.toISOString() };
 }

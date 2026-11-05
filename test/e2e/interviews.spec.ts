@@ -1,7 +1,13 @@
 import { expect, signIn, test } from './fixtures.js';
 
-test('schedule an interview for a submitted application and practise what the posting asks for', async ({ page, context, cs }) => {
-  await context.route('https://jobs.lever.co/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>stub</title>' }));
+test('schedule an interview for a submitted application and practise what the posting asks for', async ({
+  page,
+  context,
+  cs,
+}) => {
+  await context.route('https://jobs.lever.co/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<title>stub</title>' }),
+  );
   cs.seed('lever', 'iv', [
     {
       title: 'Senior Platform Engineer',
@@ -18,11 +24,18 @@ test('schedule an interview for a submitted application and practise what the po
   await cs.api('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'TypeScript' } });
   await fetch(`${cs.origin}/api/documents`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${cs.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+    headers: {
+      authorization: `Bearer ${cs.token}`,
+      'content-type': 'application/pdf',
+      'x-cs-filename': 'cv.pdf',
+      'x-cs-document-kind': 'resume',
+    },
     body: Buffer.from('%PDF-1.7 x'),
   });
   const { jobs } = (await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] };
-  const appId = ((await cs.api('POST', '/api/applications', { jobId: jobs[0]!.id })).body as { application: { id: string } }).application.id;
+  const appId = (
+    (await cs.api('POST', '/api/applications', { jobId: jobs[0]!.id })).body as { application: { id: string } }
+  ).application.id;
   await cs.api('POST', `/api/applications/${appId}/ready`);
 
   await signIn(page, cs);
@@ -71,7 +84,9 @@ test('schedule an interview for a submitted application and practise what the po
   await expect(rust.getByLabel('Notes (optional)')).toHaveValue(/S: \[Situation/);
 
   await expect(page.locator('[data-topic="behavioral"]')).toBeVisible();
-  await expect(page.getByText('Suggested by Career Strike for this kind of role — not stated in the posting.')).toBeVisible();
+  await expect(
+    page.getByText('Suggested by Career Strike for this kind of role — not stated in the posting.'),
+  ).toBeVisible();
   await rust.getByLabel('How ready do you feel?').selectOption('2');
   await rust.getByLabel('Notes (optional)').fill('Ownership and borrowing');
   await rust.getByRole('button', { name: 'Log practice for Rust' }).click();
@@ -80,5 +95,7 @@ test('schedule an interview for a submitted application and practise what the po
 
   await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Home' }).click();
   await expect(page.getByTestId('upcoming-interviews')).toContainText('Technical interview');
-  await expect(page.getByTestId('next-actions')).toContainText('Prepare for your Technical interview with Synthetic Labs');
+  await expect(page.getByTestId('next-actions')).toContainText(
+    'Prepare for your Technical interview with Synthetic Labs',
+  );
 });

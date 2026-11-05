@@ -16,7 +16,15 @@ afterEach(async () => {
 });
 
 const PDF = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.from('synthetic resume for practice')]);
-type View = { id: string; state: string; version: number; payloadHash: string; payload: { destination: { method: string } }; approval: { valid: boolean; approval: { id: string; state: string } | null }; events: { to: string; evidence: Record<string, unknown> | null }[] };
+type View = {
+  id: string;
+  state: string;
+  version: number;
+  payloadHash: string;
+  payload: { destination: { method: string } };
+  approval: { valid: boolean; approval: { id: string; state: string } | null };
+  events: { to: string; evidence: Record<string, unknown> | null }[];
+};
 
 async function setup(paths: AppPaths = appPaths(path.join(tempDir(), 'data')), ats?: PracticeAts) {
   const endpoint = ats ?? (await startPracticeAts());
@@ -24,7 +32,8 @@ async function setup(paths: AppPaths = appPaths(path.join(tempDir(), 'data')), a
   const s = await startService(paths, { port: 0 });
   running.push(s);
   const bearer = { authorization: `Bearer ${s.info.token}` };
-  const call = (method: string, url: string, body?: unknown, headers: Record<string, string> = bearer) => localRequest(s.info.port, url, { method, body, headers });
+  const call = (method: string, url: string, body?: unknown, headers: Record<string, string> = bearer) =>
+    localRequest(s.info.port, url, { method, body, headers });
   const dash = await dashboardSession(s.info.port, s.info.token);
   return { s, paths, ats: endpoint, call, dash };
 }
@@ -37,13 +46,28 @@ async function approvedPracticeApp(ctx: Awaited<ReturnType<typeof setup>>): Prom
   await call('PUT', '/api/settings/identity.email', { value: 'jordan@example.com' });
   await fetch(`http://127.0.0.1:${s.info.port}/api/documents`, {
     method: 'POST',
-    headers: { authorization: `Bearer ${s.info.token}`, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' },
+    headers: {
+      authorization: `Bearer ${s.info.token}`,
+      'content-type': 'application/pdf',
+      'x-cs-filename': 'cv.pdf',
+      'x-cs-document-kind': 'resume',
+    },
     body: PDF,
   });
   const created = ((await call('POST', '/api/applications', { jobId })).body as { application: View }).application;
   expect(created.payload.destination.method).toBe('test-ats');
-  const ready = ((await call('POST', `/api/applications/${created.id}/ready`)).body as { application: View }).application;
-  return ((await call('POST', `/api/applications/${created.id}/approve`, { version: ready.version, payloadHash: ready.payloadHash }, dash.headers)).body as { application: View }).application;
+  const ready = ((await call('POST', `/api/applications/${created.id}/ready`)).body as { application: View })
+    .application;
+  return (
+    (
+      await call(
+        'POST',
+        `/api/applications/${created.id}/approve`,
+        { version: ready.version, payloadHash: ready.payloadHash },
+        dash.headers,
+      )
+    ).body as { application: View }
+  ).application;
 }
 
 async function settle(ctx: Awaited<ReturnType<typeof setup>>, id: string): Promise<View> {
@@ -66,8 +90,15 @@ describe('automated submission to the owned practice endpoint', () => {
     expect(done.approval).toMatchObject({ valid: false, approval: { state: 'CONSUMED' } });
     const receipts = [...ctx.ats.receipts.values()];
     expect(receipts).toHaveLength(1);
-    expect(receipts[0]).toMatchObject({ payloadHash: app.payloadHash, attachmentsVerified: true, idempotencyKey: app.approval.approval!.id });
-    expect(done.events.at(-1)).toMatchObject({ to: 'SUBMITTED_CONFIRMED', evidence: { type: 'endpoint-receipt', receipt: { receiptId: receipts[0]!.receiptId } } });
+    expect(receipts[0]).toMatchObject({
+      payloadHash: app.payloadHash,
+      attachmentsVerified: true,
+      idempotencyKey: app.approval.approval!.id,
+    });
+    expect(done.events.at(-1)).toMatchObject({
+      to: 'SUBMITTED_CONFIRMED',
+      evidence: { type: 'endpoint-receipt', receipt: { receiptId: receipts[0]!.receiptId } },
+    });
     expect((await ctx.call('POST', `/api/applications/${app.id}/submit`, {}, ctx.dash.headers)).status).toBe(409);
     expect(ctx.ats.receipts.size).toBe(1);
   });
@@ -100,11 +131,22 @@ describe('automated submission to the owned practice endpoint', () => {
     // It cannot simply be resent; it goes back to a draft and needs a new approval.
     expect((await ctx.call('POST', `/api/applications/${app.id}/submit`, {}, ctx.dash.headers)).status).toBe(409);
     expect((await ctx.call('PUT', `/api/applications/${app.id}`, { changes: { coverLetter: 'x' } })).status).toBe(409);
-    const redrafted = ((await ctx.call('POST', `/api/applications/${app.id}/redraft`)).body as { application: View }).application;
+    const redrafted = ((await ctx.call('POST', `/api/applications/${app.id}/redraft`)).body as { application: View })
+      .application;
     expect(redrafted.state).toBe('DRAFTED');
     expect(redrafted.approval.valid).toBe(false);
-    const ready = ((await ctx.call('POST', `/api/applications/${app.id}/ready`)).body as { application: View }).application;
-    const second = ((await ctx.call('POST', `/api/applications/${app.id}/approve`, { version: ready.version, payloadHash: ready.payloadHash }, ctx.dash.headers)).body as { application: View }).application;
+    const ready = ((await ctx.call('POST', `/api/applications/${app.id}/ready`)).body as { application: View })
+      .application;
+    const second = (
+      (
+        await ctx.call(
+          'POST',
+          `/api/applications/${app.id}/approve`,
+          { version: ready.version, payloadHash: ready.payloadHash },
+          ctx.dash.headers,
+        )
+      ).body as { application: View }
+    ).application;
     expect(second.approval.approval!.id).not.toBe(app.approval.approval!.id);
     await ctx.call('POST', `/api/applications/${app.id}/submit`, {}, ctx.dash.headers);
     expect((await settle(ctx, app.id)).state).toBe('SUBMITTED_CONFIRMED');
@@ -143,17 +185,34 @@ describe('automated submission to the owned practice endpoint', () => {
     const jobB = ((await ctx.call('POST', '/api/practice/jobs', {})).body as { jobId: string }).jobId;
     const db = openDb(ctx.paths.db);
     const firstJob = db.prepare('SELECT job_id FROM applications WHERE id = ?').pluck().get(first.id) as string;
-    db.prepare('UPDATE jobs SET duplicate_key = (SELECT duplicate_key FROM jobs WHERE id = ?) WHERE id = ?').run(firstJob, jobB);
+    db.prepare('UPDATE jobs SET duplicate_key = (SELECT duplicate_key FROM jobs WHERE id = ?) WHERE id = ?').run(
+      firstJob,
+      jobB,
+    );
     db.close();
-    const b = ((await ctx.call('POST', '/api/applications', { jobId: jobB })).body as { application: View & { duplicateRisk: { applicationId: string; state: string }[] } }).application;
+    const b = (
+      (await ctx.call('POST', '/api/applications', { jobId: jobB })).body as {
+        application: View & { duplicateRisk: { applicationId: string; state: string }[] };
+      }
+    ).application;
     // The risk is visible before approving.
-    expect(b.duplicateRisk).toEqual([expect.objectContaining({ applicationId: first.id, state: 'SUBMITTED_CONFIRMED' })]);
-    const ready = ((await ctx.call('POST', `/api/applications/${b.id}/ready`)).body as { application: View }).application;
-    await ctx.call('POST', `/api/applications/${b.id}/approve`, { version: ready.version, payloadHash: ready.payloadHash }, ctx.dash.headers);
+    expect(b.duplicateRisk).toEqual([
+      expect.objectContaining({ applicationId: first.id, state: 'SUBMITTED_CONFIRMED' }),
+    ]);
+    const ready = ((await ctx.call('POST', `/api/applications/${b.id}/ready`)).body as { application: View })
+      .application;
+    await ctx.call(
+      'POST',
+      `/api/applications/${b.id}/approve`,
+      { version: ready.version, payloadHash: ready.payloadHash },
+      ctx.dash.headers,
+    );
     const res = await ctx.call('POST', `/api/applications/${b.id}/submit`, {}, ctx.dash.headers);
     expect(res.status).toBe(409);
     expect((res.body as { error: string }).error).toBe('DUPLICATE');
-    expect(((await ctx.call('GET', `/api/applications/${b.id}`)).body as { application: View }).application.state).toBe('DUPLICATE');
+    expect(((await ctx.call('GET', `/api/applications/${b.id}`)).body as { application: View }).application.state).toBe(
+      'DUPLICATE',
+    );
     expect(ctx.ats.receipts.size).toBe(1);
   });
 
@@ -166,7 +225,9 @@ describe('automated submission to the owned practice endpoint', () => {
     await ctx.s.stop();
     // Simulate a crash: whatever the stopped process recorded, the attempt was still open.
     const db = openDb(ctx.paths.db);
-    db.prepare("UPDATE submission_attempts SET state = 'IN_PROGRESS', ended_at = NULL WHERE application_id = ?").run(app.id);
+    db.prepare("UPDATE submission_attempts SET state = 'IN_PROGRESS', ended_at = NULL WHERE application_id = ?").run(
+      app.id,
+    );
     db.prepare("UPDATE applications SET state = 'SUBMISSION_IN_PROGRESS' WHERE id = ?").run(app.id);
     db.close();
     await new Promise((r) => setTimeout(r, 1500));
@@ -190,9 +251,16 @@ describe('automated submission to the owned practice endpoint', () => {
     expect(res.status).toBe(400);
     expect((res.body as { message: string }).message).toContain('changed after you approved it');
     expect(ctx.ats.receipts.size).toBe(0);
-    expect(((await ctx.call('GET', `/api/applications/${app.id}`)).body as { application: View }).application.approval.valid).toBe(true);
+    expect(
+      ((await ctx.call('GET', `/api/applications/${app.id}`)).body as { application: View }).application.approval.valid,
+    ).toBe(true);
 
-    for (const origin of ['https://evil.example', 'http://localhost:9999', 'http://10.0.0.5:80', 'http://127.0.0.1:9999/path']) {
+    for (const origin of [
+      'https://evil.example',
+      'http://localhost:9999',
+      'http://10.0.0.5:80',
+      'http://127.0.0.1:9999/path',
+    ]) {
       expect((await ctx.call('POST', '/api/practice/endpoint', { origin })).status, origin).toBe(400);
     }
   });
@@ -201,7 +269,11 @@ describe('automated submission to the owned practice endpoint', () => {
     const ctx = await setup();
     const db = openDb(ctx.paths.db);
     db.close();
-    const created = await ctx.call('POST', '/api/jobs', { employer: 'Real Employer', title: 'Engineer', url: 'https://careers.example.com/1' });
+    const created = await ctx.call('POST', '/api/jobs', {
+      employer: 'Real Employer',
+      title: 'Engineer',
+      url: 'https://careers.example.com/1',
+    });
     const jobId = (created.body as { job: { id: string } }).job.id;
     const app = ((await ctx.call('POST', '/api/applications', { jobId })).body as { application: View }).application;
     expect(app.payload.destination.method).toBe('manual');

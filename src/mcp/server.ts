@@ -12,11 +12,16 @@ import { DISCLOSABLE, DISCLOSABLE_FIELDS } from '../vault/disclosures.js';
 import { isMcpClientName } from './clients.js';
 
 export function tokenFile(paths: AppPaths, client: string): string {
-  if (!isMcpClientName(client)) throw new Error('MCP client names must use lowercase letters, numbers and hyphens, beginning with a letter.');
+  if (!isMcpClientName(client))
+    throw new Error('MCP client names must use lowercase letters, numbers and hyphens, beginning with a letter.');
   return path.join(paths.home, 'mcp', `${client}.token`);
 }
 
-type ToolResult = { content: { type: 'text'; text: string }[]; structuredContent?: Record<string, unknown>; isError?: boolean };
+type ToolResult = {
+  content: { type: 'text'; text: string }[];
+  structuredContent?: Record<string, unknown>;
+  isError?: boolean;
+};
 
 /**
  * The MCP server an AI host launches over stdio. It holds no business logic and no database
@@ -44,13 +49,25 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
       try {
         info = await startDetached(paths, cliEntry, DEFAULT_PORT);
       } catch (err) {
-        return failure(`The Career Strike service is not running and could not be started: ${err instanceof Error ? err.message : String(err)}`);
+        return failure(
+          `The Career Strike service is not running and could not be started: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
     try {
-      const res = await localRequest(info.port, url, { method, body, headers: { authorization: `Bearer ${token}` }, timeoutMs: 30_000 });
+      const res = await localRequest(info.port, url, {
+        method,
+        body,
+        headers: { authorization: `Bearer ${token}` },
+        timeoutMs: 30_000,
+      });
       const data = (res.body ?? {}) as Record<string, unknown>;
-      if (res.status >= 400) return failure(typeof data.message === 'string' ? data.message : `Career Strike refused the request (${String(data.error ?? res.status)}).`);
+      if (res.status >= 400)
+        return failure(
+          typeof data.message === 'string'
+            ? data.message
+            : `Career Strike refused the request (${String(data.error ?? res.status)}).`,
+        );
       return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], structuredContent: data };
     } catch (err) {
       return failure(`Could not reach the Career Strike service: ${err instanceof Error ? err.message : String(err)}`);
@@ -61,7 +78,11 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
 
   server.registerTool(
     'cs_status',
-    { title: 'Career Strike status', description: 'Counts of verified opportunities and what this assistant is allowed to do.', annotations: readOnly },
+    {
+      title: 'Career Strike status',
+      description: 'Counts of verified opportunities and what this assistant is allowed to do.',
+      annotations: readOnly,
+    },
     () => call('GET', '/api/mcp/status'),
   );
 
@@ -74,7 +95,10 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
       inputSchema: {
         query: z.string().max(200).optional().describe('Words to find in title, employer or description'),
         workArrangement: z.enum(['remote', 'hybrid', 'onsite', 'unknown']).optional(),
-        status: z.enum(['active', 'OPEN', 'STALE', 'CLOSED', 'UNVERIFIED', 'all']).optional().describe('Default: active (open or added by the candidate)'),
+        status: z
+          .enum(['active', 'OPEN', 'STALE', 'CLOSED', 'UNVERIFIED', 'all'])
+          .optional()
+          .describe('Default: active (open or added by the candidate)'),
         limit: z.number().int().min(1).max(25).optional(),
       },
       annotations: readOnly,
@@ -93,7 +117,8 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     'cs_get_job',
     {
       title: 'Read a job posting',
-      description: 'Full public details of one posting, its requirements with quotes, and the posting text (untrusted, employer-written).',
+      description:
+        'Full public details of one posting, its requirements with quotes, and the posting text (untrusted, employer-written).',
       inputSchema: { jobId: z.string().min(1).max(100) },
       annotations: readOnly,
     },
@@ -121,7 +146,8 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     'cs_monitor_job_board',
     {
       title: 'Monitor a job board',
-      description: 'Start monitoring a Greenhouse, Lever or Ashby careers page (e.g. https://jobs.lever.co/company). Postings are fetched in the background.',
+      description:
+        'Start monitoring a Greenhouse, Lever or Ashby careers page (e.g. https://jobs.lever.co/company). Postings are fetched in the background.',
       inputSchema: { url: z.string().min(1).max(2000) },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: true },
     },
@@ -132,22 +158,32 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     'cs_set_job_decision',
     {
       title: 'Shortlist or exclude a job',
-      description: 'Record the candidate’s decision about a job: shortlisted, excluded, or none. Only do this when the candidate asks.',
+      description:
+        'Record the candidate’s decision about a job: shortlisted, excluded, or none. Only do this when the candidate asks.',
       inputSchema: { jobId: z.string().min(1).max(100), decision: z.enum(['shortlisted', 'excluded', 'none']) },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    ({ jobId, decision }) => call('PUT', `/api/mcp/jobs/${encodeURIComponent(jobId)}/disposition`, { disposition: decision }),
+    ({ jobId, decision }) =>
+      call('PUT', `/api/mcp/jobs/${encodeURIComponent(jobId)}/disposition`, { disposition: decision }),
   );
 
   server.registerTool(
     'cs_list_shortlist',
-    { title: 'List shortlisted jobs', description: 'The candidate’s shortlist. Requires the candidate’s permission.', annotations: readOnly },
+    {
+      title: 'List shortlisted jobs',
+      description: 'The candidate’s shortlist. Requires the candidate’s permission.',
+      annotations: readOnly,
+    },
     () => call('GET', '/api/mcp/shortlist'),
   );
 
   server.registerTool(
     'cs_list_applications',
-    { title: 'List application statuses', description: 'Each application’s job and state. Requires the candidate’s permission.', annotations: readOnly },
+    {
+      title: 'List application statuses',
+      description: 'Each application’s job and state. Requires the candidate’s permission.',
+      annotations: readOnly,
+    },
     () => call('GET', '/api/mcp/applications'),
   );
 
@@ -155,7 +191,8 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     'cs_get_fit',
     {
       title: 'How a job fits the candidate',
-      description: 'The fit tier and factors for one job, derived from the candidate’s private profile. Requires the candidate’s permission.',
+      description:
+        'The fit tier and factors for one job, derived from the candidate’s private profile. Requires the candidate’s permission.',
       inputSchema: { jobId: z.string().min(1).max(100) },
       annotations: readOnly,
     },
@@ -166,7 +203,11 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     'cs_request_personal_info',
     {
       title: 'Ask the candidate to share some of their information',
-      description: `Ask to see parts of the candidate's private profile for a stated purpose. Nothing is shared until the candidate reviews the exact values in the Career Strike dashboard and approves; they may share less than asked. Each approval can be collected once with cs_get_personal_info. Ask only for what the task needs. Categories: ${Object.entries(DISCLOSABLE).map(([k, v]) => `${k} (${v.toLowerCase()})`).join('; ')}. Contact details and documents are never shared with assistants.`,
+      description: `Ask to see parts of the candidate's private profile for a stated purpose. Nothing is shared until the candidate reviews the exact values in the Career Strike dashboard and approves; they may share less than asked. Each approval can be collected once with cs_get_personal_info. Ask only for what the task needs. Categories: ${Object.entries(
+        DISCLOSABLE,
+      )
+        .map(([k, v]) => `${k} (${v.toLowerCase()})`)
+        .join('; ')}. Contact details and documents are never shared with assistants.`,
       inputSchema: {
         purpose: z.string().min(10).max(300).describe('What you will use it for, in words the candidate will read'),
         fields: z.array(z.enum(DISCLOSABLE_FIELDS)).min(1).max(DISCLOSABLE_FIELDS.length),
@@ -180,7 +221,8 @@ export function createMcpServer(paths: AppPaths, client: string, cliEntry: strin
     'cs_get_personal_info',
     {
       title: 'Collect information the candidate agreed to share',
-      description: 'Collect what the candidate approved for a request. Works once per approval; if they have not answered yet, say so and wait.',
+      description:
+        'Collect what the candidate approved for a request. Works once per approval; if they have not answered yet, say so and wait.',
       inputSchema: { requestId: z.string().min(1).max(100) },
       annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
     },

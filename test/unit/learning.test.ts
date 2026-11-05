@@ -12,7 +12,15 @@ function metrics(sources: { source: string; submitted: number; responded: number
     totals: { found: 50, shortlisted: 5, submitted, responses, interviews: 0, offers: 0, rejections: 0 },
     responseRate: rate(responses, submitted),
     interviewRate: rate(0, submitted),
-    bySource: sources.map((s) => ({ source: s.source, found: 20, closedOrStale: rate(0, 20), shortlisted: 0, submitted: s.submitted, responded: rate(s.responded, s.submitted), interviewed: rate(0, s.submitted) })),
+    bySource: sources.map((s) => ({
+      source: s.source,
+      found: 20,
+      closedOrStale: rate(0, 20),
+      shortlisted: 0,
+      submitted: s.submitted,
+      responded: rate(s.responded, s.submitted),
+      interviewed: rate(0, s.submitted),
+    })),
     daysToFirstResponse: { median: null, n: 0 },
     submittedPerWeek: [],
     campaignSummaries: [],
@@ -30,14 +38,24 @@ describe('campaignSummaries', () => {
 
 describe('observations', () => {
   it('refuses to compare below the minimum sample and says how many there are', () => {
-    const obs = observations(metrics([{ source: 'lever', submitted: 9, responded: 5 }, { source: 'greenhouse', submitted: 30, responded: 1 }]));
+    const obs = observations(
+      metrics([
+        { source: 'lever', submitted: 9, responded: 5 },
+        { source: 'greenhouse', submitted: 30, responded: 1 },
+      ]),
+    );
     expect(obs.map((o) => o.kind)).toEqual(['insufficient']);
     expect(obs[0]!.text).toContain(`at least ${MIN_SAMPLE}`);
     expect(obs[0]!.text).toContain('lever: 9');
   });
 
   it('compares only with enough cases in each group, states n, and does not claim a cause', () => {
-    const obs = observations(metrics([{ source: 'lever', submitted: 12, responded: 6 }, { source: 'greenhouse', submitted: 10, responded: 1 }]));
+    const obs = observations(
+      metrics([
+        { source: 'lever', submitted: 12, responded: 6 },
+        { source: 'greenhouse', submitted: 10, responded: 1 },
+      ]),
+    );
     expect(obs[0]!.kind).toBe('comparison');
     expect(obs[0]!.text).toContain('50% of the time (n=12)');
     expect(obs[0]!.text).toContain('10% on greenhouse (n=10)');
@@ -74,7 +92,9 @@ describe('proposal allowlist', () => {
 describe('discovery-health learning loop', () => {
   it('measures board health from local records and retains it in a daily snapshot', () => {
     const db = openDb(':memory:');
-    const add = db.prepare("INSERT INTO source_boards (id, source, board, added_at, health) VALUES (?, 'lever', ?, '2026-10-31T00:00:00.000Z', ?)");
+    const add = db.prepare(
+      "INSERT INTO source_boards (id, source, board, added_at, health) VALUES (?, 'lever', ?, '2026-10-31T00:00:00.000Z', ?)",
+    );
     add.run('src_ok', 'healthy', 'OK');
     add.run('src_bad', 'retry-later', 'DEGRADED');
     add.run('src_missing', 'retired', 'NOT_FOUND');

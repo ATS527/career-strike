@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { AppPaths } from '../core/paths.js';
 import { ensureHome } from '../core/paths.js';
 import { localRequest } from './http-client.js';
-import { probeHealth, readRuntime, type RuntimeInfo } from './runtime.js';
+import { probeHealth, type RuntimeInfo, readRuntime } from './runtime.js';
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
@@ -17,7 +17,12 @@ export async function runningService(paths: AppPaths): Promise<RuntimeInfo | nul
  * Start `serve` as a detached background process (same Node binary, flags and CLI entry point as
  * the caller) and wait until it answers health checks. Returns the running service.
  */
-export async function startDetached(paths: AppPaths, cliEntry: string, port: number, timeoutMs = 15_000): Promise<RuntimeInfo> {
+export async function startDetached(
+  paths: AppPaths,
+  cliEntry: string,
+  port: number,
+  timeoutMs = 15_000,
+): Promise<RuntimeInfo> {
   const existing = await runningService(paths);
   if (existing) return existing;
   ensureHome(paths);
@@ -36,12 +41,17 @@ export async function startDetached(paths: AppPaths, cliEntry: string, port: num
 
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (exitCode !== null) throw new Error(`The service exited during startup (code ${exitCode}). See ${path.join(paths.logs, 'service.out')}.`);
+    if (exitCode !== null)
+      throw new Error(
+        `The service exited during startup (code ${exitCode}). See ${path.join(paths.logs, 'service.out')}.`,
+      );
     const info = readRuntime(paths.runtimeFile);
     if (info && info.pid === child.pid && (await probeHealth(info))) return info;
     await sleep(100);
   }
-  throw new Error(`The service did not become healthy within ${timeoutMs / 1000}s. See ${path.join(paths.logs, 'service.out')}.`);
+  throw new Error(
+    `The service did not become healthy within ${timeoutMs / 1000}s. See ${path.join(paths.logs, 'service.out')}.`,
+  );
 }
 
 /** Stop the service recorded in the runtime file, only after confirming it is ours. */
@@ -73,12 +83,17 @@ export async function dashboardUrl(info: RuntimeInfo, origin = `http://127.0.0.1
     headers: { authorization: `Bearer ${info.token}` },
   });
   const body = res.body as { token?: unknown } | null;
-  if (res.status !== 200 || typeof body?.token !== 'string') throw new Error(`Could not create a dashboard session (HTTP ${res.status}).`);
+  if (res.status !== 200 || typeof body?.token !== 'string')
+    throw new Error(`Could not create a dashboard session (HTTP ${res.status}).`);
   return `${origin}/auth/launch?t=${encodeURIComponent(body.token)}`;
 }
 
 export function openInBrowser(url: string): void {
   const [cmd, args] =
-    process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] : ['xdg-open', [url]];
+    process.platform === 'darwin'
+      ? ['open', [url]]
+      : process.platform === 'win32'
+        ? ['cmd', ['/c', 'start', '', url]]
+        : ['xdg-open', [url]];
   spawn(cmd, args, { detached: true, stdio: 'ignore' }).unref();
 }

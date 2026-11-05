@@ -18,6 +18,9 @@ test.describe('live job boards', () => {
     await expect(page.getByTestId('job-list').getByRole('listitem').first()).toContainText('Open · verified');
     const job = page.getByTestId('job-list').getByRole('listitem').first();
     await job.getByRole('link').first().click();
-    await expect(page.getByRole('link', { name: /Open the official posting/ })).toHaveAttribute('href', /^https:\/\/jobs\.lever\.co\/spotify\//);
+    await expect(page.getByRole('link', { name: /Open the official posting/ })).toHaveAttribute(
+      'href',
+      /^https:\/\/jobs\.lever\.co\/spotify\//,
+    );
   });
 });
