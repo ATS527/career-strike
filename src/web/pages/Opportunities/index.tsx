@@ -8,7 +8,7 @@ import { JAPAN_SOURCE_ASSESSMENTS, officialJapanSearchUrl } from '../../../marke
 import { officialSingaporeSearchUrl, SINGAPORE_SOURCE_ASSESSMENTS } from '../../../markets/singapore-sources';
 import { officialUaeSearchUrl, UAE_SOURCE_ASSESSMENTS } from '../../../markets/uae-sources';
 import { officialUkSearchUrl, UK_SOURCE_ASSESSMENTS } from '../../../markets/uk-sources';
-import { api, type Disposition, type JobList, type JobSummary, type SettingsResponse } from '../../api';
+import { api, type Disposition, type JobList, type SettingsResponse } from '../../api';
 import { PageHeader } from '../../components/PageHeader';
 import { ErrorPanel, Loading } from '../../components/states';
 import { Button, buttonVariants } from '../../components/ui/button';
@@ -117,9 +117,11 @@ export function Opportunities() {
 
   const update = (key: string, value: string): void => {
     const p = new URLSearchParams(search);
+    if (key === 'country') p.delete('city');
     if (value) p.set(key, value);
     else p.delete(key);
-    navigate(`/opportunities?${p.toString()}`, { replace: true });
+    setLimit(PAGE);
+    navigate(`/opportunities${p.toString() ? `?${p.toString()}` : ''}`, { replace: true });
   };
 
   const submitQuery = (e: FormEvent): void => {
@@ -127,9 +129,18 @@ export function Opportunities() {
     update('q', query.trim());
   };
 
-  const handleDisposition = async (jobId: string, disposition: Disposition): Promise<void> => {
-    await api(`/api/jobs/${jobId}/disposition`, { method: 'PUT', body: { disposition } });
-    setReload((r) => r + 1);
+  const handleDisposition = (jobId: string, disposition: Disposition): void => {
+    setList((l) =>
+      l.state === 'ready'
+        ? {
+            state: 'ready',
+            data: {
+              ...l.data,
+              jobs: l.data.jobs.map((j) => (j.id === jobId ? { ...j, disposition } : j)),
+            },
+          }
+        : l,
+    );
   };
 
   const toggleCompare = (id: string): void => {
@@ -155,7 +166,7 @@ export function Opportunities() {
               href="/opportunities/new"
               className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'text-xs')}
             >
-              + Add a job
+              Add a job
             </Link>
             <Link
               href="/opportunities/sources"
@@ -169,11 +180,20 @@ export function Opportunities() {
 
       <CountryFocusViews countries={countries} />
 
-      <form className="my-4 flex gap-2 max-w-xl" role="search" onSubmit={submitQuery}>
+      <form
+        className="my-4 flex gap-2 max-w-xl"
+        role="search"
+        onSubmit={submitQuery}
+        aria-label="Search and filter opportunities"
+      >
+        <label htmlFor="q" className="sr-only">
+          Search title, employer or description
+        </label>
         <Input
+          id="q"
           type="search"
-          placeholder="Search by title, employer or skill…"
-          aria-label="Search opportunities"
+          placeholder="Search title, employer or description"
+          aria-label="Search title, employer or description"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="flex-1"
@@ -227,26 +247,50 @@ export function Opportunities() {
                 </select>
               </div>
             ))}
+            {params.get('country') &&
+              params.get('country')! in COUNTRY_REGISTRY &&
+              COUNTRY_REGISTRY[params.get('country') as keyof typeof COUNTRY_REGISTRY].defaultCities.length > 0 && (
+                <div className="space-y-1">
+                  <label htmlFor="filter-city" className="text-xs font-medium text-muted-foreground block">
+                    City
+                  </label>
+                  <select
+                    id="filter-city"
+                    value={params.get('city') ?? ''}
+                    onChange={(e) => update('city', e.target.value)}
+                    className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 text-xs shadow-xs"
+                  >
+                    <option value="">All cities</option>
+                    {COUNTRY_REGISTRY[params.get('country') as keyof typeof COUNTRY_REGISTRY].defaultCities.map(
+                      (city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+              )}
             <div className="flex items-center gap-2 pt-4">
               <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={params.get('immediateStart') === '1'}
-                  onChange={(e) => update('immediateStart', e.target.checked ? '1' : '')}
+                  checked={params.get('immediateStart') === 'true'}
+                  onChange={(e) => update('immediateStart', e.target.checked ? 'true' : '')}
                   className="accent-primary"
                 />
-                <span>Immediate start</span>
+                <span>Asks for an early start</span>
               </label>
             </div>
             <div className="flex items-center gap-2 pt-4">
               <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={params.get('includeExcludedEmployers') === '1'}
-                  onChange={(e) => update('includeExcludedEmployers', e.target.checked ? '1' : '')}
+                  checked={params.get('includeExcludedEmployers') === 'true'}
+                  onChange={(e) => update('includeExcludedEmployers', e.target.checked ? 'true' : '')}
                   className="accent-primary"
                 />
-                <span>Include excluded employers</span>
+                <span>Show excluded employers</span>
               </label>
             </div>
           </div>
@@ -264,11 +308,12 @@ export function Opportunities() {
             <EmptyHint filtered={filtered} />
           ) : (
             <>
-              <p className="text-xs text-muted-foreground my-2" aria-live="polite">
-                Showing {list.data.jobs.length} of {list.data.total}{' '}
-                {list.data.total === 1 ? 'opportunity' : 'opportunities'}
+              <p className="result-count text-xs text-muted-foreground my-2" role="status" aria-live="polite">
+                {list.data.total === 0
+                  ? 'No opportunities match.'
+                  : `${list.data.total} ${list.data.total === 1 ? 'opportunity' : 'opportunities'}`}
               </p>
-              <ul className="space-y-3 p-0 m-0 list-none">
+              <ul className="job-list space-y-3 p-0 m-0 list-none" data-testid="job-list">
                 {list.data.jobs.map((job) => (
                   <JobRow
                     key={job.id}
@@ -290,25 +335,31 @@ export function Opportunities() {
             </>
           )}
           {compare.length > 0 && (
-            <aside
-              className="fixed bottom-4 right-4 z-40 p-4 bg-card border border-border rounded-xl shadow-lg flex items-center gap-4"
-              aria-label="Comparison dock"
+            <div
+              className="compare-bar fixed bottom-4 right-4 z-40 p-4 bg-card border border-border rounded-xl shadow-lg flex items-center gap-4"
+              role="region"
+              aria-label="Comparison"
             >
               <span className="text-xs font-semibold text-foreground">
-                {compare.length} of {MAX_COMPARE} selected
+                {compare.length} of {MAX_COMPARE} selected for comparison
               </span>
               <div className="flex gap-2">
                 <Link
-                  href={`/opportunities/compare?id=${compare.map(encodeURIComponent).join('&id=')}`}
+                  href={`/opportunities/compare?ids=${compare.join(',')}`}
                   className={cn(buttonVariants({ variant: 'default', size: 'sm' }), 'text-xs')}
+                  aria-disabled={compare.length < 2}
                 >
-                  Compare {compare.length} roles →
+                  Compare {compare.length < 2 ? '(pick at least 2)' : 'now'}
                 </Link>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setCompare([])} className="text-xs">
+                <button
+                  type="button"
+                  className="quiet text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() => setCompare([])}
+                >
                   Clear
-                </Button>
+                </button>
               </div>
-            </aside>
+            </div>
           )}
           {selectedCountry === 'JP' && (
             <OfficialSearches

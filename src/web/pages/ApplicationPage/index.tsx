@@ -630,7 +630,10 @@ function Package({ view }: { view: ApplicationView }) {
             <h3 className="text-sm font-semibold text-foreground m-0">Cover letter</h3>
             {copyable && <CopyButton text={p.coverLetter} label="cover letter" />}
           </div>
-          <pre className="p-3 rounded-md bg-muted/40 border border-border text-xs whitespace-pre-wrap font-sans leading-relaxed max-h-60 overflow-y-auto">
+          <pre
+            className="letter p-3 rounded-md bg-muted/40 border border-border text-xs whitespace-pre-wrap font-sans leading-relaxed max-h-60 overflow-y-auto"
+            tabIndex={0}
+          >
             {p.coverLetter}
           </pre>
         </div>
@@ -1191,7 +1194,7 @@ function FollowUpStudio({ view }: { view: ApplicationView }) {
         )}
       </div>
 
-      <div className="p-3 bg-muted/30 border border-border rounded-lg space-y-2 text-xs">
+      <div className="outreach-preview-box p-3 bg-muted/30 border border-border rounded-lg space-y-2 text-xs">
         <div className="text-foreground">
           <strong>Subject:</strong> {draft.subject}
         </div>
@@ -1215,7 +1218,7 @@ function FollowUpStudio({ view }: { view: ApplicationView }) {
 
 function History({ view }: { view: ApplicationView }) {
   return (
-    <details className="text-xs space-y-2 pt-2 border-t border-border">
+    <details className="history text-xs space-y-2 pt-2 border-t border-border">
       <summary className="font-semibold cursor-pointer text-foreground">
         History ({view.versions.length} versions)
       </summary>

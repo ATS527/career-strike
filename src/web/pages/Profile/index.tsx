@@ -311,9 +311,9 @@ export function Profile() {
               </div>
 
               {/* Dignified Profile Hero */}
-              <div className="flex items-center gap-5">
+              <div className="workspace-hero flex items-center gap-5">
                 <div
-                  className="w-16 h-16 rounded-xl bg-muted/60 text-primary border border-border flex items-center justify-center font-bold text-xl shrink-0"
+                  className="workspace-avatar w-16 h-16 rounded-xl bg-muted/60 text-primary border border-border flex items-center justify-center font-bold text-xl shrink-0"
                   aria-label="Candidate avatar"
                 >
                   {getInitials(fullName)}
@@ -411,7 +411,7 @@ export function Profile() {
                     {isSaving ? 'Saving...' : 'Apply overview changes'}
                   </Button>
                   {isDirty && (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">● Unsaved changes</span>
+                    <span className="text-xs text-amber-800 dark:text-amber-300 font-medium">● Unsaved changes</span>
                   )}
                 </div>
               </div>
@@ -445,7 +445,7 @@ export function Profile() {
                     {linkedinUrl.trim() ? (
                       <span className="text-sm text-muted-foreground">{linkedinUrl}</span>
                     ) : (
-                      <span className="text-sm text-muted-foreground/60 italic">Not provided</span>
+                      <span className="text-sm text-muted-foreground italic">Not provided</span>
                     )}
                   </div>
                   {linkedinUrl.trim() && validLinkedin(linkedinUrl.trim()) && (
@@ -469,7 +469,7 @@ export function Profile() {
                         {githubUrl} ↗
                       </ExternalLink>
                     ) : (
-                      <span className="text-xs text-muted-foreground/60 italic">Not provided</span>
+                      <span className="text-xs text-muted-foreground italic">Not provided</span>
                     )}
                   </div>
 
@@ -480,7 +480,7 @@ export function Profile() {
                         {portfolioUrl} ↗
                       </ExternalLink>
                     ) : (
-                      <span className="text-xs text-muted-foreground/60 italic">Not provided</span>
+                      <span className="text-xs text-muted-foreground italic">Not provided</span>
                     )}
                   </div>
                 </div>
@@ -656,7 +656,7 @@ export function Profile() {
                     {savedSettings['identity.email'] ? (
                       <span className="text-teal-600 dark:text-teal-400 font-bold">✓ Ready</span>
                     ) : (
-                      <span className="text-amber-600 dark:text-amber-400 font-bold">○ Contact needed</span>
+                      <span className="text-amber-800 dark:text-amber-300 font-bold">○ Contact needed</span>
                     )}
                   </span>
                   <span className="text-xs text-muted-foreground block mt-1">
@@ -671,7 +671,7 @@ export function Profile() {
                     className={
                       fullName.trim() && headline.trim()
                         ? 'text-teal-600 dark:text-teal-400 font-bold'
-                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                        : 'text-amber-800 dark:text-amber-300 font-bold'
                     }
                   >
                     {fullName.trim() && headline.trim() ? '✓' : '○'}
@@ -687,7 +687,7 @@ export function Profile() {
                     className={
                       targetCountries.length > 0
                         ? 'text-teal-600 dark:text-teal-400 font-bold'
-                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                        : 'text-amber-800 dark:text-amber-300 font-bold'
                     }
                   >
                     {targetCountries.length > 0 ? '✓' : '○'}
@@ -703,7 +703,7 @@ export function Profile() {
                     className={
                       documents.length > 0
                         ? 'text-teal-600 dark:text-teal-400 font-bold'
-                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                        : 'text-amber-800 dark:text-amber-300 font-bold'
                     }
                   >
                     {documents.length > 0 ? '✓' : '○'}
@@ -719,7 +719,7 @@ export function Profile() {
                     className={
                       linkedinUrl.trim() || githubUrl.trim()
                         ? 'text-teal-600 dark:text-teal-400 font-bold'
-                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                        : 'text-amber-800 dark:text-amber-300 font-bold'
                     }
                   >
                     {linkedinUrl.trim() || githubUrl.trim() ? '✓' : '○'}
@@ -735,7 +735,7 @@ export function Profile() {
                     className={
                       facts.some((f) => f.kind === 'role' && f.approved)
                         ? 'text-teal-600 dark:text-teal-400 font-bold'
-                        : 'text-amber-600 dark:text-amber-400 font-bold'
+                        : 'text-amber-800 dark:text-amber-300 font-bold'
                     }
                   >
                     {facts.some((f) => f.kind === 'role' && f.approved) ? '✓' : '○'}
@@ -756,14 +756,14 @@ export function Profile() {
               {nextActionAdvice.btnHref.startsWith('#') ? (
                 <a
                   href={nextActionAdvice.btnHref}
-                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 h-8 px-3 shadow-xs"
+                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 shadow-xs"
                 >
                   {nextActionAdvice.btnText}
                 </a>
               ) : (
                 <Link
                   href={nextActionAdvice.btnHref}
-                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-white text-slate-900 hover:bg-slate-100 h-8 px-3 shadow-xs"
+                  className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 shadow-xs"
                 >
                   {nextActionAdvice.btnText}
                 </Link>

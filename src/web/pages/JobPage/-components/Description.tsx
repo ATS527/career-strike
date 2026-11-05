@@ -35,7 +35,7 @@ export function Description({ blocks }: { blocks: JobDetail['description'] }) {
     );
   });
   flushItems(blocks.length);
-  return <div className="space-y-3 text-sm leading-relaxed text-foreground">{out}</div>;
+  return <div className="prose space-y-3 text-sm leading-relaxed text-foreground">{out}</div>;
 }
 
 export default Description;

@@ -1,3 +1,4 @@
+import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Textarea } from '../../../components/ui/textarea';
 
@@ -7,6 +8,7 @@ export function TailoredResumeEditor({
   isDirty,
   savingVariant,
   variantSaveStatus,
+  isCandidateEdited,
   onVariantTextChange,
   onSave,
   onDownload,
@@ -16,6 +18,7 @@ export function TailoredResumeEditor({
   isDirty: boolean;
   savingVariant: boolean;
   variantSaveStatus: string | null;
+  isCandidateEdited?: boolean;
   onVariantTextChange: (text: string) => void;
   onSave: () => void;
   onDownload: () => void;
@@ -24,17 +27,18 @@ export function TailoredResumeEditor({
     <div className="rounded-xl border border-border bg-card p-5 shadow-xs">
       <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
         <div>
-          <strong className="text-sm font-semibold text-foreground">
-            Tailored {selectedVariantKind === 'resume' ? 'Résumé' : 'Cover Letter'}
-          </strong>
+          <h3 className="text-sm font-semibold text-foreground m-0">
+            Tailored {selectedVariantKind === 'resume' ? 'Resume' : 'Cover Letter'}
+          </h3>
           <span className="text-xs text-muted-foreground block">Highlighted achievements &amp; matching keywords</span>
         </div>
         <div className="flex gap-2 items-center">
+          {isCandidateEdited && <Badge variant="secondary">Candidate Edited</Badge>}
           <Button type="button" size="sm" onClick={onDownload} disabled={!variantText}>
             Download .txt
           </Button>
           <Button type="button" size="sm" onClick={onSave} disabled={savingVariant || !isDirty}>
-            {savingVariant ? 'Saving...' : 'Save edits'}
+            {savingVariant ? 'Saving…' : 'Save Document Edit'}
           </Button>
         </div>
       </div>
@@ -44,7 +48,7 @@ export function TailoredResumeEditor({
         </p>
       )}
       <Textarea
-        id="tailored-content-editor"
+        id="variant-editor"
         rows={22}
         className="font-mono text-xs leading-relaxed bg-background"
         value={variantText}

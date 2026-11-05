@@ -48,8 +48,8 @@ export function MarketTable({
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto" tabIndex={0}>
+          <table className="market-table w-full text-left">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="p-3 font-medium">Market</th>

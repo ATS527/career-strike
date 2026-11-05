@@ -168,7 +168,7 @@ export function CheatSheetModal({
           </div>
 
           <div className="rounded-lg border border-border/70 bg-card/60 p-4 space-y-3">
-            <h3 className="text-base font-semibold text-foreground">STAR Method Quick Reference</h3>
+            <h3 className="text-base font-semibold text-foreground">⭐ STAR Response Quick Guide</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
               <div className="rounded-md border border-border/50 bg-background/50 p-3">
                 <strong className="text-foreground">S · Situation</strong>

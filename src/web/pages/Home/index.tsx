@@ -82,7 +82,7 @@ export function Home() {
                           </Link>
                         </h3>
                         <p className="text-xs text-muted-foreground m-0 leading-relaxed">{a.reason}</p>
-                        <p className="text-[11px] font-mono text-muted-foreground/75 m-0">
+                        <p className="text-[11px] font-mono text-muted-foreground m-0">
                           <span className="sr-only">Why this is shown: rule </span>
                           {a.rule}
                         </p>

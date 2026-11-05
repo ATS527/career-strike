@@ -14,9 +14,9 @@ export function AtsScorecard({ atsChecks }: { atsChecks: AtsCheck[] }) {
     <div className="rounded-xl border border-border bg-card p-6 shadow-xs space-y-4">
       <div className="flex items-start justify-between gap-4 pb-3 border-b border-border">
         <div>
-          <h3 className="text-base font-semibold tracking-tight text-foreground">
-            ATS &amp; Recruiter Parsability Audit
-          </h3>
+          <h2 id="ats-health-title" className="text-base font-semibold tracking-tight text-foreground">
+            ATS Health &amp; Truthfulness Verification
+          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Real-time heuristics simulating Greenhouse, Lever, Workday and Ashby parsing pipelines.
           </p>

@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react';
-import { ApiError, api, type JsonSchema, type SettingDefinition, type ValidationIssue } from '../../../api';
+import { ApiError, api, type SettingDefinition, type ValidationIssue } from '../../../api';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { type Draft, type FieldKind, fieldKind, fromDraft, sameValue, toDraft } from '../-helpers/settingFields';
@@ -81,14 +81,13 @@ export function SettingField({ def, value }: { def: SettingDefinition; value: un
         )}
       </p>
       <div className="flex items-center gap-2 pt-1">
-        <Button type="submit" size="sm" disabled={!dirty || save.status === 'saving'}>
+        <Button type="submit" disabled={!dirty || save.status === 'saving'}>
           {save.status === 'saving' ? 'Saving…' : 'Save'}
         </Button>
         {dirty && (
           <Button
             type="button"
             variant="ghost"
-            size="sm"
             onClick={() => {
               setDraft(toDraft(kind, saved));
               setSave({ status: 'idle' });

@@ -27,10 +27,10 @@ const FACTOR_BORDER: Record<string, string> = {
 };
 
 const VERDICT_COLOR: Record<string, string> = {
-  meets: 'text-emerald-600 dark:text-emerald-400',
+  meets: 'text-emerald-700 dark:text-emerald-400',
   partial: 'text-primary',
-  gap: 'text-amber-600 dark:text-amber-400',
-  unknown: 'text-muted-foreground/60',
+  gap: 'text-amber-800 dark:text-amber-400',
+  unknown: 'text-muted-foreground',
 };
 
 /** How a posting fits the candidate: the tier, the rule that decided it, and every factor with its evidence. */

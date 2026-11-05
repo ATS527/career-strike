@@ -8,7 +8,7 @@ import { Link } from '../../router';
 import { MarketDetailRail } from './-components/MarketDetailRail';
 import { MarketFilters } from './-components/MarketFilters';
 import { MarketTable } from './-components/MarketTable';
-import { CURATED_MARKETS, type MarketInfo } from './-helpers/curatedMarkets';
+import { CURATED_MARKETS } from './-helpers/curatedMarkets';
 
 export function Markets() {
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);

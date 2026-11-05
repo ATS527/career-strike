@@ -225,6 +225,7 @@ export function ResumeStudio() {
   const allPassed = atsChecks.every((c) => c.passed);
 
   const activeVariant = personalization?.variants.find((v) => v.kind === selectedVariantKind);
+  const isCandidateEdited = activeVariant?.status === 'CANDIDATE_EDITED';
   const isDirty = activeVariant ? variantText !== activeVariant.content : false;
 
   const saveVariantEdit = async () => {
@@ -475,7 +476,7 @@ export function ResumeStudio() {
                 <div className="bg-card border border-border rounded-xl p-5 shadow-xs">
                   <div className="flex justify-between items-center mb-3">
                     <div>
-                      <strong className="text-sm font-semibold text-foreground">Canonical Master Profile</strong>
+                      <h3 className="text-sm font-semibold text-foreground m-0">Master Reference (Canonical Facts)</h3>
                       <span className="block text-xs text-muted-foreground">Truthful source of truth</span>
                     </div>
                     <Badge variant="outline">Ground Truth</Badge>
@@ -497,6 +498,7 @@ export function ResumeStudio() {
                   isDirty={isDirty}
                   savingVariant={savingVariant}
                   variantSaveStatus={variantSaveStatus}
+                  isCandidateEdited={isCandidateEdited}
                   onVariantTextChange={setVariantText}
                   onSave={() => void saveVariantEdit()}
                   onDownload={() => downloadText(`tailored-${selectedVariantKind}.txt`, variantText)}

@@ -73,8 +73,9 @@ export function Prep({ applicationId }: { applicationId: string }) {
                     jobTitle: data.application.title,
                   })
                 }
+                title="Add to calendar (.ics)"
               >
-                📅 .ics
+                📅 Add to Calendar (.ics)
               </Button>
             )}
           </div>
@@ -128,7 +129,7 @@ export function Prep({ applicationId }: { applicationId: string }) {
           <h2 id="history-title" className="text-lg font-semibold tracking-tight text-foreground mb-4">
             Practice history
           </h2>
-          <ul className="divide-y divide-border/60 text-sm">
+          <ul className="divide-y divide-border/60 text-sm" data-testid="practice-history">
             {data.sessions.map((s) => {
               const topic = data.topics.find((t) => t.id === s.topicId);
               return (

@@ -156,7 +156,7 @@ export function JobPage({ id }: { id: string }) {
                 : 'Entered by you; not checked against a job board.'}
             </p>
           </div>
-          <dl className="space-y-2 text-xs">
+          <dl className="facts space-y-2 text-xs">
             {facts.map(([label, value]) => (
               <div key={label} className="p-2 rounded bg-muted/20 border border-border/40">
                 <dt className="font-semibold text-foreground">{label}</dt>
