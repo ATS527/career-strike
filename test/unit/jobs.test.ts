@@ -3,7 +3,9 @@ import { duplicateKey, effectiveStatus, FRESH_FOR_MS } from '../../src/career/jo
 
 describe('canonical identity', () => {
   it('treats case, punctuation and spacing differences as the same role', () => {
-    expect(duplicateKey('Synthetic Labs, Inc.', 'Senior  Data-Engineer', 'Berlin')).toBe(duplicateKey('synthetic labs inc', 'senior data engineer', 'BERLIN'));
+    expect(duplicateKey('Synthetic Labs, Inc.', 'Senior  Data-Engineer', 'Berlin')).toBe(
+      duplicateKey('synthetic labs inc', 'senior data engineer', 'BERLIN'),
+    );
   });
 
   it('keeps different roles, employers or places apart', () => {

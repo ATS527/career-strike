@@ -49,20 +49,29 @@ export function FitPanel({ fit }: { fit: FitDetail }) {
 
 /** What the posting asks for. Skills and quotes are read from the text; the required/preferred split is inferred from headings. */
 export function RequirementsPanel({ req }: { req: JobDetail['requirements'] }) {
-  const groups = (['required', 'preferred', 'mentioned'] as const).map((imp) => [imp, req.skills.filter((s) => s.importance === imp)] as const);
-  const any = req.skills.length > 0 || req.yearsRequired || req.urgency.length > 0 || req.locationConstraints.length > 0;
+  const groups = (['required', 'preferred', 'mentioned'] as const).map(
+    (imp) => [imp, req.skills.filter((s) => s.importance === imp)] as const,
+  );
+  const any =
+    req.skills.length > 0 || req.yearsRequired || req.urgency.length > 0 || req.locationConstraints.length > 0;
   return (
     <section aria-labelledby="req-title" className="requirements">
       <h2 id="req-title">What the posting asks for</h2>
       <p className="provenance">
-        Quotes are from the posting. Whether a skill is “required” or “preferred” is Career Strike’s inference from the posting’s
-        headings — check the original.
+        Quotes are from the posting. Whether a skill is “required” or “preferred” is Career Strike’s inference from the
+        posting’s headings — check the original.
       </p>
       {!any && <p className="muted">Career Strike found no skills or requirements it recognises in this posting.</p>}
       {groups.map(([imp, skills]) =>
         skills.length === 0 ? null : (
           <div key={imp}>
-            <h3>{{ required: 'Listed as required', preferred: 'Listed as nice to have', mentioned: 'Also mentioned' }[imp]}</h3>
+            <h3>
+              {
+                { required: 'Listed as required', preferred: 'Listed as nice to have', mentioned: 'Also mentioned' }[
+                  imp
+                ]
+              }
+            </h3>
             <ul className="evidence">
               {skills.map((s) => (
                 <li key={s.skill}>

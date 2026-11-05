@@ -1,7 +1,17 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Discovery } from '../../src/career/discovery.js';
-import { addManualJob, effectiveStatus, FRESH_FOR_MS, getJob, JobQuery, jobCounts, listJobs, setDisposition, syncBoard } from '../../src/career/jobs.js';
+import {
+  addManualJob,
+  effectiveStatus,
+  FRESH_FOR_MS,
+  getJob,
+  JobQuery,
+  jobCounts,
+  listJobs,
+  setDisposition,
+  syncBoard,
+} from '../../src/career/jobs.js';
 import { createAdapters } from '../../src/sources/adapters.js';
 import type { NormalizedPosting } from '../../src/sources/types.js';
 import { openDb } from '../../src/store/db.js';
@@ -37,15 +47,22 @@ describe('board sync', () => {
   it('adds, refreshes and closes postings from complete listings', () => {
     const d = db();
     const t0 = new Date('2026-10-30T00:00:00Z');
-    expect(syncBoard(d, 'greenhouse', 'synthetic', [posting('1'), posting('2')], t0)).toEqual({ fetched: 2, added: 2, updated: 0, closed: 0 });
+    expect(syncBoard(d, 'greenhouse', 'synthetic', [posting('1'), posting('2')], t0)).toEqual({
+      fetched: 2,
+      added: 2,
+      updated: 0,
+      closed: 0,
+    });
 
     const t1 = new Date('2026-10-30T06:00:00Z');
-    expect(syncBoard(d, 'greenhouse', 'synthetic', [posting('2', { title: 'Synthetic Role 2 (Senior)' })], t1)).toEqual({
-      fetched: 1,
-      added: 0,
-      updated: 1,
-      closed: 1,
-    });
+    expect(syncBoard(d, 'greenhouse', 'synthetic', [posting('2', { title: 'Synthetic Role 2 (Senior)' })], t1)).toEqual(
+      {
+        fetched: 1,
+        added: 0,
+        updated: 1,
+        closed: 1,
+      },
+    );
     const all = listJobs(d, query({ status: 'all' }), { excludedEmployers: [] }, t1.getTime()).jobs;
     const one = all.find((j) => j.title === 'Synthetic Role 1')!;
     const two = all.find((j) => j.title.startsWith('Synthetic Role 2'))!;
@@ -66,7 +83,13 @@ describe('board sync', () => {
 
   it('links the same role found on two sources and keeps the live one primary', () => {
     const d = db();
-    syncBoard(d, 'greenhouse', 'synthetic', [posting('1', { title: 'Data Engineer', locationText: 'Berlin' })], new Date('2026-10-01T00:00:00Z'));
+    syncBoard(
+      d,
+      'greenhouse',
+      'synthetic',
+      [posting('1', { title: 'Data Engineer', locationText: 'Berlin' })],
+      new Date('2026-10-01T00:00:00Z'),
+    );
     syncBoard(
       d,
       'lever',
@@ -90,10 +113,17 @@ describe('board sync', () => {
 
   it('search escapes wildcards and matches across title, employer and description', () => {
     const d = db();
-    syncBoard(d, 'greenhouse', 'synthetic', [posting('1', { title: '100% Remote SRE' }), posting('2', { title: 'Platform Lead' })]);
-    expect(listJobs(d, query({ q: '100%' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['100% Remote SRE']);
+    syncBoard(d, 'greenhouse', 'synthetic', [
+      posting('1', { title: '100% Remote SRE' }),
+      posting('2', { title: 'Platform Lead' }),
+    ]);
+    expect(listJobs(d, query({ q: '100%' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual([
+      '100% Remote SRE',
+    ]);
     expect(listJobs(d, query({ q: '%' }), { excludedEmployers: [] }).jobs).toHaveLength(1);
-    expect(listJobs(d, query({ q: 'posting 2 body' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['Platform Lead']);
+    expect(listJobs(d, query({ q: 'posting 2 body' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual([
+      'Platform Lead',
+    ]);
     expect(listJobs(d, query({ q: 'synthetic labs' }), { excludedEmployers: [] }).jobs).toHaveLength(2);
   });
 
@@ -104,10 +134,16 @@ describe('board sync', () => {
       posting('de', { title: 'Germany role', locationText: 'Berlin, Germany' }),
       posting('remote', { title: 'Remote role', locationText: 'Remote' }),
     ]);
-    expect(listJobs(d, query({ country: 'IN' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['India role']);
-    expect(listJobs(d, query({ country: 'DE' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['Germany role']);
+    expect(listJobs(d, query({ country: 'IN' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual([
+      'India role',
+    ]);
+    expect(listJobs(d, query({ country: 'DE' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual([
+      'Germany role',
+    ]);
     expect(listJobs(d, query({ country: 'SG' }), { excludedEmployers: [] }).jobs).toEqual([]);
-    expect(listJobs(d, query({ country: 'IN', city: 'Bengaluru' }), { excludedEmployers: [] }).jobs.map((j) => j.title)).toEqual(['India role']);
+    expect(
+      listJobs(d, query({ country: 'IN', city: 'Bengaluru' }), { excludedEmployers: [] }).jobs.map((j) => j.title),
+    ).toEqual(['India role']);
     expect(listJobs(d, query({ country: 'IN', city: 'Pune' }), { excludedEmployers: [] }).jobs).toEqual([]);
   });
 
@@ -118,8 +154,14 @@ describe('board sync', () => {
     expect(setDisposition(d, a!.id, 'excluded', 'test')).toBe(true);
     expect(setDisposition(d, 'job_missing', 'excluded', 'test')).toBe(false);
     expect(listJobs(d, query(), { excludedEmployers: ['avoided corp'] }).jobs).toHaveLength(0);
-    expect(listJobs(d, query({ includeExcludedEmployers: true }), { excludedEmployers: ['avoided corp'] }).jobs.map((j) => j.employer)).toEqual(['Avoided Corp']);
-    expect(listJobs(d, query({ disposition: 'excluded' }), { excludedEmployers: [] }).jobs.map((j) => j.id)).toEqual([a!.id]);
+    expect(
+      listJobs(d, query({ includeExcludedEmployers: true }), { excludedEmployers: ['avoided corp'] }).jobs.map(
+        (j) => j.employer,
+      ),
+    ).toEqual(['Avoided Corp']);
+    expect(listJobs(d, query({ disposition: 'excluded' }), { excludedEmployers: [] }).jobs.map((j) => j.id)).toEqual([
+      a!.id,
+    ]);
     const audit = d.prepare("SELECT actor, subject FROM audit_events WHERE action = 'job.disposition'").all();
     expect(audit).toEqual([{ actor: 'test', subject: a!.id }]);
   });
@@ -135,7 +177,12 @@ describe('board sync', () => {
       description: 'Build the first product.\n\n- Own the backend',
     });
     const job = getJob(d, id, { excludedEmployers: [] })!;
-    expect(job).toMatchObject({ status: 'UNVERIFIED', sources: ['manual'], remotePolicy: 'hybrid', applyUrl: 'https://careers.example.com/founding' });
+    expect(job).toMatchObject({
+      status: 'UNVERIFIED',
+      sources: ['manual'],
+      remotePolicy: 'hybrid',
+      applyUrl: 'https://careers.example.com/founding',
+    });
     expect(job.description).toEqual([
       { type: 'paragraph', text: 'Build the first product.' },
       { type: 'item', text: 'Own the backend' },
@@ -159,7 +206,11 @@ describe('discovery tasks', () => {
     const { task } = discovery.discover(board.id, 'test', 'test')!;
     await tasks.idle();
     expect(tasks.get(task.id)).toMatchObject({ state: 'SUCCEEDED', result: { fetched: 2, added: 2 } });
-    expect(discovery.getBoard(board.id)).toMatchObject({ health: 'OK', consecutiveFailures: 0, lastTask: { state: 'SUCCEEDED' } });
+    expect(discovery.getBoard(board.id)).toMatchObject({
+      health: 'OK',
+      consecutiveFailures: 0,
+      lastTask: { state: 'SUCCEEDED' },
+    });
     expect(jobCounts(d).open).toBe(2);
   });
 
@@ -167,7 +218,9 @@ describe('discovery tasks', () => {
     let fail = false;
     const { d, tasks, discovery } = setup({
       'boards-api.greenhouse.io': () =>
-        fail ? new Response('', { status: 503 }) : new Response(JSON.stringify(greenhouseJobs([{ id: 1 }])), { status: 200 }),
+        fail
+          ? new Response('', { status: 503 })
+          : new Response(JSON.stringify(greenhouseJobs([{ id: 1 }])), { status: 200 }),
     });
     const board = discovery.addBoard('greenhouse', 'synthetic');
     discovery.discover(board.id, 'test', 'test');
@@ -223,7 +276,10 @@ describe('discovery tasks', () => {
     ).run();
     const tasks = new TaskSupervisor(d);
     expect(tasks.recoverInterrupted().map((t) => t.id)).toEqual(['task_old']);
-    expect(tasks.get('task_old')).toMatchObject({ state: 'INTERRUPTED', error: expect.stringContaining('stopped before') });
+    expect(tasks.get('task_old')).toMatchObject({
+      state: 'INTERRUPTED',
+      error: expect.stringContaining('stopped before'),
+    });
   });
 
   it('rejects duplicate and malformed boards', () => {

@@ -5,7 +5,11 @@ test.describe('opportunity explorer', () => {
     cs.seed('greenhouse', 'synthetic', [
       { title: 'Platform Engineer', remotePolicy: 'remote' },
       { title: 'Data Analyst', remotePolicy: 'hybrid', locationText: 'Berlin' },
-      { title: 'Staff SRE', remotePolicy: 'onsite', salary: { currency: 'USD', min: 150000, max: 200000, interval: 'year', source: 'structured' } },
+      {
+        title: 'Staff SRE',
+        remotePolicy: 'onsite',
+        salary: { currency: 'USD', min: 150000, max: 200000, interval: 'year', source: 'structured' },
+      },
     ]);
     await signIn(page, cs);
     await page.getByRole('navigation', { name: 'Primary' }).getByRole('link', { name: 'Opportunities' }).click();
@@ -30,7 +34,10 @@ test.describe('opportunity explorer', () => {
     await expect(rows).toHaveCount(1);
   });
 
-  test('shortlisting and excluding persist across reloads and a service restart, and feed Home', async ({ page, cs }) => {
+  test('shortlisting and excluding persist across reloads and a service restart, and feed Home', async ({
+    page,
+    cs,
+  }) => {
     cs.seed('lever', 'synthetic', [{ title: 'Keep Me' }, { title: 'Hide Me' }, { title: 'Undecided' }]);
     await signIn(page, cs);
     await page.goto(`${cs.origin}/opportunities`);
@@ -56,7 +63,10 @@ test.describe('opportunity explorer', () => {
     await expect(page.getByTestId('next-actions')).toContainText('Review 1 verified open role');
   });
 
-  test('job details separate published facts from what is unknown and render posting text inertly', async ({ page, cs }) => {
+  test('job details separate published facts from what is unknown and render posting text inertly', async ({
+    page,
+    cs,
+  }) => {
     cs.seed('ashby', 'synthetic', [
       {
         title: 'Inert Text Check',
@@ -104,7 +114,10 @@ test.describe('opportunity explorer', () => {
   });
 
   test('two jobs can be compared side by side', async ({ page, cs }) => {
-    cs.seed('lever', 'cmp', [{ title: 'Alpha Role', locationText: 'Pune' }, { title: 'Beta Role', locationText: 'Dubai', remotePolicy: 'hybrid' }]);
+    cs.seed('lever', 'cmp', [
+      { title: 'Alpha Role', locationText: 'Pune' },
+      { title: 'Beta Role', locationText: 'Dubai', remotePolicy: 'hybrid' },
+    ]);
     await signIn(page, cs);
     await page.goto(`${cs.origin}/opportunities`);
     await page.getByLabel('Compare Alpha Role').check();
@@ -118,7 +131,10 @@ test.describe('opportunity explorer', () => {
   });
 
   test('excluded employers from Settings are hidden from the list', async ({ page, cs }) => {
-    cs.seed('greenhouse', 'mix', [{ title: 'Wanted', employer: 'Good Co' }, { title: 'Unwanted', employer: 'Avoid Co' }]);
+    cs.seed('greenhouse', 'mix', [
+      { title: 'Wanted', employer: 'Good Co' },
+      { title: 'Unwanted', employer: 'Avoid Co' },
+    ]);
     expect((await cs.api('PUT', '/api/settings/search.excludedEmployers', { value: ['avoid co'] })).status).toBe(200);
     await signIn(page, cs);
     await page.goto(`${cs.origin}/opportunities`);
@@ -160,5 +176,4 @@ test.describe('job boards', () => {
     await page.getByRole('button', { name: 'Monitor this board' }).click();
     await expect(page.getByText('Paste a Greenhouse, Lever or Ashby careers page link')).toBeVisible();
   });
-
 });

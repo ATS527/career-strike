@@ -7,7 +7,7 @@ import { VERSION } from '../core/version.js';
 import type { SourceAdapter, SourceId } from '../sources/types.js';
 import { openDb } from '../store/db.js';
 import { defaultSecretStore, type SecretStore } from '../vault/secrets.js';
-import { probeHealth, readRuntime, removeRuntime, type RuntimeInfo, writeRuntime } from './runtime.js';
+import { probeHealth, type RuntimeInfo, readRuntime, removeRuntime, writeRuntime } from './runtime.js';
 import { newToken } from './security.js';
 import { buildServer } from './server.js';
 import { loadStaticAssets } from './static.js';

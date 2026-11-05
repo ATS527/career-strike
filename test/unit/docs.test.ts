@@ -16,7 +16,8 @@ describe('user documentation', () => {
     const commands = [...read('src/cli/index.ts').matchAll(/\.command\('([a-z-]+)'\)/g)].map((m) => m[1]!);
     expect(commands.length).toBeGreaterThan(10);
     // `mcp` is launched by assistants, not by people; it is described under connecting assistants.
-    for (const c of commands.filter((x) => x !== 'mcp')) expect(read('docs/install.md'), c).toMatch(new RegExp(`career-strike ${c}\\b|\`${c}\``));
+    for (const c of commands.filter((x) => x !== 'mcp'))
+      expect(read('docs/install.md'), c).toMatch(new RegExp(`career-strike ${c}\\b|\`${c}\``));
   });
 
   it('states the facts it relies on correctly', () => {
@@ -25,12 +26,18 @@ describe('user documentation', () => {
     expect(install).toContain(`127.0.0.1:${port}`);
     expect(install).toContain(`--confirm "${read('src/cli/index.ts').match(/DELETE_PHRASE = '([^']+)'/)![1]}"`);
     // Every host the service can contact is listed in the privacy model, and nothing else.
-    const hosts = [...new Set([...read('src/sources/adapters.ts').matchAll(/https:\/\/([a-z.-]+)\/(?:v\d|v0|posting-api)/g)].map((m) => m[1]!))].sort();
+    const hosts = [
+      ...new Set(
+        [...read('src/sources/adapters.ts').matchAll(/https:\/\/([a-z.-]+)\/(?:v\d|v0|posting-api)/g)].map(
+          (m) => m[1]!,
+        ),
+      ),
+    ].sort();
     expect(hosts).toEqual(['api.ashbyhq.com', 'api.lever.co', 'boards-api.greenhouse.io']);
     const privacy = read('docs/privacy.md');
     for (const h of hosts) expect(privacy).toContain(`\`${h}\``);
     // So is every host the updater may contact.
-    const updateHosts = [...read('src/updates/releases.ts').matchAll(/^  '([a-z.-]+)',$/gm)].map((m) => m[1]!);
+    const updateHosts = [...read('src/updates/releases.ts').matchAll(/^ {2}'([a-z.-]+)',$/gm)].map((m) => m[1]!);
     expect(updateHosts).toContain('api.github.com');
     for (const h of updateHosts) expect(privacy).toContain(`\`${h}\``);
   });

@@ -7,7 +7,11 @@ import { apiKey, useResource } from '../useResource';
 
 const PATH = '/api/updates';
 
-function useUpdateActions(): { busy: boolean; failed: boolean; post: (action: 'check' | 'acknowledge') => Promise<void> } {
+function useUpdateActions(): {
+  busy: boolean;
+  failed: boolean;
+  post: (action: 'check' | 'acknowledge') => Promise<void>;
+} {
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -45,7 +49,8 @@ export function UpdateBanner() {
     return (
       <div className="banner banner--ok" role="status" data-testid="whats-new-banner">
         <p>
-          <strong>Career Strike is now {whatsNew.to}</strong> (was {whatsNew.from}). <Link href="/settings#updates">See what’s new</Link>
+          <strong>Career Strike is now {whatsNew.to}</strong> (was {whatsNew.from}).{' '}
+          <Link href="/settings#updates">See what’s new</Link>
         </p>
         <button type="button" className="quiet" disabled={busy} onClick={() => void post('acknowledge')}>
           Dismiss
@@ -57,8 +62,8 @@ export function UpdateBanner() {
     return (
       <div className="banner banner--attention" role="status" data-testid="update-banner">
         <p>
-          <strong>Career Strike {latest.version} is available.</strong> Run <code>career-strike update</code> in a terminal — your data is backed up first.{' '}
-          <Link href="/settings#updates">Details</Link>
+          <strong>Career Strike {latest.version} is available.</strong> Run <code>career-strike update</code> in a
+          terminal — your data is backed up first. <Link href="/settings#updates">Details</Link>
         </p>
       </div>
     );
@@ -78,14 +83,20 @@ export function UpdatesPanel() {
       <h2 id="updates-title">Updates</h2>
       <p className="lede">
         You have Career Strike <strong data-testid="installed-version">{s.current}</strong>.{' '}
-        {s.checks === 'weekly' ? 'It looks for new versions once a week.' : 'It does not look for new versions on its own.'}{' '}
+        {s.checks === 'weekly'
+          ? 'It looks for new versions once a week.'
+          : 'It does not look for new versions on its own.'}{' '}
         <Link href="/settings#monitoring.updateChecks">Change</Link>
       </p>
 
       {s.whatsNew && (
         <div className="field">
           <h3>What’s new in {s.whatsNew.to}</h3>
-          {s.whatsNew.notes ? <ReleaseNotes version={s.whatsNew.to} text={s.whatsNew.notes} /> : <p className="help">This version has no release notes.</p>}
+          {s.whatsNew.notes ? (
+            <ReleaseNotes version={s.whatsNew.to} text={s.whatsNew.notes} />
+          ) : (
+            <p className="help">This version has no release notes.</p>
+          )}
           <p className="help">
             Not working for you? <code>career-strike update --undo</code> returns to {s.whatsNew.from}.
           </p>

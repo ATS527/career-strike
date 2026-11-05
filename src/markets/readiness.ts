@@ -1,6 +1,6 @@
-import { COUNTRY_CODES, COUNTRY_REGISTRY, type CountryCode, type MarketStatus } from './countries.js';
-import { EMPLOYER_TARGETS, employerTargetRecord, type EmployerTargetRegistryRecord } from './employers.js';
 import type { Db } from '../store/db.js';
+import { COUNTRY_CODES, COUNTRY_REGISTRY, type CountryCode, type MarketStatus } from './countries.js';
+import { EMPLOYER_TARGETS, type EmployerTargetRegistryRecord, employerTargetRecord } from './employers.js';
 
 /**
  * Per-installation market readiness. The registry status stays CONFIGURED until a curated target
@@ -21,7 +21,9 @@ export interface MarketReadiness {
 export function marketReadiness(db: Db): MarketReadiness[] {
   return COUNTRY_CODES.map((code) => {
     const country = COUNTRY_REGISTRY[code]!;
-    const targets = EMPLOYER_TARGETS.filter((target) => target.countries.includes(code)).map((target) => employerTargetRecord(db, target));
+    const targets = EMPLOYER_TARGETS.filter((target) => target.countries.includes(code)).map((target) =>
+      employerTargetRecord(db, target),
+    );
     const discoveryAvailable = targets.some((target) => target.monitoringState === 'HEALTHY');
     return { code, name: country.name, configuredStatus: country.status, discoveryAvailable, targets };
   });

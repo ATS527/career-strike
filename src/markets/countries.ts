@@ -5,7 +5,12 @@
 export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA', 'HR'] as const;
 export type CountryCode = (typeof COUNTRY_CODES)[number];
 
-export type MarketStatus = 'CONFIGURED' | 'LIMITED_SUPPORT' | 'DISCOVERY_AVAILABLE' | 'PRODUCTION_SUPPORTED' | 'BLOCKED';
+export type MarketStatus =
+  | 'CONFIGURED'
+  | 'LIMITED_SUPPORT'
+  | 'DISCOVERY_AVAILABLE'
+  | 'PRODUCTION_SUPPORTED'
+  | 'BLOCKED';
 
 export interface CountryConfig {
   code: CountryCode;
@@ -20,45 +25,121 @@ export interface CountryConfig {
 
 export const COUNTRY_REGISTRY: Readonly<Record<CountryCode, CountryConfig>> = {
   DE: {
-    code: 'DE', name: 'Germany', currencies: ['EUR'], locales: ['de', 'en'],
+    code: 'DE',
+    name: 'Germany',
+    currencies: ['EUR'],
+    locales: ['de', 'en'],
     defaultCities: ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne'],
-    cityAliases: { München: 'Munich', Köln: 'Cologne' }, status: 'CONFIGURED',
+    cityAliases: { München: 'Munich', Köln: 'Cologne' },
+    status: 'CONFIGURED',
   },
   IN: {
-    code: 'IN', name: 'India', currencies: ['INR'], locales: ['en', 'hi'],
+    code: 'IN',
+    name: 'India',
+    currencies: ['INR'],
+    locales: ['en', 'hi'],
     defaultCities: ['Bengaluru', 'Hyderabad', 'Pune', 'Chennai', 'Delhi NCR', 'Mumbai', 'Kochi', 'Coimbatore'],
-    cityAliases: { Bangalore: 'Bengaluru', Gurgaon: 'Gurugram' }, status: 'CONFIGURED',
+    cityAliases: { Bangalore: 'Bengaluru', Gurgaon: 'Gurugram' },
+    status: 'CONFIGURED',
   },
-  SG: { code: 'SG', name: 'Singapore', currencies: ['SGD'], locales: ['en', 'ms', 'zh', 'ta'], defaultCities: ['Singapore'], cityAliases: {}, status: 'CONFIGURED' },
-  MY: { code: 'MY', name: 'Malaysia', currencies: ['MYR'], locales: ['ms', 'en', 'zh', 'ta'], defaultCities: ['Kuala Lumpur', 'Penang', 'Johor Bahru'], cityAliases: {}, status: 'CONFIGURED' },
-  ID: { code: 'ID', name: 'Indonesia', currencies: ['IDR'], locales: ['id', 'en'], defaultCities: ['Jakarta', 'Bandung', 'Surabaya', 'Yogyakarta'], cityAliases: {}, status: 'CONFIGURED' },
-  PH: { code: 'PH', name: 'Philippines', currencies: ['PHP'], locales: ['en', 'fil'], defaultCities: ['Manila', 'Cebu', 'Davao'], cityAliases: {}, status: 'CONFIGURED' },
-  TH: { code: 'TH', name: 'Thailand', currencies: ['THB'], locales: ['th', 'en'], defaultCities: ['Bangkok', 'Chiang Mai'], cityAliases: {}, status: 'CONFIGURED' },
-  VN: { code: 'VN', name: 'Vietnam', currencies: ['VND'], locales: ['vi', 'en'], defaultCities: ['Ho Chi Minh City', 'Hanoi', 'Da Nang'], cityAliases: { 'Hồ Chí Minh City': 'Ho Chi Minh City', 'Saigon': 'Ho Chi Minh City' }, status: 'CONFIGURED' },
+  SG: {
+    code: 'SG',
+    name: 'Singapore',
+    currencies: ['SGD'],
+    locales: ['en', 'ms', 'zh', 'ta'],
+    defaultCities: ['Singapore'],
+    cityAliases: {},
+    status: 'CONFIGURED',
+  },
+  MY: {
+    code: 'MY',
+    name: 'Malaysia',
+    currencies: ['MYR'],
+    locales: ['ms', 'en', 'zh', 'ta'],
+    defaultCities: ['Kuala Lumpur', 'Penang', 'Johor Bahru'],
+    cityAliases: {},
+    status: 'CONFIGURED',
+  },
+  ID: {
+    code: 'ID',
+    name: 'Indonesia',
+    currencies: ['IDR'],
+    locales: ['id', 'en'],
+    defaultCities: ['Jakarta', 'Bandung', 'Surabaya', 'Yogyakarta'],
+    cityAliases: {},
+    status: 'CONFIGURED',
+  },
+  PH: {
+    code: 'PH',
+    name: 'Philippines',
+    currencies: ['PHP'],
+    locales: ['en', 'fil'],
+    defaultCities: ['Manila', 'Cebu', 'Davao'],
+    cityAliases: {},
+    status: 'CONFIGURED',
+  },
+  TH: {
+    code: 'TH',
+    name: 'Thailand',
+    currencies: ['THB'],
+    locales: ['th', 'en'],
+    defaultCities: ['Bangkok', 'Chiang Mai'],
+    cityAliases: {},
+    status: 'CONFIGURED',
+  },
+  VN: {
+    code: 'VN',
+    name: 'Vietnam',
+    currencies: ['VND'],
+    locales: ['vi', 'en'],
+    defaultCities: ['Ho Chi Minh City', 'Hanoi', 'Da Nang'],
+    cityAliases: { 'Hồ Chí Minh City': 'Ho Chi Minh City', Saigon: 'Ho Chi Minh City' },
+    status: 'CONFIGURED',
+  },
   AE: {
-    code: 'AE', name: 'United Arab Emirates', currencies: ['AED'], locales: ['ar', 'en'],
+    code: 'AE',
+    name: 'United Arab Emirates',
+    currencies: ['AED'],
+    locales: ['ar', 'en'],
     defaultCities: ['Dubai', 'Abu Dhabi', 'Sharjah'],
-    cityAliases: {}, status: 'CONFIGURED',
+    cityAliases: {},
+    status: 'CONFIGURED',
   },
   JP: {
-    code: 'JP', name: 'Japan', currencies: ['JPY'], locales: ['ja', 'en'],
+    code: 'JP',
+    name: 'Japan',
+    currencies: ['JPY'],
+    locales: ['ja', 'en'],
     defaultCities: ['Tokyo', 'Osaka', 'Nagoya', 'Yokohama', 'Fukuoka'],
-    cityAliases: {}, status: 'CONFIGURED',
+    cityAliases: {},
+    status: 'CONFIGURED',
   },
   GB: {
-    code: 'GB', name: 'United Kingdom', currencies: ['GBP'], locales: ['en'],
+    code: 'GB',
+    name: 'United Kingdom',
+    currencies: ['GBP'],
+    locales: ['en'],
     defaultCities: ['London', 'Manchester', 'Edinburgh', 'Birmingham', 'Glasgow', 'Bristol', 'Leeds', 'Cardiff'],
-    cityAliases: {}, status: 'CONFIGURED',
+    cityAliases: {},
+    status: 'CONFIGURED',
   },
   AU: {
-    code: 'AU', name: 'Australia', currencies: ['AUD'], locales: ['en'],
+    code: 'AU',
+    name: 'Australia',
+    currencies: ['AUD'],
+    locales: ['en'],
     defaultCities: ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra'],
-    cityAliases: {}, status: 'CONFIGURED',
+    cityAliases: {},
+    status: 'CONFIGURED',
   },
   CA: {
-    code: 'CA', name: 'Canada', currencies: ['CAD'], locales: ['en', 'fr'],
+    code: 'CA',
+    name: 'Canada',
+    currencies: ['CAD'],
+    locales: ['en', 'fr'],
     defaultCities: ['Toronto', 'Vancouver', 'Montreal', 'Ottawa', 'Calgary'],
-    cityAliases: { Montréal: 'Montreal' }, status: 'CONFIGURED',
+    cityAliases: { Montréal: 'Montreal' },
+    status: 'CONFIGURED',
   },
   HR: {
     code: 'HR', name: 'Croatia', currencies: ['EUR'], locales: ['hr', 'en'],
@@ -71,14 +152,25 @@ export function isCountryCode(value: string): value is CountryCode {
   return (COUNTRY_CODES as readonly string[]).includes(value);
 }
 
-const normalise = (value: string): string => value.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const normalise = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 
 /** A deterministic best-effort location parse. Missing facts stay null rather than being guessed. */
-export function normaliseLocation(originalText: string | null): { countryCode: CountryCode | null; city: string | null; originalText: string | null } {
+export function normaliseLocation(originalText: string | null): {
+  countryCode: CountryCode | null;
+  city: string | null;
+  originalText: string | null;
+} {
   if (!originalText) return { countryCode: null, city: null, originalText: null };
   const text = normalise(originalText);
   for (const country of Object.values(COUNTRY_REGISTRY)) {
-    if (text.includes(normalise(country.name))) return { countryCode: country.code, city: cityIn(country, text), originalText };
+    if (text.includes(normalise(country.name)))
+      return { countryCode: country.code, city: cityIn(country, text), originalText };
     const city = cityIn(country, text);
     if (city) return { countryCode: country.code, city, originalText };
   }

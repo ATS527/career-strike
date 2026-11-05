@@ -3,7 +3,7 @@ name: Release
 # Pushing a tag such as v0.3.0 (see `npm run release`) builds, tests and publishes that version.
 on:
   push:
-    tags: ['v*.*.*']
+    tags: ["v*.*.*"]
 
 permissions:
   contents: read

@@ -52,11 +52,20 @@ export function loadDenylist(home: string = resolveHome()): string[] {
 }
 
 export function scanStaged(cwd: string, denylist: readonly string[], env: NodeJS.ProcessEnv = process.env): Finding[] {
-  const files = execFileSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z'], { cwd, encoding: 'utf8', env })
+  const files = execFileSync('git', ['diff', '--cached', '--name-only', '--diff-filter=ACMR', '-z'], {
+    cwd,
+    encoding: 'utf8',
+    env,
+  })
     .split('\0')
     .filter(Boolean);
   return files.flatMap((file) => {
-    const staged = execFileSync('git', ['show', `:${file}`], { cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env });
+    const staged = execFileSync('git', ['show', `:${file}`], {
+      cwd,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      env,
+    });
     return staged.includes('\0') ? [] : scanText(file, staged, denylist);
   });
 }

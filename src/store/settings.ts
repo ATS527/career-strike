@@ -14,7 +14,11 @@ interface SettingDef {
   defaultValue: unknown;
 }
 
-const countryCode = z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, 'Use a two-letter ISO country code');
+const countryCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z]{2}$/, 'Use a two-letter ISO country code');
 
 // Every user-facing setting must be declared here; unknown keys are rejected and the dashboard
 // renders exactly these controls. Settings for features that do not exist yet are not declared.
@@ -51,8 +55,17 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
   'search.employmentTypes': {
     label: 'Employment types',
     help: 'Employment types to consider.',
-    options: { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract', temporary: 'Temporary', internship: 'Internship' },
-    schema: z.array(z.enum(['full_time', 'part_time', 'contract', 'temporary', 'internship'])).min(1).max(5),
+    options: {
+      full_time: 'Full-time',
+      part_time: 'Part-time',
+      contract: 'Contract',
+      temporary: 'Temporary',
+      internship: 'Internship',
+    },
+    schema: z
+      .array(z.enum(['full_time', 'part_time', 'contract', 'temporary', 'internship']))
+      .min(1)
+      .max(5),
     classification: 'PERSONAL',
     defaultValue: ['full_time'],
   },
@@ -100,7 +113,13 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
   'candidate.joiningAvailability': {
     label: 'Joining availability',
     help: 'How soon you can start a new role.',
-    options: { immediate: 'Immediately', two_weeks: 'Within 2 weeks', one_month: 'Within 1 month', two_months_plus: 'In 2 months or more', unspecified: 'Not specified' },
+    options: {
+      immediate: 'Immediately',
+      two_weeks: 'Within 2 weeks',
+      one_month: 'Within 1 month',
+      two_months_plus: 'In 2 months or more',
+      unspecified: 'Not specified',
+    },
     schema: z.enum(['immediate', 'two_weeks', 'one_month', 'two_months_plus', 'unspecified']),
     classification: 'PERSONAL',
     defaultValue: 'unspecified',
@@ -111,7 +130,11 @@ export const SETTING_DEFS: Readonly<Record<string, SettingDef>> = {
     options: { year: 'per year', month: 'per month', hour: 'per hour' },
     schema: z
       .object({
-        currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, 'Use a three-letter currency code'),
+        currency: z
+          .string()
+          .trim()
+          .toUpperCase()
+          .regex(/^[A-Z]{3}$/, 'Use a three-letter currency code'),
         minimum: z.number().int().positive().max(100_000_000),
         interval: z.enum(['year', 'month', 'hour']),
       })
@@ -257,7 +280,12 @@ export function setSetting(db: Db, key: string, value: unknown, actor: string): 
          classification = excluded.classification, updated_at = excluded.updated_at`,
     ).run(key, JSON.stringify(parsed.data), def.classification, now);
     // Audit the key only: setting values may be personal data.
-    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(now, actor, 'setting.updated', key);
+    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
+      now,
+      actor,
+      'setting.updated',
+      key,
+    );
   })();
   return parsed.data;
 }

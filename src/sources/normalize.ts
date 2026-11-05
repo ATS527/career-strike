@@ -88,7 +88,8 @@ export function unresolvedFacts(p: {
 }): string[] {
   const facts: string[] = [];
   if (p.remotePolicy === 'unknown') facts.push('Work arrangement (remote, hybrid or on-site) is not stated.');
-  if (p.remotePolicy === 'remote') facts.push('Countries or time zones eligible for remote work are not stated in structured form.');
+  if (p.remotePolicy === 'remote')
+    facts.push('Countries or time zones eligible for remote work are not stated in structured form.');
   if (p.employmentType === 'unknown') facts.push('Employment type is not stated explicitly.');
   if (!p.salary) facts.push('Salary is not published in structured form.');
   if (!p.locationText) facts.push('Location is not stated.');

@@ -1,13 +1,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import type { Db } from '../store/db.js';
+import { isCountryCode } from '../markets/countries.js';
+import { evaluateFit, type Fit, type FitSettings, type Tier } from '../matching/fit.js';
+import { extractRequirements, type PostingRequirements, REQUIREMENTS_VERSION } from '../matching/requirements.js';
+import { capabilityForName, type SourceCapability } from '../sources/capabilities.js';
 import { blocksToText, textToBlocks } from '../sources/html.js';
 import { marketFacts, safeHttpUrl, unresolvedFacts } from '../sources/normalize.js';
 import type { MarketFacts, NormalizedPosting, PublishedSalary, RemotePolicy, TextBlock } from '../sources/types.js';
-import { isCountryCode } from '../markets/countries.js';
-import { capabilityForName, type SourceCapability } from '../sources/capabilities.js';
-import { evaluateFit, type Fit, type FitSettings, type Tier } from '../matching/fit.js';
-import { extractRequirements, type PostingRequirements, REQUIREMENTS_VERSION } from '../matching/requirements.js';
+import type { Db } from '../store/db.js';
 import type { CandidateProfile } from './profile.js';
 
 /** A posting verified within this window is shown as open; older ones as "may have closed". */
@@ -62,7 +62,14 @@ export interface JobDetail extends JobSummary {
   postingUrl: string | null;
   closedAt: string | null;
   unresolved: string[];
-  sourceRecords: { source: string; board: string; sourceJobId: string; url: string | null; fetchedAt: string; capability: SourceCapability }[];
+  sourceRecords: {
+    source: string;
+    board: string;
+    sourceJobId: string;
+    url: string | null;
+    fetchedAt: string;
+    capability: SourceCapability;
+  }[];
   duplicates: { id: string; title: string; employer: string; sources: string[] }[];
   requirements: PostingRequirements;
   fitDetail?: Fit;
@@ -82,7 +89,11 @@ export function duplicateKey(employer: string, title: string, location: string |
   return sha256(`${norm(employer)}|${norm(title)}|${norm(location)}`);
 }
 
-export function effectiveStatus(status: StoredStatus, lastVerifiedAt: string | null, now = Date.now()): EffectiveStatus {
+export function effectiveStatus(
+  status: StoredStatus,
+  lastVerifiedAt: string | null,
+  now = Date.now(),
+): EffectiveStatus {
   if (status !== 'OPEN') return status;
   if (!lastVerifiedAt || now - Date.parse(lastVerifiedAt) > FRESH_FOR_MS) return 'STALE';
   return 'OPEN';
@@ -100,11 +111,19 @@ export interface SyncResult {
  * previously open postings from this board that are absent have been taken down: CLOSED.
  * Call only with a full successful response — a failed fetch must not reach this function.
  */
-export function syncBoard(db: Db, source: string, board: string, postings: NormalizedPosting[], now = new Date()): SyncResult {
+export function syncBoard(
+  db: Db,
+  source: string,
+  board: string,
+  postings: NormalizedPosting[],
+  now = new Date(),
+): SyncResult {
   const at = now.toISOString();
   const result: SyncResult = { fetched: postings.length, added: 0, updated: 0, closed: 0 };
 
-  const findSource = db.prepare('SELECT job_id, content_hash FROM job_sources WHERE source = ? AND board = ? AND source_job_id = ?');
+  const findSource = db.prepare(
+    'SELECT job_id, content_hash FROM job_sources WHERE source = ? AND board = ? AND source_job_id = ?',
+  );
   const insertJob = db.prepare(`
     INSERT INTO jobs (id, canonical_key, duplicate_key, employer, title, location_text, remote_policy, employment_type,
       department, salary_json, description_json, description_text, apply_url, posting_url, published_at, status,
@@ -118,7 +137,9 @@ export function syncBoard(db: Db, source: string, board: string, postings: Norma
       published_at = @published, status = 'OPEN', closed_at = NULL, last_seen_at = @at, last_verified_at = @at,
       unresolved_json = @unresolved, requirements_json = @reqJson, requirements_version = @reqVersion, market_json = @market
     WHERE id = @id`);
-  const touchJob = db.prepare("UPDATE jobs SET status = 'OPEN', closed_at = NULL, last_seen_at = ?, last_verified_at = ? WHERE id = ?");
+  const touchJob = db.prepare(
+    "UPDATE jobs SET status = 'OPEN', closed_at = NULL, last_seen_at = ?, last_verified_at = ? WHERE id = ?",
+  );
   const insertSource = db.prepare(
     'INSERT INTO job_sources (job_id, source, board, source_job_id, source_url, fetched_at, content_hash) VALUES (?, ?, ?, ?, ?, ?, ?)',
   );
@@ -153,7 +174,9 @@ export function syncBoard(db: Db, source: string, board: string, postings: Norma
         market: JSON.stringify(p.market ?? marketFacts(p.locationText, p.remotePolicy)),
         at,
       };
-      const existing = findSource.get(source, board, p.sourceJobId) as { job_id: string; content_hash: string } | undefined;
+      const existing = findSource.get(source, board, p.sourceJobId) as
+        | { job_id: string; content_hash: string }
+        | undefined;
       if (existing) {
         if (existing.content_hash === hash) touchJob.run(at, at, existing.job_id);
         else updateJob.run({ ...params, id: existing.job_id });
@@ -207,7 +230,12 @@ export function backfillRequirements(db: Db): number {
     .all(REQUIREMENTS_VERSION) as { id: string; title: string; description_json: string }[];
   const update = db.prepare('UPDATE jobs SET requirements_json = ?, requirements_version = ? WHERE id = ?');
   db.transaction(() => {
-    for (const r of rows) update.run(JSON.stringify(extractRequirements(r.title, JSON.parse(r.description_json) as TextBlock[])), REQUIREMENTS_VERSION, r.id);
+    for (const r of rows)
+      update.run(
+        JSON.stringify(extractRequirements(r.title, JSON.parse(r.description_json) as TextBlock[])),
+        REQUIREMENTS_VERSION,
+        r.id,
+      );
   })();
   return rows.length;
 }
@@ -237,7 +265,12 @@ export function addManualJob(db: Db, input: z.infer<typeof ManualJobInput>, now 
   const location = input.location || null;
   const unresolved = [
     'Entered manually: Career Strike has not verified that this posting exists or is open.',
-    ...unresolvedFacts({ remotePolicy: input.remotePolicy, employmentType: 'unknown', salary: null, locationText: location }),
+    ...unresolvedFacts({
+      remotePolicy: input.remotePolicy,
+      employmentType: 'unknown',
+      salary: null,
+      locationText: location,
+    }),
   ];
   db.transaction(() => {
     db.prepare(
@@ -337,7 +370,11 @@ function requirementsOf(row: { requirements_json: string | null }): PostingRequi
   return row.requirements_json ? (JSON.parse(row.requirements_json) as PostingRequirements) : EMPTY_REQUIREMENTS;
 }
 
-function marketOf(row: { market_json: string; location_text: string | null; remote_policy: RemotePolicy }): MarketFacts {
+function marketOf(row: {
+  market_json: string;
+  location_text: string | null;
+  remote_policy: RemotePolicy;
+}): MarketFacts {
   try {
     const parsed = JSON.parse(row.market_json) as Partial<MarketFacts>;
     if (parsed.location && parsed.remoteEligibility && Array.isArray(parsed.remoteEligibleCountries)) {
@@ -379,7 +416,12 @@ function summariseFit(fit: Fit): FitSummary {
   };
 }
 
-function toSummary(row: JobRow, excludedEmployers: Set<string>, now: number, ctx?: CandidateContext): JobSummary & { fitDetail?: Fit } {
+function toSummary(
+  row: JobRow,
+  excludedEmployers: Set<string>,
+  now: number,
+  ctx?: CandidateContext,
+): JobSummary & { fitDetail?: Fit } {
   const status = effectiveStatus(row.status, row.last_verified_at, now);
   const fit = ctx ? fitFor(row, status, ctx) : undefined;
   return {
@@ -423,14 +465,17 @@ export function listJobs(
       .filter(Boolean)
       .slice(0, 8)
       .forEach((term, i) => {
-        where.push(`(j.title LIKE @q${i} ESCAPE '\\' OR j.employer LIKE @q${i} ESCAPE '\\' OR j.description_text LIKE @q${i} ESCAPE '\\')`);
+        where.push(
+          `(j.title LIKE @q${i} ESCAPE '\\' OR j.employer LIKE @q${i} ESCAPE '\\' OR j.description_text LIKE @q${i} ESCAPE '\\')`,
+        );
         params[`q${i}`] = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       });
   }
   params.fresh = freshSince;
   if (query.status === 'active') where.push("(j.status = 'UNVERIFIED' OR j.status = 'OPEN')");
   else if (query.status === 'OPEN') where.push("j.status = 'OPEN' AND j.last_verified_at >= @fresh");
-  else if (query.status === 'STALE') where.push("j.status = 'OPEN' AND (j.last_verified_at IS NULL OR j.last_verified_at < @fresh)");
+  else if (query.status === 'STALE')
+    where.push("j.status = 'OPEN' AND (j.last_verified_at IS NULL OR j.last_verified_at < @fresh)");
   else if (query.status !== 'all') where.push(`j.status = '${query.status}'`);
   if (query.remote) {
     where.push('j.remote_policy = @remote');
@@ -456,21 +501,40 @@ export function listJobs(
     best_fit: 'COALESCE(j.published_at, j.first_seen_at) DESC, j.id',
   }[query.sort];
 
-  const rows = db.prepare(`${SUMMARY_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY ${order}`).all(params) as JobRow[];
+  const rows = db
+    .prepare(`${SUMMARY_SELECT} ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY ${order}`)
+    .all(params) as JobRow[];
   const fitAvailable = Boolean(ctx.profile && ctx.settings);
   // Employer exclusion, fit and urgency are computed per job, so they are applied here.
-  let visible = rows.map((r) => toSummary(r, excluded, now, ctx)).filter((j) => query.includeExcludedEmployers || !j.employerExcluded);
-  if (query.immediateStart) visible = visible.filter((j) => j.fit?.immediateStartAsked ?? requirementsOf(rows.find((r) => r.id === j.id)!).urgency.length > 0);
+  let visible = rows
+    .map((r) => toSummary(r, excluded, now, ctx))
+    .filter((j) => query.includeExcludedEmployers || !j.employerExcluded);
+  if (query.immediateStart)
+    visible = visible.filter(
+      (j) => j.fit?.immediateStartAsked ?? requirementsOf(rows.find((r) => r.id === j.id)!).urgency.length > 0,
+    );
   if (query.tier && fitAvailable) {
-    visible = visible.filter((j) => (query.tier === 'eligible' ? j.fit!.tier !== 'ineligible' : j.fit!.tier === query.tier));
+    visible = visible.filter((j) =>
+      query.tier === 'eligible' ? j.fit!.tier !== 'ineligible' : j.fit!.tier === query.tier,
+    );
   }
   if (query.sort === 'best_fit' && fitAvailable) {
     // Stable: ties keep newest-first order. An immediate-start request the candidate can meet ranks first within a tier.
-    const urgentMatch = (j: JobSummary & { fitDetail?: Fit }): number => (j.fitDetail?.immediateStart.asked && j.fitDetail.immediateStart.candidateAvailable ? 0 : 1);
-    visible = [...visible].sort((a, b) => TIER_ORDER[a.fit!.tier] - TIER_ORDER[b.fit!.tier] || urgentMatch(a) - urgentMatch(b));
+    const urgentMatch = (j: JobSummary & { fitDetail?: Fit }): number =>
+      j.fitDetail?.immediateStart.asked && j.fitDetail.immediateStart.candidateAvailable ? 0 : 1;
+    visible = [...visible].sort(
+      (a, b) => TIER_ORDER[a.fit!.tier] - TIER_ORDER[b.fit!.tier] || urgentMatch(a) - urgentMatch(b),
+    );
   }
-  if (query.country) visible = visible.filter((j) => j.market.location.countryCode === query.country || j.market.remoteEligibleCountries.includes(query.country!));
-  if (query.city) visible = visible.filter((j) => j.market.location.city !== null && norm(j.market.location.city) === norm(query.city!));
+  if (query.country)
+    visible = visible.filter(
+      (j) =>
+        j.market.location.countryCode === query.country || j.market.remoteEligibleCountries.includes(query.country!),
+    );
+  if (query.city)
+    visible = visible.filter(
+      (j) => j.market.location.city !== null && norm(j.market.location.city) === norm(query.city!),
+    );
   const page = visible.slice(query.offset, query.offset + query.limit).map(({ fitDetail: _omit, ...j }) => j);
   return { total: visible.length, jobs: page, fitAvailable };
 }
@@ -480,7 +544,9 @@ export function getJob(db: Db, id: string, ctx: CandidateContext, now = Date.now
   const row = db.prepare(`${SUMMARY_SELECT} WHERE j.id = ?`).get(id) as JobRow | undefined;
   if (!row) return null;
   const extra = db
-    .prepare('SELECT department, description_json, apply_url, posting_url, closed_at, unresolved_json, duplicate_key FROM jobs WHERE id = ?')
+    .prepare(
+      'SELECT department, description_json, apply_url, posting_url, closed_at, unresolved_json, duplicate_key FROM jobs WHERE id = ?',
+    )
     .get(id) as {
     department: string | null;
     description_json: string;
@@ -491,14 +557,25 @@ export function getJob(db: Db, id: string, ctx: CandidateContext, now = Date.now
     duplicate_key: string;
   };
   const sourceRecords = (
-    db.prepare('SELECT source, board, source_job_id, source_url, fetched_at FROM job_sources WHERE job_id = ? ORDER BY fetched_at').all(id) as {
+    db
+      .prepare(
+        'SELECT source, board, source_job_id, source_url, fetched_at FROM job_sources WHERE job_id = ? ORDER BY fetched_at',
+      )
+      .all(id) as {
       source: string;
       board: string;
       source_job_id: string;
       source_url: string | null;
       fetched_at: string;
     }[]
-  ).map((s) => ({ source: s.source, board: s.board, sourceJobId: s.source_job_id, url: s.source_url, fetchedAt: s.fetched_at, capability: capabilityForName(s.source) }));
+  ).map((s) => ({
+    source: s.source,
+    board: s.board,
+    sourceJobId: s.source_job_id,
+    url: s.source_url,
+    fetchedAt: s.fetched_at,
+    capability: capabilityForName(s.source),
+  }));
   const duplicates = (
     db
       .prepare(

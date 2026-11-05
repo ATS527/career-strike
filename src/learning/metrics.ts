@@ -45,7 +45,15 @@ export interface DiscoveryHealth {
 
 export interface Metrics {
   generatedAt: string;
-  totals: { found: number; shortlisted: number; submitted: number; responses: number; interviews: number; offers: number; rejections: number };
+  totals: {
+    found: number;
+    shortlisted: number;
+    submitted: number;
+    responses: number;
+    interviews: number;
+    offers: number;
+    rejections: number;
+  };
   responseRate: Rate;
   interviewRate: Rate;
   bySource: SourceMetrics[];
@@ -60,7 +68,11 @@ const rate = (numerator: number, n: number): Rate => ({ numerator, n, rate: n ==
 
 function reached(db: Db, appId: string, states: string[]): boolean {
   const ph = states.map(() => '?').join(',');
-  return Boolean(db.prepare(`SELECT 1 FROM application_events WHERE application_id = ? AND to_state IN (${ph}) LIMIT 1`).get(appId, ...states));
+  return Boolean(
+    db
+      .prepare(`SELECT 1 FROM application_events WHERE application_id = ? AND to_state IN (${ph}) LIMIT 1`)
+      .get(appId, ...states),
+  );
 }
 
 /** Every number here is counted from stored jobs, applications and their recorded events. */
@@ -86,8 +98,16 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
        FROM job_sources s JOIN jobs j ON j.id = s.job_id LEFT JOIN job_user_state u ON u.job_id = j.id
        GROUP BY s.source ORDER BY s.source`,
     )
-    .all(new Date(now - 72 * 3600_000).toISOString()) as { source: string; found: number; gone: number; shortlisted: number }[];
-  const boardHealth = db.prepare('SELECT health, COUNT(*) AS count FROM source_boards GROUP BY health').all() as { health: string; count: number }[];
+    .all(new Date(now - 72 * 3600_000).toISOString()) as {
+    source: string;
+    found: number;
+    gone: number;
+    shortlisted: number;
+  }[];
+  const boardHealth = db.prepare('SELECT health, COUNT(*) AS count FROM source_boards GROUP BY health').all() as {
+    health: string;
+    count: number;
+  }[];
   const countHealth = (health: string): number => boardHealth.find((row) => row.health === health)?.count ?? 0;
   const discoveryHealth: DiscoveryHealth = {
     monitored: boardHealth.reduce((sum, row) => sum + row.count, 0),
@@ -112,16 +132,26 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
   // Days from the recorded submission to the first recorded response.
   const delays = respondedApps
     .map((a) => {
-      const sub = db.prepare("SELECT MIN(at) FROM application_events WHERE application_id = ? AND to_state = 'SUBMITTED_CONFIRMED'").pluck().get(a.id) as string | null;
+      const sub = db
+        .prepare("SELECT MIN(at) FROM application_events WHERE application_id = ? AND to_state = 'SUBMITTED_CONFIRMED'")
+        .pluck()
+        .get(a.id) as string | null;
       const resp = db
-        .prepare("SELECT MIN(at) FROM application_events WHERE application_id = ? AND to_state IN ('RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED')")
+        .prepare(
+          "SELECT MIN(at) FROM application_events WHERE application_id = ? AND to_state IN ('RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED')",
+        )
         .pluck()
         .get(a.id) as string | null;
       return sub && resp ? (Date.parse(resp) - Date.parse(sub)) / 864e5 : null;
     })
     .filter((d): d is number => d !== null)
     .sort((x, y) => x - y);
-  const median = delays.length === 0 ? null : delays.length % 2 ? delays[(delays.length - 1) / 2]! : (delays[delays.length / 2 - 1]! + delays[delays.length / 2]!) / 2;
+  const median =
+    delays.length === 0
+      ? null
+      : delays.length % 2
+        ? delays[(delays.length - 1) / 2]!
+        : (delays[delays.length / 2 - 1]! + delays[delays.length / 2]!) / 2;
 
   const weeks: { weekStart: string; count: number }[] = [];
   const campaignSummaries: CampaignWeekSummary[] = [];
@@ -137,7 +167,9 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
     const fromIso = new Date(from).toISOString();
     const toIso = new Date(to).toISOString();
     const count = db
-      .prepare("SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state = 'SUBMITTED_CONFIRMED' AND at >= ? AND at < ?")
+      .prepare(
+        "SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state = 'SUBMITTED_CONFIRMED' AND at >= ? AND at < ?",
+      )
       .pluck()
       .get(fromIso, toIso) as number;
     weeks.push({ weekStart: fromIso.slice(0, 10), count });
@@ -147,15 +179,21 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
       .pluck()
       .get(fromIso, toIso) as number;
     const shortlisted = db
-      .prepare("SELECT COUNT(*) FROM job_user_state WHERE disposition = 'shortlisted' AND updated_at >= ? AND updated_at < ?")
+      .prepare(
+        "SELECT COUNT(*) FROM job_user_state WHERE disposition = 'shortlisted' AND updated_at >= ? AND updated_at < ?",
+      )
       .pluck()
       .get(fromIso, toIso) as number;
     const responses = db
-      .prepare("SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state IN ('RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED') AND at >= ? AND at < ?")
+      .prepare(
+        "SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state IN ('RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER', 'REJECTED') AND at >= ? AND at < ?",
+      )
       .pluck()
       .get(fromIso, toIso) as number;
     const interviews = db
-      .prepare("SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state = 'INTERVIEW' AND at >= ? AND at < ?")
+      .prepare(
+        "SELECT COUNT(DISTINCT application_id) FROM application_events WHERE to_state = 'INTERVIEW' AND at >= ? AND at < ?",
+      )
       .pluck()
       .get(fromIso, toIso) as number;
 
@@ -172,19 +210,24 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
   // Required skills missing from the profile, across jobs the candidate cared about.
   const ctx = candidateContext(db);
   const interesting = db
-    .prepare("SELECT job_id FROM job_user_state WHERE disposition = 'shortlisted' UNION SELECT job_id FROM applications")
+    .prepare(
+      "SELECT job_id FROM job_user_state WHERE disposition = 'shortlisted' UNION SELECT job_id FROM applications",
+    )
     .pluck()
     .all() as string[];
   const gapCounts = new Map<string, number>();
   for (const id of interesting) {
-    for (const skill of getJob(db, id, ctx)?.fitDetail?.missingRequiredSkills ?? []) gapCounts.set(skill, (gapCounts.get(skill) ?? 0) + 1);
+    for (const skill of getJob(db, id, ctx)?.fitDetail?.missingRequiredSkills ?? [])
+      gapCounts.set(skill, (gapCounts.get(skill) ?? 0) + 1);
   }
 
   return {
     generatedAt: new Date(now).toISOString(),
     totals: {
       found: (db.prepare('SELECT COUNT(*) FROM jobs WHERE duplicate_of IS NULL').pluck().get() as number) ?? 0,
-      shortlisted: (db.prepare("SELECT COUNT(*) FROM job_user_state WHERE disposition = 'shortlisted'").pluck().get() as number) ?? 0,
+      shortlisted:
+        (db.prepare("SELECT COUNT(*) FROM job_user_state WHERE disposition = 'shortlisted'").pluck().get() as number) ??
+        0,
       submitted: submittedApps.length,
       responses: respondedApps.length,
       interviews: interviewedApps.length,
@@ -197,7 +240,10 @@ export function computeMetrics(db: Db, now = Date.now()): Metrics {
     daysToFirstResponse: { median, n: delays.length },
     submittedPerWeek: weeks,
     campaignSummaries,
-    recurringGaps: [...gapCounts.entries()].map(([skill, jobs]) => ({ skill, jobs })).sort((a, b) => b.jobs - a.jobs || a.skill.localeCompare(b.skill)).slice(0, 8),
+    recurringGaps: [...gapCounts.entries()]
+      .map(([skill, jobs]) => ({ skill, jobs }))
+      .sort((a, b) => b.jobs - a.jobs || a.skill.localeCompare(b.skill))
+      .slice(0, 8),
     discoveryHealth,
   };
 }

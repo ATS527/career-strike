@@ -52,7 +52,12 @@ describe('scheduler', () => {
     const a = new Scheduler(db, discovery, undefined, () => now);
     // A second process: its own connection, supervisor and discovery, same database file.
     const db2 = openDb(paths.db);
-    const b = new Scheduler(db2, new Discovery(db2, createAdapters(undefined, { practiceOrigin: () => ats.origin }), new TaskSupervisor(db2)), undefined, () => now + 1000);
+    const b = new Scheduler(
+      db2,
+      new Discovery(db2, createAdapters(undefined, { practiceOrigin: () => ats.origin }), new TaskSupervisor(db2)),
+      undefined,
+      () => now + 1000,
+    );
     const [first, second] = [a.tick(), b.tick()];
     expect(first.claimed).toBe(true);
     expect(first.started).toHaveLength(1);
@@ -84,7 +89,10 @@ describe('scheduler', () => {
     ats.setFault('reject');
     discovery.discover(board.id, 'manual', 'test');
     await tasks.idle();
-    expect(discovery.getBoard(board.id)).toMatchObject({ consecutiveFailures: 2, lastError: expect.stringContaining('slow down') });
+    expect(discovery.getBoard(board.id)).toMatchObject({
+      consecutiveFailures: 2,
+      lastError: expect.stringContaining('slow down'),
+    });
 
     ats.setFault('none');
     discovery.discover(board.id, 'manual', 'test');
@@ -115,7 +123,8 @@ describe('restart recovery', () => {
     db.close();
     const s = await startService(paths, { port: 0 });
     running.push(s);
-    const call = (url: string) => localRequest(s.info.port, url, { headers: { authorization: `Bearer ${s.info.token}` } });
+    const call = (url: string) =>
+      localRequest(s.info.port, url, { headers: { authorization: `Bearer ${s.info.token}` } });
     let activity: { recent: { id: string; state: string; trigger: string; attempt: number }[] } = { recent: [] };
     for (let i = 0; i < 100; i++) {
       activity = (await call('/api/activity')).body as typeof activity;
@@ -136,16 +145,36 @@ describe('cancelling a submission', () => {
     const s = await startService(paths, { port: 0 });
     running.push(s);
     const bearer = { authorization: `Bearer ${s.info.token}` };
-    const call = (method: string, url: string, body?: unknown, headers: Record<string, string> = bearer) => localRequest(s.info.port, url, { method, body, headers });
+    const call = (method: string, url: string, body?: unknown, headers: Record<string, string> = bearer) =>
+      localRequest(s.info.port, url, { method, body, headers });
     await call('POST', '/api/practice/endpoint', { origin: ats.origin });
     const jobId = ((await call('POST', '/api/practice/jobs', {})).body as { jobId: string }).jobId;
     await call('PUT', '/api/settings/identity.fullName', { value: 'Jordan Example' });
     await call('PUT', '/api/settings/identity.email', { value: 'jordan@example.com' });
-    await fetch(`http://127.0.0.1:${s.info.port}/api/documents`, { method: 'POST', headers: { ...bearer, 'content-type': 'application/pdf', 'x-cs-filename': 'cv.pdf', 'x-cs-document-kind': 'resume' }, body: Buffer.from('%PDF-1.7 x') });
+    await fetch(`http://127.0.0.1:${s.info.port}/api/documents`, {
+      method: 'POST',
+      headers: {
+        ...bearer,
+        'content-type': 'application/pdf',
+        'x-cs-filename': 'cv.pdf',
+        'x-cs-document-kind': 'resume',
+      },
+      body: Buffer.from('%PDF-1.7 x'),
+    });
     const dash = await dashboardSession(s.info.port, s.info.token);
-    const app = ((await call('POST', '/api/applications', { jobId })).body as { application: { id: string } }).application;
-    const ready = ((await call('POST', `/api/applications/${app.id}/ready`)).body as { application: { version: number; payloadHash: string } }).application;
-    await call('POST', `/api/applications/${app.id}/approve`, { version: ready.version, payloadHash: ready.payloadHash }, dash.headers);
+    const app = ((await call('POST', '/api/applications', { jobId })).body as { application: { id: string } })
+      .application;
+    const ready = (
+      (await call('POST', `/api/applications/${app.id}/ready`)).body as {
+        application: { version: number; payloadHash: string };
+      }
+    ).application;
+    await call(
+      'POST',
+      `/api/applications/${app.id}/approve`,
+      { version: ready.version, payloadHash: ready.payloadHash },
+      dash.headers,
+    );
     ats.setFault('slow', 3000);
     await call('POST', `/api/applications/${app.id}/submit`, {}, dash.headers);
     const activity = (await call('GET', '/api/activity')).body as { running: { id: string; kind: string }[] };
@@ -157,6 +186,8 @@ describe('cancelling a submission', () => {
       if (v.application.state !== 'SUBMISSION_IN_PROGRESS') break;
       await new Promise((r) => setTimeout(r, 30));
     }
-    expect(((await call('GET', `/api/applications/${app.id}`)).body as { application: { state: string } }).application.state).toBe('SUBMISSION_UNCONFIRMED');
+    expect(
+      ((await call('GET', `/api/applications/${app.id}`)).body as { application: { state: string } }).application.state,
+    ).toBe('SUBMISSION_UNCONFIRMED');
   });
 });

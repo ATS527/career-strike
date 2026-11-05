@@ -14,7 +14,14 @@ export interface CareerState {
   boards?: { source: string; board: string; health: string; lastError: string | null }[];
   matches?: { strongUnreviewed: number; immediateStartUnreviewed: number; profileFacts: number };
   availability?: string;
-  applications?: { drafts: number; readyForReview: number; approved: number; awaitingConfirmation: number; interviewing: number; offers: number };
+  applications?: {
+    drafts: number;
+    readyForReview: number;
+    approved: number;
+    awaitingConfirmation: number;
+    interviewing: number;
+    offers: number;
+  };
   followUpsDue?: { id: string; note: string; title: string; employer: string; applicationId: string }[];
   interviewsSoon?: { applicationId: string; stage: string; scheduledAt: string; employer: string; title: string }[];
   disclosureRequests?: { id: string; provider: string }[];
@@ -25,7 +32,12 @@ type Rule = (state: CareerState) => NextAction | NextAction[] | null;
 const isEmptyList = (v: unknown): boolean => !Array.isArray(v) || v.length === 0;
 const plural = (n: number, word: string, many = `${word}s`): string => `${n} ${n === 1 ? word : many}`;
 
-const ASSISTANT_NAMES: Record<string, string> = { codex: 'Codex', 'claude-code': 'Claude Code', opencode: 'OpenCode', test: 'Test client' };
+const ASSISTANT_NAMES: Record<string, string> = {
+  codex: 'Codex',
+  'claude-code': 'Claude Code',
+  opencode: 'OpenCode',
+  test: 'Test client',
+};
 
 const RULES: readonly Rule[] = [
   ({ disclosureRequests }) =>
@@ -54,7 +66,8 @@ const RULES: readonly Rule[] = [
       ? {
           rule: 'applications.confirm-submission',
           title: `Confirm whether ${plural(applications.awaitingConfirmation, 'application was', 'applications were')} sent`,
-          reason: 'You started submitting these on the employer’s site. Career Strike only counts them as submitted once you confirm.',
+          reason:
+            'You started submitting these on the employer’s site. Career Strike only counts them as submitted once you confirm.',
           href: '/applications',
         }
       : null,
@@ -72,7 +85,8 @@ const RULES: readonly Rule[] = [
       ? {
           rule: 'applications.approved-unsent',
           title: `Submit ${plural(applications.approved, 'approved application')}`,
-          reason: 'You approved these, but they have not been submitted on the employer’s site yet. Approvals expire after 7 days.',
+          reason:
+            'You approved these, but they have not been submitted on the employer’s site yet. Approvals expire after 7 days.',
           href: '/applications',
         }
       : null,
@@ -82,7 +96,10 @@ const RULES: readonly Rule[] = [
       .map((b) => ({
         rule: 'sources.board-failing',
         title: `Check the ${b.source} board “${b.board}”`,
-        reason: b.health === 'NOT_FOUND' ? 'The board does not exist on this source. The name may be misspelled.' : `The last fetch failed: ${b.lastError ?? 'unknown error'}.`,
+        reason:
+          b.health === 'NOT_FOUND'
+            ? 'The board does not exist on this source. The name may be misspelled.'
+            : `The last fetch failed: ${b.lastError ?? 'unknown error'}.`,
         href: '/opportunities/sources',
       })),
   ({ matches }) =>
@@ -90,7 +107,8 @@ const RULES: readonly Rule[] = [
       ? {
           rule: 'matches.strong-unreviewed',
           title: `Look at ${plural(matches.strongUnreviewed, 'strong match', 'strong matches')} first`,
-          reason: 'Your listed skills meet these verified-open postings and nothing else in your settings rules them out.',
+          reason:
+            'Your listed skills meet these verified-open postings and nothing else in your settings rules them out.',
           href: '/opportunities?status=OPEN&disposition=none&tier=strong&sort=best_fit',
         }
       : null,
@@ -108,7 +126,8 @@ const RULES: readonly Rule[] = [
       ? {
           rule: 'profile.skills-missing',
           title: 'Add your skills and past roles',
-          reason: 'Career Strike compares postings with your profile. Without skills or roles, it cannot say how well a role fits.',
+          reason:
+            'Career Strike compares postings with your profile. Without skills or roles, it cannot say how well a role fits.',
           href: '/profile',
         }
       : null,
@@ -117,7 +136,8 @@ const RULES: readonly Rule[] = [
       ? {
           rule: 'jobs.unreviewed',
           title: `Review ${plural(jobs.unreviewed, 'verified open role')}`,
-          reason: 'These postings were verified open within the last 72 hours and you have not shortlisted or excluded them yet.',
+          reason:
+            'These postings were verified open within the last 72 hours and you have not shortlisted or excluded them yet.',
           href: '/opportunities?disposition=none&status=OPEN',
         }
       : null,
@@ -144,7 +164,8 @@ const RULES: readonly Rule[] = [
       ? {
           rule: 'profile.eligibility-missing',
           title: 'Tell Career Strike where you can work',
-          reason: 'Neither a country of residence nor work-eligible countries are saved, so location eligibility is unknown.',
+          reason:
+            'Neither a country of residence nor work-eligible countries are saved, so location eligibility is unknown.',
           href: '/settings#search.eligibleCountries',
         }
       : null,

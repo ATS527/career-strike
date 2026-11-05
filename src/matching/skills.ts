@@ -173,7 +173,22 @@ function aliasPattern(alias: string): RegExp {
 }
 
 // Names that are also English words match only when capitalised as a proper noun.
-const CASE_SENSITIVE = new Set(['React', 'Excel', 'Vue', 'Spark', 'Rails', 'Swift', 'Dart', 'Spring', 'Angular', 'Agile', 'Security', 'Accounting', 'Docker', 'Helm']);
+const CASE_SENSITIVE = new Set([
+  'React',
+  'Excel',
+  'Vue',
+  'Spark',
+  'Rails',
+  'Swift',
+  'Dart',
+  'Spring',
+  'Angular',
+  'Agile',
+  'Security',
+  'Accounting',
+  'Docker',
+  'Helm',
+]);
 
 const COMPILED = SKILLS.map((s) => ({
   name: s.name,
@@ -185,7 +200,9 @@ export function skillsIn(text: string): string[] {
   return COMPILED.filter((s) => s.patterns.some((p) => p.test(text))).map((s) => s.name);
 }
 
-const BY_ALIAS = new Map(SKILLS.flatMap((s) => [s.name, ...s.aliases].map((a) => [a.toLowerCase().replace(/\s+/g, ' '), s.name] as const)));
+const BY_ALIAS = new Map(
+  SKILLS.flatMap((s) => [s.name, ...s.aliases].map((a) => [a.toLowerCase().replace(/\s+/g, ' '), s.name] as const)),
+);
 
 /** Canonical name for a skill a candidate typed, if it is exactly a known name or spelling. */
 export function canonicalSkill(input: string): string | null {

@@ -8,7 +8,11 @@ import { tempDir } from '../helpers.js';
 
 const base = MIGRATIONS;
 const good: Migration = { version: 100, name: 'add_widgets', sql: 'CREATE TABLE widgets (id INTEGER PRIMARY KEY);' };
-const broken: Migration = { version: 100, name: 'broken', sql: 'CREATE TABLE half_done (id INTEGER); THIS IS NOT SQL;' };
+const broken: Migration = {
+  version: 100,
+  name: 'broken',
+  sql: 'CREATE TABLE half_done (id INTEGER); THIS IS NOT SQL;',
+};
 
 describe('upgrade migrations', () => {
   it('backs up an existing database before applying new migrations', () => {

@@ -6,10 +6,6 @@
     "outDir": "dist",
     "sourceMap": true
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "src/web"
-  ]
+  "include": ["src"],
+  "exclude": ["src/web"]
 }

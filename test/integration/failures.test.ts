@@ -27,7 +27,12 @@ describe('database busy', () => {
     const s = await startService(paths, { port: 0 });
     running.push(s);
     const call = (method: string, url: string, body?: unknown) =>
-      localRequest(s.info.port, url, { method, body, headers: { authorization: `Bearer ${s.info.token}` }, timeoutMs: 15_000 });
+      localRequest(s.info.port, url, {
+        method,
+        body,
+        headers: { authorization: `Bearer ${s.info.token}` },
+        timeoutMs: 15_000,
+      });
 
     const other = new Database(paths.db);
     other.exec('BEGIN IMMEDIATE');
@@ -35,7 +40,10 @@ describe('database busy', () => {
     const busy = await call('PUT', '/api/settings/candidate.country', { value: 'DE' });
     expect(busy.status).toBe(503);
     expect(busy.headers['retry-after']).toBe('2');
-    expect(busy.body).toMatchObject({ error: 'DATABASE_BUSY', message: expect.stringContaining('Nothing was changed') });
+    expect(busy.body).toMatchObject({
+      error: 'DATABASE_BUSY',
+      message: expect.stringContaining('Nothing was changed'),
+    });
     expect(Date.now() - started).toBeLessThan(5000);
     // Reads still work while the write lock is held (WAL).
     expect((await call('GET', '/api/settings')).status).toBe(200);
@@ -55,7 +63,12 @@ describe('source quota', () => {
     let limited = false;
     const discovery = new Discovery(
       d,
-      createAdapters(fakeFetch({ 'boards-api.greenhouse.io': () => (limited ? response() : new Response(JSON.stringify(greenhouseJobs([{ id: 1 }])), { status: 200 })) })),
+      createAdapters(
+        fakeFetch({
+          'boards-api.greenhouse.io': () =>
+            limited ? response() : new Response(JSON.stringify(greenhouseJobs([{ id: 1 }])), { status: 200 }),
+        }),
+      ),
       tasks,
     );
     const board = discovery.addBoard('greenhouse', 'synthetic');
@@ -63,14 +76,19 @@ describe('source quota', () => {
   }
 
   it('a rate-limit with Retry-After degrades the board, waits as long as asked, and leaves jobs untouched', async () => {
-    const { d, tasks, discovery, board, limit } = setup(() => new Response('', { status: 429, headers: { 'retry-after': '7200' } }));
+    const { d, tasks, discovery, board, limit } = setup(
+      () => new Response('', { status: 429, headers: { 'retry-after': '7200' } }),
+    );
     discovery.discover(board.id, 'test', 'test');
     await tasks.idle();
     const before = d.prepare('SELECT status, last_verified_at FROM jobs').all();
     limit();
     const { task } = discovery.discover(board.id, 'test', 'test')!;
     await tasks.idle();
-    expect(tasks.get(task.id)).toMatchObject({ state: 'FAILED', error: expect.stringContaining('asked Career Strike to slow down for 120 min') });
+    expect(tasks.get(task.id)).toMatchObject({
+      state: 'FAILED',
+      error: expect.stringContaining('asked Career Strike to slow down for 120 min'),
+    });
     const after = discovery.getBoard(board.id)!;
     expect(after).toMatchObject({ health: 'DEGRADED', consecutiveFailures: 1 });
     // The source asked for two hours, longer than the 15-minute first backoff.

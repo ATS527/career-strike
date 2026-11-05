@@ -12,12 +12,27 @@ import os from 'node:os';
 import path from 'node:path';
 import { RegistrySchema, serializeRegistry, validateRegistry } from './registry.js';
 
-function step(name: string, cmd: string, args: string[], cwd: string, env: NodeJS.ProcessEnv): { name: string; command: string; exitCode: number; tail: string } {
+function step(
+  name: string,
+  cmd: string,
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): { name: string; command: string; exitCode: number; tail: string } {
   console.log(`== ${name}: ${cmd} ${args.join(' ')}`);
   const r = spawnSync(cmd, args, { cwd, env, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   const out = `${r.stdout ?? ''}${r.stderr ?? ''}`;
   process.stdout.write(out.split('\n').slice(-15).join('\n'));
-  return { name, command: `${cmd} ${args.join(' ')}`, exitCode: r.status ?? 1, tail: out.split('\n').filter((l) => /Test Files|Tests |error|added \d+ packages/i.test(l)).slice(-6).join('\n') };
+  return {
+    name,
+    command: `${cmd} ${args.join(' ')}`,
+    exitCode: r.status ?? 1,
+    tail: out
+      .split('\n')
+      .filter((l) => /Test Files|Tests |error|added \d+ packages/i.test(l))
+      .slice(-6)
+      .join('\n'),
+  };
 }
 
 function main(): number {
@@ -30,7 +45,11 @@ function main(): number {
   const clone = path.join(root, 'career-strike');
   execFileSync('git', ['clone', '--quiet', '--no-hardlinks', process.cwd(), clone]);
   execFileSync('git', ['checkout', '--quiet', revision], { cwd: clone });
-  const env: NodeJS.ProcessEnv = { ...process.env, CAREER_STRIKE_HOME: path.join(root, 'data'), CAREER_STRIKE_SECRET_STORE: 'file' };
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    CAREER_STRIKE_HOME: path.join(root, 'data'),
+    CAREER_STRIKE_SECRET_STORE: 'file',
+  };
   delete env.CS_LIVE;
 
   const steps: ReturnType<typeof step>[] = [];
@@ -46,7 +65,15 @@ function main(): number {
   }
   const passed = steps.length === 4 && steps.every((s) => s.exitCode === 0);
   const at = new Date().toISOString();
-  const evidence = { revision, at, node: process.version, platform: `${process.platform}-${process.arch}`, where: 'local fresh git clone (no hosted CI)', passed, steps };
+  const evidence = {
+    revision,
+    at,
+    node: process.version,
+    platform: `${process.platform}-${process.arch}`,
+    where: 'local fresh git clone (no hosted CI)',
+    passed,
+    steps,
+  };
   const out = path.join('acceptance', 'evidence', 'ci', 'clean-checkout.json');
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, `${JSON.stringify(evidence, null, 2)}\n`);
@@ -62,7 +89,14 @@ function main(): number {
             tests: [out],
             status: passed ? ('PASS' as const) : ('FAIL' as const),
             failureCause: passed ? null : `${steps.at(-1)!.name} failed`,
-            evidence: { revision, command: 'npx tsx scripts/clean-checkout.ts', exitCode: passed ? 0 : 1, at, kinds: ['ci' as const], notes: `Local fresh clone, ${process.version} ${process.platform}; no hosted CI` },
+            evidence: {
+              revision,
+              command: 'npx tsx scripts/clean-checkout.ts',
+              exitCode: passed ? 0 : 1,
+              at,
+              kinds: ['ci' as const],
+              notes: `Local fresh clone, ${process.version} ${process.platform}; no hosted CI`,
+            },
             nextAction: passed ? 'Re-run on change' : 'Investigate the failing step in the evidence file',
           },
     ),

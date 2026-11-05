@@ -49,28 +49,28 @@ start, and a job board to monitor). Each item links to the page where you do it.
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `career-strike init` | Create the data directory and database. |
-| `career-strike dashboard` | Start the service if needed and open the dashboard (`--no-open` prints the link). |
-| `career-strike start` / `stop` | Run the service in the background, or stop it. |
-| `career-strike serve` | Run the service in the foreground (Ctrl-C to stop). |
-| `career-strike status` | Say whether the service is running (`--json` for scripts). |
-| `career-strike doctor` | Check the installation without changing anything. |
-| `career-strike verify-market IN` | Perform one permitted live fetch of a curated employer-direct board; it adopts and monitors the board only if it contains an explicitly Indian posting. |
-| `career-strike connect <assistant>` | Connect Codex, Claude Code or OpenCode over MCP. |
-| `career-strike disconnect <assistant>` | Remove Career Strike from that assistant and revoke its access. |
-| `career-strike authorize-mcp <client>` | Create a local MCP credential without editing a client’s configuration. |
-| `career-strike revoke-mcp <client>` | Revoke a generic MCP credential and remove its local token. |
-| `career-strike plugin-path` | Print the bundled Codex plugin directory. |
-| `career-strike practice` | Run a practice application endpoint on this computer to try automated submission safely. |
-| `career-strike export <folder>` | Write all your data and documents to a new folder, readable without Career Strike. |
-| `career-strike backup <folder>` | Copy the database and documents for `restore`. |
-| `career-strike restore <folder>` | Replace current data with a verified backup (current data is kept aside first). |
-| `career-strike update` | Install the newest release; your data is backed up first and the update can be undone. See [Updating](#updating). |
-| `career-strike rollback` | Restore the database backup saved before an upgrade (current data is kept aside first). |
-| `career-strike delete-data --confirm "delete my career data"` | Permanently delete all Career Strike data on this computer. |
-| `career-strike uninstall` | Remove Career Strike from AI assistants and remove the program. Your data is kept. |
+| Command                                                       | What it does                                                                                                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `career-strike init`                                          | Create the data directory and database.                                                                                                                 |
+| `career-strike dashboard`                                     | Start the service if needed and open the dashboard (`--no-open` prints the link).                                                                       |
+| `career-strike start` / `stop`                                | Run the service in the background, or stop it.                                                                                                          |
+| `career-strike serve`                                         | Run the service in the foreground (Ctrl-C to stop).                                                                                                     |
+| `career-strike status`                                        | Say whether the service is running (`--json` for scripts).                                                                                              |
+| `career-strike doctor`                                        | Check the installation without changing anything.                                                                                                       |
+| `career-strike verify-market IN`                              | Perform one permitted live fetch of a curated employer-direct board; it adopts and monitors the board only if it contains an explicitly Indian posting. |
+| `career-strike connect <assistant>`                           | Connect Codex, Claude Code or OpenCode over MCP.                                                                                                        |
+| `career-strike disconnect <assistant>`                        | Remove Career Strike from that assistant and revoke its access.                                                                                         |
+| `career-strike authorize-mcp <client>`                        | Create a local MCP credential without editing a client’s configuration.                                                                                 |
+| `career-strike revoke-mcp <client>`                           | Revoke a generic MCP credential and remove its local token.                                                                                             |
+| `career-strike plugin-path`                                   | Print the bundled Codex plugin directory.                                                                                                               |
+| `career-strike practice`                                      | Run a practice application endpoint on this computer to try automated submission safely.                                                                |
+| `career-strike export <folder>`                               | Write all your data and documents to a new folder, readable without Career Strike.                                                                      |
+| `career-strike backup <folder>`                               | Copy the database and documents for `restore`.                                                                                                          |
+| `career-strike restore <folder>`                              | Replace current data with a verified backup (current data is kept aside first).                                                                         |
+| `career-strike update`                                        | Install the newest release; your data is backed up first and the update can be undone. See [Updating](#updating).                                       |
+| `career-strike rollback`                                      | Restore the database backup saved before an upgrade (current data is kept aside first).                                                                 |
+| `career-strike delete-data --confirm "delete my career data"` | Permanently delete all Career Strike data on this computer.                                                                                             |
+| `career-strike uninstall`                                     | Remove Career Strike from AI assistants and remove the program. Your data is kept.                                                                      |
 
 ### Developing the dashboard
 
@@ -101,18 +101,18 @@ That is all. It shows what is new and asks before changing anything, then:
 If any step fails, the previous version and your data are put back automatically and nothing is
 lost. When you next open the dashboard, it shows what changed.
 
-| Command | What it does |
-| --- | --- |
-| `career-strike update --check` | Only say whether a newer version has been released. |
-| `career-strike update --undo` | Go back to the version the last update replaced. If the new version changed how data is stored, your data is restored from the backup taken just before the update; anything you changed since is kept aside, not deleted. |
-| `career-strike update --to 0.3.0` | Install a specific newer release. |
-| `career-strike update --yes` | Do not ask for confirmation (for scripts). |
+| Command                           | What it does                                                                                                                                                                                                               |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `career-strike update --check`    | Only say whether a newer version has been released.                                                                                                                                                                        |
+| `career-strike update --undo`     | Go back to the version the last update replaced. If the new version changed how data is stored, your data is restored from the backup taken just before the update; anything you changed since is kept aside, not deleted. |
+| `career-strike update --to 0.3.0` | Install a specific newer release.                                                                                                                                                                                          |
+| `career-strike update --yes`      | Do not ask for confirmation (for scripts).                                                                                                                                                                                 |
 
 **Being told about new versions.** Career Strike never contacts anyone about updates unless you
-ask. To be told when a new version is out, turn on *Check for new versions* in Settings →
+ask. To be told when a new version is out, turn on _Check for new versions_ in Settings →
 Background monitoring (`career-strike init` also asks once). It then asks GitHub's public release
 list once a week and shows a note in the dashboard. Settings → Updates shows your version and has
-a *Check now* button.
+a _Check now_ button.
 
 **Updating from 0.1.0 (once).** Version 0.1.0 has no `update` command, so install 0.2.0 by hand.
 Your data is kept:

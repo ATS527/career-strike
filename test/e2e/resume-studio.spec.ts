@@ -13,7 +13,11 @@ test.describe('resume studio and profile readiness', () => {
     });
     await cs.api('POST', '/api/profile/evidence', {
       kind: 'project',
-      value: { name: 'Cloud Migration', summary: 'Migrated 50 microservices to Kubernetes with zero downtime', skills: ['Kubernetes'] },
+      value: {
+        name: 'Cloud Migration',
+        summary: 'Migrated 50 microservices to Kubernetes with zero downtime',
+        skills: ['Kubernetes'],
+      },
     });
 
     cs.seed('lever', 'resume-studio-test', [
@@ -56,14 +60,18 @@ test.describe('resume studio and profile readiness', () => {
 
     // 5. Switch to Side-by-Side Job Comparison
     await page.getByRole('button', { name: 'Job Comparison' }).click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Side-by-Side Tailored Document Comparison' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Side-by-Side Tailored Document Comparison' }),
+    ).toBeVisible();
     await expect(page.getByText('Master Reference (Canonical Facts)')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tailored Resume' })).toBeVisible();
 
     // 6. Edit tailored document variant and save
     const editor = page.locator('#variant-editor');
     await expect(editor).toBeVisible();
-    await editor.fill('TARGET ROLE: Principal Infrastructure Engineer\n\nCUSTOM CANDIDATE NOTE\n\nEXPERIENCE:\nStaff Platform Engineer at Acme Systems.');
+    await editor.fill(
+      'TARGET ROLE: Principal Infrastructure Engineer\n\nCUSTOM CANDIDATE NOTE\n\nEXPERIENCE:\nStaff Platform Engineer at Acme Systems.',
+    );
     const saveButton = page.getByRole('button', { name: 'Save Document Edit' });
     await expect(saveButton).toBeVisible();
     await saveButton.click();

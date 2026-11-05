@@ -4,8 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type AppPaths, appPaths } from '../../src/core/paths.js';
 import { localRequest } from '../../src/service/http-client.js';
-import { latestKnownVersion } from '../../src/store/db.js';
 import { AlreadyRunningError, type RunningService, startService } from '../../src/service/service.js';
+import { latestKnownVersion } from '../../src/store/db.js';
 import { tempDir } from '../helpers.js';
 
 const running: RunningService[] = [];
@@ -13,7 +13,9 @@ afterEach(async () => {
   await Promise.all(running.splice(0).map((s) => s.stop()));
 });
 
-async function start(paths: AppPaths = appPaths(path.join(tempDir(), 'data'))): Promise<{ s: RunningService; paths: AppPaths }> {
+async function start(
+  paths: AppPaths = appPaths(path.join(tempDir(), 'data')),
+): Promise<{ s: RunningService; paths: AppPaths }> {
   const s = await startService(paths, { port: 0 });
   running.push(s);
   return { s, paths };
@@ -26,7 +28,12 @@ describe('local service', () => {
     expect((s.app.server.address() as AddressInfo).address).toBe('127.0.0.1');
     const res = await localRequest(s.info.port, '/api/health');
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ status: 'ok', service: 'career-strike', schemaVersion: latestKnownVersion(), pid: process.pid });
+    expect(res.body).toMatchObject({
+      status: 'ok',
+      service: 'career-strike',
+      schemaVersion: latestKnownVersion(),
+      pid: process.pid,
+    });
     expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['access-control-allow-origin']).toBeUndefined();
@@ -35,7 +42,13 @@ describe('local service', () => {
   it('rejects foreign Host headers (DNS rebinding)', async () => {
     const { s } = await start();
     const port = s.info.port;
-    for (const host of ['evil.example', `evil.example:${port}`, `127.0.0.1.nip.io:${port}`, `127.0.0.1:${port + 1}`, `0.0.0.0:${port}`]) {
+    for (const host of [
+      'evil.example',
+      `evil.example:${port}`,
+      `127.0.0.1.nip.io:${port}`,
+      `127.0.0.1:${port + 1}`,
+      `0.0.0.0:${port}`,
+    ]) {
       const res = await localRequest(port, '/api/health', { headers: { host } });
       expect(res.status, host).toBe(421);
     }
@@ -50,13 +63,17 @@ describe('local service', () => {
     });
     expect(res.status).toBe(403);
     const after = await localRequest(s.info.port, '/api/settings', { headers: auth(s) });
-    expect((after.body as { settings: Record<string, unknown> }).settings['search.remotePreference']).toBe('remote_only');
+    expect((after.body as { settings: Record<string, unknown> }).settings['search.remotePreference']).toBe(
+      'remote_only',
+    );
   });
 
   it('requires the bearer token for private routes', async () => {
     const { s } = await start();
     expect((await localRequest(s.info.port, '/api/settings')).status).toBe(401);
-    expect((await localRequest(s.info.port, '/api/settings', { headers: { authorization: 'Bearer wrong' } })).status).toBe(401);
+    expect(
+      (await localRequest(s.info.port, '/api/settings', { headers: { authorization: 'Bearer wrong' } })).status,
+    ).toBe(401);
     expect((await localRequest(s.info.port, '/api/settings', { headers: auth(s) })).status).toBe(200);
   });
 
@@ -82,7 +99,9 @@ describe('local service', () => {
     const { s: s2 } = await start(paths);
     expect(s2.info.token).not.toBe(s.info.token);
     const res = await localRequest(s2.info.port, '/api/settings', { headers: auth(s2) });
-    expect((res.body as { settings: Record<string, unknown> }).settings['candidate.joiningAvailability']).toBe('immediate');
+    expect((res.body as { settings: Record<string, unknown> }).settings['candidate.joiningAvailability']).toBe(
+      'immediate',
+    );
   });
 
   it.skipIf(process.platform === 'win32')('writes an owner-only runtime file and removes it on stop', async () => {
@@ -131,14 +150,27 @@ describe('local service', () => {
     const res = await localRequest(s.info.port, '/api/readiness', { headers: auth(s) });
     expect(res.status).toBe(200);
     const body = res.body as {
-      markets: { code: string; name: string; configuredStatus: string; discoveryAvailable: boolean; targets: { id: string; monitoringState: string; lastSuccessfulRetrievalAt: string | null }[] }[];
+      markets: {
+        code: string;
+        name: string;
+        configuredStatus: string;
+        discoveryAvailable: boolean;
+        targets: { id: string; monitoringState: string; lastSuccessfulRetrievalAt: string | null }[];
+      }[];
     };
     expect(body.markets).toHaveLength(14);
     const india = body.markets.find((m) => m.code === 'IN')!;
     expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
-    expect(india.targets.find((t) => t.id === 'sarvam-india')).toMatchObject({ monitoringState: 'NOT_ADOPTED', lastSuccessfulRetrievalAt: null });
+    expect(india.targets.find((t) => t.id === 'sarvam-india')).toMatchObject({
+      monitoringState: 'NOT_ADOPTED',
+      lastSuccessfulRetrievalAt: null,
+    });
     const uae = body.markets.find((m) => m.code === 'AE')!;
-    expect(uae).toMatchObject({ name: 'United Arab Emirates', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
+    expect(uae).toMatchObject({
+      name: 'United Arab Emirates',
+      configuredStatus: 'CONFIGURED',
+      discoveryAvailable: false,
+    });
     expect(uae.targets.map((t) => t.id)).toEqual(['bybit-uae', 'deliveroo-uae', 'ziina-uae', 'checkout-uae']);
 
     // Unauthenticated callers get nothing.

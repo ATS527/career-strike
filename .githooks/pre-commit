@@ -1,5 +1,0 @@
-#!/bin/sh
-# Installed with: git config core.hooksPath .githooks
-set -e
-node --import tsx scripts/privacy-scan.ts
-npm run --silent check

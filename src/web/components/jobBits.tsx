@@ -31,7 +31,10 @@ export function DispositionControls({
     setBusy(true);
     setError(null);
     try {
-      const res = await api<{ job: JobDetail }>(`/api/jobs/${encodeURIComponent(jobId)}/disposition`, { method: 'PUT', body: { disposition: next } });
+      const res = await api<{ job: JobDetail }>(`/api/jobs/${encodeURIComponent(jobId)}/disposition`, {
+        method: 'PUT',
+        body: { disposition: next },
+      });
       onChange(res.job.disposition);
     } catch {
       setError('Not saved');

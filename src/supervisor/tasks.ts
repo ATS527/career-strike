@@ -97,7 +97,9 @@ export class TaskSupervisor {
     const rows = this.db
       .prepare("SELECT * FROM tasks WHERE state IN ('QUEUED', 'RUNNING') AND (owner_pid IS NULL OR owner_pid != ?)")
       .all(process.pid) as TaskRow[];
-    const mark = this.db.prepare("UPDATE tasks SET state = 'INTERRUPTED', ended_at = ?, error = 'The service stopped before this task finished.' WHERE id = ?");
+    const mark = this.db.prepare(
+      "UPDATE tasks SET state = 'INTERRUPTED', ended_at = ?, error = 'The service stopped before this task finished.' WHERE id = ?",
+    );
     this.db.transaction(() => rows.forEach((r) => mark.run(at, r.id)))();
     return rows.map((r) => toTask({ ...r, state: 'INTERRUPTED' }));
   }
@@ -118,7 +120,17 @@ export class TaskSupervisor {
           `INSERT INTO tasks (id, kind, dedupe_key, trigger, client, params_json, state, created_at, owner_pid, attempt)
            VALUES (?, ?, ?, ?, ?, ?, 'QUEUED', ?, ?, ?)`,
         )
-        .run(id, spec.kind, spec.dedupeKey, spec.trigger, spec.client, JSON.stringify(spec.params), at, process.pid, spec.attempt ?? 1);
+        .run(
+          id,
+          spec.kind,
+          spec.dedupeKey,
+          spec.trigger,
+          spec.client,
+          JSON.stringify(spec.params),
+          at,
+          process.pid,
+          spec.attempt ?? 1,
+        );
     } catch (err) {
       if ((err as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
         const existing = this.db
@@ -134,9 +146,15 @@ export class TaskSupervisor {
     return { task: this.get(id)!, created: true };
   }
 
-  private async execute(id: string, controller: AbortController, work: (ctx: TaskContext) => Promise<unknown>): Promise<void> {
+  private async execute(
+    id: string,
+    controller: AbortController,
+    work: (ctx: TaskContext) => Promise<unknown>,
+  ): Promise<void> {
     const now = (): string => new Date().toISOString();
-    this.db.prepare("UPDATE tasks SET state = 'RUNNING', started_at = ?, heartbeat_at = ? WHERE id = ?").run(now(), now(), id);
+    this.db
+      .prepare("UPDATE tasks SET state = 'RUNNING', started_at = ?, heartbeat_at = ? WHERE id = ?")
+      .run(now(), now(), id);
     const heartbeat = setInterval(() => {
       this.db.prepare("UPDATE tasks SET heartbeat_at = ? WHERE id = ? AND state = 'RUNNING'").run(now(), id);
     }, HEARTBEAT_MS);
@@ -145,13 +163,16 @@ export class TaskSupervisor {
       const result = await work({
         signal: controller.signal,
         progress: (update) => {
-          this.db.prepare('UPDATE tasks SET progress_json = ?, heartbeat_at = ? WHERE id = ?').run(JSON.stringify(update), now(), id);
+          this.db
+            .prepare('UPDATE tasks SET progress_json = ?, heartbeat_at = ? WHERE id = ?')
+            .run(JSON.stringify(update), now(), id);
         },
       });
       if (controller.signal.aborted) throw new TaskCancelledError();
       this.finish(id, 'SUCCEEDED', { result });
     } catch (err) {
-      if (controller.signal.aborted || err instanceof TaskCancelledError) this.finish(id, 'CANCELLED', { error: 'Cancelled by request' });
+      if (controller.signal.aborted || err instanceof TaskCancelledError)
+        this.finish(id, 'CANCELLED', { error: 'Cancelled by request' });
       else {
         const message = err instanceof Error ? err.message : String(err);
         this.finish(id, 'FAILED', { error: message });
@@ -166,7 +187,13 @@ export class TaskSupervisor {
   private finish(id: string, state: TaskState, outcome: { result?: unknown; error?: string }): void {
     this.db
       .prepare('UPDATE tasks SET state = ?, ended_at = ?, result_json = ?, error = ? WHERE id = ?')
-      .run(state, new Date().toISOString(), outcome.result === undefined ? null : JSON.stringify(outcome.result), outcome.error ?? null, id);
+      .run(
+        state,
+        new Date().toISOString(),
+        outcome.result === undefined ? null : JSON.stringify(outcome.result),
+        outcome.error ?? null,
+        id,
+      );
   }
 
   /** Request cancellation. Returns false if the task is not active in this process. */

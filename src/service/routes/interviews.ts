@@ -4,8 +4,12 @@ import { TransitionError } from '../../applications/states.js';
 import { InterviewInput, type InterviewService, InterviewUpdate, PracticeInput } from '../../interview/service.js';
 
 function fail(reply: FastifyReply, err: unknown): FastifyReply {
-  if (err instanceof ApplicationError) return reply.code(err.code === 'NOT_FOUND' || err.code === 'JOB_NOT_FOUND' ? 404 : 409).send({ error: err.code, message: err.message });
-  if (err instanceof TransitionError) return reply.code(409).send({ error: 'INVALID_TRANSITION', message: err.message });
+  if (err instanceof ApplicationError)
+    return reply
+      .code(err.code === 'NOT_FOUND' || err.code === 'JOB_NOT_FOUND' ? 404 : 409)
+      .send({ error: err.code, message: err.message });
+  if (err instanceof TransitionError)
+    return reply.code(409).send({ error: 'INVALID_TRANSITION', message: err.message });
   throw err;
 }
 

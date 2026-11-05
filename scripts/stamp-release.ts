@@ -10,7 +10,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 
 function fromRemote(): string | null {
   try {
-    const url = execFileSync('git', ['remote', 'get-url', 'origin'], { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    const url = execFileSync('git', ['remote', 'get-url', 'origin'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
     return /github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?$/.exec(url)?.[1] ?? null;
   } catch {
     return null;
@@ -21,4 +25,8 @@ const repository = process.env.GITHUB_REPOSITORY ?? fromRemote();
 const file = path.join(ROOT, 'dist', 'release.json');
 fs.mkdirSync(path.dirname(file), { recursive: true });
 fs.writeFileSync(file, `${JSON.stringify({ repository }, null, 2)}\n`);
-console.log(repository ? `Release source: ${repository}` : 'Release source: unknown (no GitHub origin); `career-strike update` will not be available.');
+console.log(
+  repository
+    ? `Release source: ${repository}`
+    : 'Release source: unknown (no GitHub origin); `career-strike update` will not be available.',
+);

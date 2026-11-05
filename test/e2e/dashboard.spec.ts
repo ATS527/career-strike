@@ -68,7 +68,9 @@ test.describe('home', () => {
   test('shows an honest empty state when nothing needs attention', async ({ page, cs }) => {
     cs.seed('greenhouse', 'done', [{ title: 'Already Reviewed' }]);
     const { jobs } = (await cs.api('GET', '/api/jobs')).body as { jobs: { id: string }[] };
-    expect((await cs.api('PUT', `/api/jobs/${jobs[0]!.id}/disposition`, { disposition: 'shortlisted' })).status).toBe(200);
+    expect((await cs.api('PUT', `/api/jobs/${jobs[0]!.id}/disposition`, { disposition: 'shortlisted' })).status).toBe(
+      200,
+    );
     expect((await cs.api('POST', '/api/profile/facts', { kind: 'skill', value: { name: 'SQL' } })).status).toBe(201);
     for (const [key, value] of [
       ['search.preferredRoles', ['Synthetic Analyst']],
@@ -94,12 +96,14 @@ test.describe('settings', () => {
     const res = await fetch(`${cs.origin}/api/settings`, { headers: { authorization: `Bearer ${cs.token}` } });
     const { definitions } = (await res.json()) as { definitions: { key: string }[] };
     await expect(page.locator('[data-setting]')).toHaveCount(definitions.length);
-    const rendered = await page.locator('[data-setting]').evaluateAll((els) => els.map((e) => e.getAttribute('data-setting')));
+    const rendered = await page
+      .locator('[data-setting]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('data-setting')));
     expect(rendered.sort()).toEqual(definitions.map((d) => d.key).sort());
     // Nothing on the page is a control outside a declared setting except navigation and sign-out.
-    const strayControls = await page.locator('main input, main select, main textarea').evaluateAll(
-      (els) => els.filter((e) => !e.closest('[data-setting]')).length,
-    );
+    const strayControls = await page
+      .locator('main input, main select, main textarea')
+      .evaluateAll((els) => els.filter((e) => !e.closest('[data-setting]')).length);
     expect(strayControls).toBe(0);
   });
 
@@ -193,7 +197,10 @@ test.describe('settings', () => {
     await expect(page.getByLabel('Country of residence')).toHaveValue('');
   });
 
-  test('data and privacy section provides export, backup status, diagnostics, and deletion with confirmation', async ({ page, cs }) => {
+  test('data and privacy section provides export, backup status, diagnostics, and deletion with confirmation', async ({
+    page,
+    cs,
+  }) => {
     await signIn(page, cs);
     await page.goto(`${cs.origin}/settings#data-privacy`);
     await expect(page.getByRole('heading', { name: 'Data & privacy' })).toBeVisible();
@@ -234,8 +241,12 @@ test.describe('outages', () => {
 
     await page.getByLabel('Preferred roles').fill('Synthetic Role');
     await page.locator('[data-setting="search.preferredRoles"]').getByRole('button', { name: 'Save' }).click();
-    await expect(page.getByRole('status').filter({ hasText: 'The Career Strike service is not responding.' })).toBeVisible();
-    await expect(page.locator('[data-setting="search.preferredRoles"]').getByRole('status')).toContainText('Could not save');
+    await expect(
+      page.getByRole('status').filter({ hasText: 'The Career Strike service is not responding.' }),
+    ).toBeVisible();
+    await expect(page.locator('[data-setting="search.preferredRoles"]').getByRole('status')).toContainText(
+      'Could not save',
+    );
 
     await cs.resume();
     await expect(page.getByText('The Career Strike service is not responding.')).toHaveCount(0, { timeout: 10_000 });

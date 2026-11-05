@@ -1,6 +1,6 @@
 import type { Db } from '../store/db.js';
-import { listFacts } from './profile.js';
 import { listEvidence } from './evidence.js';
+import { listFacts } from './profile.js';
 
 export type ProfileReadinessState =
   | 'PROFILE_MISSING_INFORMATION'
@@ -39,9 +39,10 @@ export function evaluateProfileReadiness(db: Db): ProfileReadinessReport {
   const allFacts = listFacts(db, { approvedOnly: false });
   const allEvidence = listEvidence(db, { confirmedOnly: false });
 
-  const settingsRows = db
-    .prepare('SELECT key, value_json FROM settings')
-    .all() as { key: string; value_json: string }[];
+  const settingsRows = db.prepare('SELECT key, value_json FROM settings').all() as {
+    key: string;
+    value_json: string;
+  }[];
   const settings = Object.fromEntries(
     settingsRows.map((r) => {
       try {
@@ -62,14 +63,15 @@ export function evaluateProfileReadiness(db: Db): ProfileReadinessReport {
   const confirmedEvidence = allEvidence.filter((e) => e.confirmed).length;
   const unconfirmedEvidence = allEvidence.filter((e) => !e.confirmed).length;
 
-  const totalUnconfirmed =
-    allFacts.filter((f) => !f.approved).length + unconfirmedEvidence;
+  const totalUnconfirmed = allFacts.filter((f) => !f.approved).length + unconfirmedEvidence;
 
   const hasName = typeof settings['identity.fullName'] === 'string' && settings['identity.fullName'].trim().length > 0;
   const hasEmail = typeof settings['identity.email'] === 'string' && settings['identity.email'].trim().length > 0;
   const hasContactDetails = hasName && hasEmail;
-  const hasLinkedInUrl = typeof settings['candidate.linkedinUrl'] === 'string' && settings['candidate.linkedinUrl'].trim().length > 0;
-  const hasPreferredRoles = Array.isArray(settings['search.preferredRoles']) && settings['search.preferredRoles'].length > 0;
+  const hasLinkedInUrl =
+    typeof settings['candidate.linkedinUrl'] === 'string' && settings['candidate.linkedinUrl'].trim().length > 0;
+  const hasPreferredRoles =
+    Array.isArray(settings['search.preferredRoles']) && settings['search.preferredRoles'].length > 0;
 
   const counts: ProfileReadinessCounts = {
     confirmedRoles,
@@ -128,7 +130,8 @@ export function evaluateProfileReadiness(db: Db): ProfileReadinessReport {
     return {
       state: 'PROFILE_MISSING_INFORMATION',
       title: 'Profile Needs Experience & Skills',
-      summary: 'Add your past roles and skills so Career Strike can match verified opportunities against your background.',
+      summary:
+        'Add your past roles and skills so Career Strike can match verified opportunities against your background.',
       actionLabel: 'Build Your Profile',
       actionHref: '/profile',
       counts,
@@ -145,7 +148,8 @@ export function evaluateProfileReadiness(db: Db): ProfileReadinessReport {
     return {
       state: 'APPLICATION_INFORMATION_INCOMPLETE',
       title: 'Ready for Job Matching · Contact Details Needed to Apply',
-      summary: 'Your background is verified for job matching. Add your contact name and email before generating tailored applications.',
+      summary:
+        'Your background is verified for job matching. Add your contact name and email before generating tailored applications.',
       actionLabel: 'Add Contact Details',
       actionHref: '/settings#identity.fullName',
       counts,
@@ -158,7 +162,9 @@ export function evaluateProfileReadiness(db: Db): ProfileReadinessReport {
 
   // If there are unconfirmed items but core profile and contact details are met
   if (totalUnconfirmed > 0) {
-    recommendations.unshift(`You have ${totalUnconfirmed} unconfirmed item${totalUnconfirmed === 1 ? '' : 's'} you can review in your profile`);
+    recommendations.unshift(
+      `You have ${totalUnconfirmed} unconfirmed item${totalUnconfirmed === 1 ? '' : 's'} you can review in your profile`,
+    );
   }
 
   return {

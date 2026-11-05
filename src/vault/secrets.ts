@@ -23,7 +23,10 @@ export class KeychainSecretStore implements SecretStore {
   readonly kind = 'keychain' as const;
   private readonly account: string;
 
-  constructor(home: string, private readonly service = SERVICE) {
+  constructor(
+    home: string,
+    private readonly service = SERVICE,
+  ) {
     this.account = createHash('sha256').update(path.resolve(home)).digest('hex').slice(0, 24);
   }
 
@@ -40,7 +43,9 @@ export class KeychainSecretStore implements SecretStore {
   }
 
   async delete(name: string): Promise<void> {
-    await run('security', ['delete-generic-password', '-s', this.service, '-a', `${this.account}:${name}`]).catch(() => undefined);
+    await run('security', ['delete-generic-password', '-s', this.service, '-a', `${this.account}:${name}`]).catch(
+      () => undefined,
+    );
   }
 }
 
@@ -56,7 +61,11 @@ function addViaStdin(service: string, account: string, hex: string): Promise<voi
       stderr += d.toString();
     });
     child.on('error', reject);
-    child.on('close', (code) => (code === 0 && !/error/i.test(stderr) ? resolve() : reject(new Error(`Keychain write failed: ${stderr.trim() || code}`))));
+    child.on('close', (code) =>
+      code === 0 && !/error/i.test(stderr)
+        ? resolve()
+        : reject(new Error(`Keychain write failed: ${stderr.trim() || code}`)),
+    );
     child.stdin.end(`add-generic-password -U -s ${service} -a ${account} -w ${hex}\n`);
   });
 }

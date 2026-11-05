@@ -7,7 +7,9 @@ export const XSS_HTML =
   '<p>Build things.</p><script>window.__pwned = 1</script><img src=x onerror="window.__pwned=2"><a href="javascript:alert(1)">click</a>' +
   '<iframe src="https://example.com"></iframe><style>body{display:none}</style><ul><li>Ship <b>quality</b></li><li>Mentor &amp; review</li></ul>';
 
-export function greenhouseJobs(jobs: Partial<{ id: number; title: string; location: string; workplace: string; content: string }>[]) {
+export function greenhouseJobs(
+  jobs: Partial<{ id: number; title: string; location: string; workplace: string; content: string }>[],
+) {
   return {
     jobs: jobs.map((j, i) => ({
       id: j.id ?? 1000 + i,
@@ -19,7 +21,11 @@ export function greenhouseJobs(jobs: Partial<{ id: number; title: string; locati
       updated_at: '2026-10-28T10:52:05-04:00',
       first_published: '2026-10-27T10:52:05-04:00',
       // Greenhouse escapes its HTML once more.
-      content: (j.content ?? '<p>Synthetic posting.</p>').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
+      content: (j.content ?? '<p>Synthetic posting.</p>')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;'),
       departments: [{ id: 1, name: 'Engineering' }],
       metadata: j.workplace ? [{ id: 1, name: 'Workplace Type', value: j.workplace, value_type: 'single_select' }] : [],
     })),
@@ -27,11 +33,26 @@ export function greenhouseJobs(jobs: Partial<{ id: number; title: string; locati
   };
 }
 
-export function leverPostings(posts: Partial<{ id: string; text: string; commitment: string; workplaceType: string; applyUrl: string; salary: boolean }>[]) {
+export function leverPostings(
+  posts: Partial<{
+    id: string;
+    text: string;
+    commitment: string;
+    workplaceType: string;
+    applyUrl: string;
+    salary: boolean;
+  }>[],
+) {
   return posts.map((p, i) => ({
     id: p.id ?? `lv-${i}`,
     text: p.text ?? `Synthetic Analyst ${i}`,
-    categories: { commitment: p.commitment ?? 'Permanent', department: 'Data', location: 'Berlin', team: 'Platform', allLocations: ['Berlin'] },
+    categories: {
+      commitment: p.commitment ?? 'Permanent',
+      department: 'Data',
+      location: 'Berlin',
+      team: 'Platform',
+      allLocations: ['Berlin'],
+    },
     country: 'DE',
     workplaceType: p.workplaceType ?? 'hybrid',
     createdAt: 1792767640768,
@@ -45,7 +66,17 @@ export function leverPostings(posts: Partial<{ id: string; text: string; commitm
   }));
 }
 
-export function ashbyBoard(jobs: Partial<{ id: string; title: string; workplaceType: string | null; isRemote: boolean | null; employmentType: string; salary: boolean; isListed: boolean }>[]) {
+export function ashbyBoard(
+  jobs: Partial<{
+    id: string;
+    title: string;
+    workplaceType: string | null;
+    isRemote: boolean | null;
+    employmentType: string;
+    salary: boolean;
+    isListed: boolean;
+  }>[],
+) {
   return {
     apiVersion: '1',
     jobs: jobs.map((j, i) => ({
@@ -66,8 +97,20 @@ export function ashbyBoard(jobs: Partial<{ id: string; title: string; workplaceT
       compensation: j.salary
         ? {
             summaryComponents: [
-              { compensationType: 'EquityCashValue', interval: '1 YEAR', currencyCode: 'USD', minValue: null, maxValue: null },
-              { compensationType: 'Salary', interval: '1 YEAR', currencyCode: 'USD', minValue: 150000, maxValue: 200000 },
+              {
+                compensationType: 'EquityCashValue',
+                interval: '1 YEAR',
+                currencyCode: 'USD',
+                minValue: null,
+                maxValue: null,
+              },
+              {
+                compensationType: 'Salary',
+                interval: '1 YEAR',
+                currencyCode: 'USD',
+                minValue: 150000,
+                maxValue: 200000,
+              },
             ],
           }
         : { summaryComponents: [] },
@@ -76,7 +119,9 @@ export function ashbyBoard(jobs: Partial<{ id: string; title: string; workplaceT
 }
 
 /** A fetch stand-in that serves fixed bodies by host, or fails as instructed. */
-export function fakeFetch(routes: Record<string, unknown | ((url: URL) => Response | Promise<Response>)>): FetchImpl & { calls: string[] } {
+export function fakeFetch(
+  routes: Record<string, unknown | ((url: URL) => Response | Promise<Response>)>,
+): FetchImpl & { calls: string[] } {
   const calls: string[] = [];
   const impl = async (raw: string): Promise<Response> => {
     calls.push(raw);

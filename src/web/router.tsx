@@ -24,7 +24,11 @@ export function useNavigateTo(): NavigateTo {
       const url = new URL(to, window.location.origin);
       if (url.origin !== window.location.origin) return;
       // Replacing the URL (e.g. a filter change) keeps the reader's scroll position.
-      void router.navigate({ href: url.pathname + url.search + url.hash, replace: opts.replace, resetScroll: !opts.replace });
+      void router.navigate({
+        href: url.pathname + url.search + url.hash,
+        replace: opts.replace,
+        resetScroll: !opts.replace,
+      });
     },
     [router],
   );
@@ -54,7 +58,17 @@ export function Link({ href, onClick, ...rest }: AnchorHTMLAttributes<HTMLAnchor
 }
 
 /** Link to an employer site. Only http(s) URLs render as links; they open without referrer or opener. */
-export function ExternalLink({ href, children, className, style }: { href: string | null; children: ReactNode; className?: string; style?: React.CSSProperties }) {
+export function ExternalLink({
+  href,
+  children,
+  className,
+  style,
+}: {
+  href: string | null;
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
   let safe: string | null = null;
   try {
     const url = href ? new URL(href) : null;
@@ -62,7 +76,12 @@ export function ExternalLink({ href, children, className, style }: { href: strin
   } catch {
     safe = null;
   }
-  if (!safe) return <span className={className} style={style}>{children}</span>;
+  if (!safe)
+    return (
+      <span className={className} style={style}>
+        {children}
+      </span>
+    );
   return (
     <a href={safe} target="_blank" rel="noopener noreferrer external" className={className} style={style}>
       {children}

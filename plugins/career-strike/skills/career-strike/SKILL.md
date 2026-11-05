@@ -1,4 +1,5 @@
 ---
+
 name: career-strike
 description: Use Career Strike's local MCP tools to search and evaluate jobs, while preserving candidate privacy and application approval.
 ---

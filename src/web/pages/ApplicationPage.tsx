@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, ApiError, type ApplicationView, currentCsrfToken, type FollowUp, type Interview, type PayloadField, type PersonalizationView, type StoredDocument } from '../api';
-import { buildOutreachDraft, downloadInterviewIcs, type OutreachKind } from '../candidateExperience';
+import {
+  ApiError,
+  type ApplicationView,
+  api,
+  currentCsrfToken,
+  type PayloadField,
+  type PersonalizationView,
+  type StoredDocument,
+} from '../api';
+import { buildOutreachDraft, type OutreachKind } from '../candidateExperience';
 import { APP_STATE_LABEL, formatDate, formatDateTime, shortHash } from '../format';
+import { uploadDocument } from '../helpers/documents';
 import { ExternalLink, Link, useNavigateTo } from '../router';
+import { FollowUps } from './ApplicationPage/-components/FollowUps';
+import { Interviews } from './ApplicationPage/-components/Interviews';
 import { ErrorPanel, Loading } from './states';
+
+export { uploadDocument };
 
 const SOURCE_NOTE: Record<PayloadField['source'], string> = {
   identity: 'from your contact details',
@@ -60,7 +73,8 @@ export function ApplicationPage({ id }: { id: string }) {
   if (!view) return <Loading label="Loading application" />;
 
   const editable = ['DRAFTED', 'NEEDS_INFORMATION', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED'].includes(view.state);
-  const post = (path: string, body?: unknown) => api<{ application: ApplicationView }>(`/api/applications/${view.id}/${path}`, { method: 'POST', body: body ?? {} });
+  const post = (path: string, body?: unknown) =>
+    api<{ application: ApplicationView }>(`/api/applications/${view.id}/${path}`, { method: 'POST', body: body ?? {} });
 
   return (
     <article className="application">
@@ -80,14 +94,29 @@ export function ApplicationPage({ id }: { id: string }) {
         </div>
       </header>
 
-      <p role="status" aria-live="polite" className={`save-status save-status--${message?.kind === 'error' ? 'error' : 'saved'} app-message`}>
+      <p
+        role="status"
+        aria-live="polite"
+        className={`save-status save-status--${message?.kind === 'error' ? 'error' : 'saved'} app-message`}
+      >
         {message?.text}
       </p>
 
       <div className="job__grid app-grid">
         <div className="job__main">
           {editable ? (
-            <Editor key={`${view.version}`} view={view} docs={docs} busy={busy} onSave={(changes, reason) => run('Saved a new version.', () => api(`/api/applications/${view.id}`, { method: 'PUT', body: { changes, reason } }))} onUploaded={() => void load()} />
+            <Editor
+              key={`${view.version}`}
+              view={view}
+              docs={docs}
+              busy={busy}
+              onSave={(changes, reason) =>
+                run('Saved a new version.', () =>
+                  api(`/api/applications/${view.id}`, { method: 'PUT', body: { changes, reason } }),
+                )
+              }
+              onUploaded={() => void load()}
+            />
           ) : (
             <p className="muted">This application can no longer be edited.</p>
           )}
@@ -107,13 +136,23 @@ export function ApplicationPage({ id }: { id: string }) {
   );
 }
 
-function PersonalizationPanel({ application, editable, onChanged }: { application: ApplicationView; editable: boolean; onChanged: () => void }) {
+function PersonalizationPanel({
+  application,
+  editable,
+  onChanged,
+}: {
+  application: ApplicationView;
+  editable: boolean;
+  onChanged: () => void;
+}) {
   const [data, setData] = useState<PersonalizationView | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
-      const result = await api<{ personalization: PersonalizationView }>(`/api/applications/${application.id}/personalization`);
+      const result = await api<{ personalization: PersonalizationView }>(
+        `/api/applications/${application.id}/personalization`,
+      );
       setData(result.personalization);
       setError(null);
     } catch {
@@ -129,7 +168,11 @@ function PersonalizationPanel({ application, editable, onChanged }: { applicatio
       await load();
       onChanged();
     } catch (err) {
-      setError(err instanceof ApiError ? (err.body as { message?: string } | null)?.message ?? 'Could not prepare documents.' : 'Could not prepare documents.');
+      setError(
+        err instanceof ApiError
+          ? ((err.body as { message?: string } | null)?.message ?? 'Could not prepare documents.')
+          : 'Could not prepare documents.',
+      );
     } finally {
       setBusy(false);
     }
@@ -138,31 +181,71 @@ function PersonalizationPanel({ application, editable, onChanged }: { applicatio
   return (
     <section className="settings-group" aria-labelledby="tailored-documents-title">
       <h2 id="tailored-documents-title">Tailored documents</h2>
-      <p className="help">Generated locally from confirmed profile facts and this job’s saved description. Review every claim before approval.</p>
+      <p className="help">
+        Generated locally from confirmed profile facts and this job’s saved description. Review every claim before
+        approval.
+      </p>
       {error && <p className="banner banner--attention">{error}</p>}
-      {data?.warnings.map((warning) => <p className="banner banner--attention" key={warning}>{warning}</p>)}
-      {editable && <button type="button" className="button button--secondary" disabled={busy} onClick={() => void generate()}>{data?.variants.length ? 'Regenerate tailored documents' : 'Prepare tailored documents'}</button>}
+      {data?.warnings.map((warning) => (
+        <p className="banner banner--attention" key={warning}>
+          {warning}
+        </p>
+      ))}
+      {editable && (
+        <button type="button" className="button button--secondary" disabled={busy} onClick={() => void generate()}>
+          {data?.variants.length ? 'Regenerate tailored documents' : 'Prepare tailored documents'}
+        </button>
+      )}
       {data?.requirements.length ? (
         <details>
           <summary>Job requirements and evidence</summary>
           <ul className="fact-list">
-            {data.requirements.map((item) => <li key={item.requirement}><strong>{item.requirement}</strong> — {item.classification.replaceAll('_', ' ').toLowerCase()}: {item.explanation}</li>)}
+            {data.requirements.map((item) => (
+              <li key={item.requirement}>
+                <strong>{item.requirement}</strong> — {item.classification.replaceAll('_', ' ').toLowerCase()}:{' '}
+                {item.explanation}
+              </li>
+            ))}
           </ul>
         </details>
       ) : null}
-      {data?.variants.map((variant) => <DocumentVariantEditor key={variant.id} applicationId={application.id} variant={variant} editable={editable} onChanged={async () => { await load(); onChanged(); }} />)}
+      {data?.variants.map((variant) => (
+        <DocumentVariantEditor
+          key={variant.id}
+          applicationId={application.id}
+          variant={variant}
+          editable={editable}
+          onChanged={async () => {
+            await load();
+            onChanged();
+          }}
+        />
+      ))}
     </section>
   );
 }
 
-function DocumentVariantEditor({ applicationId, variant, editable, onChanged }: { applicationId: string; variant: PersonalizationView['variants'][number]; editable: boolean; onChanged: () => Promise<void> }) {
+function DocumentVariantEditor({
+  applicationId,
+  variant,
+  editable,
+  onChanged,
+}: {
+  applicationId: string;
+  variant: PersonalizationView['variants'][number];
+  editable: boolean;
+  onChanged: () => Promise<void>;
+}) {
   const [content, setContent] = useState(variant.content);
   const [busy, setBusy] = useState(false);
   const changed = content !== variant.content;
   const save = async (): Promise<void> => {
     setBusy(true);
     try {
-      await api(`/api/applications/${applicationId}/personalization/${variant.id}`, { method: 'PUT', body: { content } });
+      await api(`/api/applications/${applicationId}/personalization/${variant.id}`, {
+        method: 'PUT',
+        body: { content },
+      });
       await onChanged();
     } finally {
       setBusy(false);
@@ -170,10 +253,31 @@ function DocumentVariantEditor({ applicationId, variant, editable, onChanged }: 
   };
   return (
     <div className="field">
-      <label className="field__label" htmlFor={`variant-${variant.id}`}>{variant.kind === 'resume' ? 'Tailored résumé source' : 'Tailored cover letter'} <span className="muted">({variant.status.replaceAll('_', ' ').toLowerCase()})</span></label>
-      <textarea id={`variant-${variant.id}`} rows={variant.kind === 'resume' ? 18 : 12} value={content} readOnly={!editable} onChange={(event) => setContent(event.target.value)} />
-      {variant.evidence.length > 0 && <p className="help">Evidence: {variant.evidence.map((item) => `${item.requirement} (${item.classification.replaceAll('_', ' ').toLowerCase()})`).join(', ')}.</p>}
-      {editable && changed && <button type="button" className="button button--secondary" disabled={busy} onClick={() => void save()}>Save document edit</button>}
+      <label className="field__label" htmlFor={`variant-${variant.id}`}>
+        {variant.kind === 'resume' ? 'Tailored résumé source' : 'Tailored cover letter'}{' '}
+        <span className="muted">({variant.status.replaceAll('_', ' ').toLowerCase()})</span>
+      </label>
+      <textarea
+        id={`variant-${variant.id}`}
+        rows={variant.kind === 'resume' ? 18 : 12}
+        value={content}
+        readOnly={!editable}
+        onChange={(event) => setContent(event.target.value)}
+      />
+      {variant.evidence.length > 0 && (
+        <p className="help">
+          Evidence:{' '}
+          {variant.evidence
+            .map((item) => `${item.requirement} (${item.classification.replaceAll('_', ' ').toLowerCase()})`)
+            .join(', ')}
+          .
+        </p>
+      )}
+      {editable && changed && (
+        <button type="button" className="button button--secondary" disabled={busy} onClick={() => void save()}>
+          Save document edit
+        </button>
+      )}
     </div>
   );
 }
@@ -191,13 +295,17 @@ function Editor({
   onSave: (changes: Record<string, unknown>, reason: string) => Promise<void>;
   onUploaded: () => void;
 }) {
-  const initial = Object.fromEntries(view.payload.fields.filter((f) => f.kind !== 'file').map((f) => [f.key, f.value ?? '']));
+  const initial = Object.fromEntries(
+    view.payload.fields.filter((f) => f.kind !== 'file').map((f) => [f.key, f.value ?? '']),
+  );
   const [values, setValues] = useState<Record<string, string>>(initial);
   const resumeNow = view.payload.attachments.find((a) => a.kind === 'resume')?.documentId ?? '';
   const [resume, setResume] = useState(resumeNow);
   const [reason, setReason] = useState('');
 
-  const changedFields = view.payload.fields.filter((f) => f.kind !== 'file' && (values[f.key] ?? '') !== (f.value ?? ''));
+  const changedFields = view.payload.fields.filter(
+    (f) => f.kind !== 'file' && (values[f.key] ?? '') !== (f.value ?? ''),
+  );
   const dirty = changedFields.length > 0 || resume !== resumeNow;
 
   const save = (): void => {
@@ -210,7 +318,9 @@ function Editor({
   return (
     <section aria-labelledby="answers-title">
       <h2 id="answers-title">Answers and documents</h2>
-      {view.state === 'APPROVED' && <p className="banner banner--attention">Changing anything creates a new version and cancels your approval.</p>}
+      {view.state === 'APPROVED' && (
+        <p className="banner banner--attention">Changing anything creates a new version and cancels your approval.</p>
+      )}
       {view.missingRequired.length > 0 && (
         <p className="banner banner--attention" role="note">
           Still needed: {view.missingRequired.join(', ')}.
@@ -247,7 +357,9 @@ function Editor({
             return (
               <div className="field" key={f.key}>
                 <p className="field__label">{f.label}</p>
-                <p className="help">Career Strike attaches only your résumé. Attach this file yourself on the employer’s site.</p>
+                <p className="help">
+                  Career Strike attaches only your résumé. Attach this file yourself on the employer’s site.
+                </p>
               </div>
             );
           }
@@ -274,9 +386,18 @@ function Editor({
             <div className="field" key={f.key}>
               {label}
               {f.kind === 'long_text' ? (
-                <textarea id={id} rows={f.key === 'cover_letter_text' ? 12 : 4} value={values[f.key] ?? ''} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+                <textarea
+                  id={id}
+                  rows={f.key === 'cover_letter_text' ? 12 : 4}
+                  value={values[f.key] ?? ''}
+                  onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                />
               ) : f.kind === 'choice' && f.options.length > 0 ? (
-                <select id={id} value={values[f.key] ?? ''} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}>
+                <select
+                  id={id}
+                  value={values[f.key] ?? ''}
+                  onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                >
                   <option value="">—</option>
                   {f.options.map((o) => (
                     <option key={o} value={o}>
@@ -285,7 +406,12 @@ function Editor({
                   ))}
                 </select>
               ) : (
-                <input id={id} type="text" value={values[f.key] ?? ''} onChange={(e) => setValues({ ...values, [f.key]: e.target.value })} />
+                <input
+                  id={id}
+                  type="text"
+                  value={values[f.key] ?? ''}
+                  onChange={(e) => setValues({ ...values, [f.key]: e.target.value })}
+                />
               )}
               <p className="help">{SOURCE_NOTE[f.source]}</p>
             </div>
@@ -334,23 +460,6 @@ function UploadInline({ onUploaded }: { onUploaded: () => void }) {
   );
 }
 
-/** Upload a document as raw bytes. Returns a message for the candidate. */
-export async function uploadDocument(file: File, kind: 'resume' | 'cover_letter' | 'other'): Promise<string> {
-  try {
-    const csrf = currentCsrfToken();
-    const res = await fetch('/api/documents', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'content-type': file.type || 'application/octet-stream', 'x-cs-filename': encodeURIComponent(file.name), 'x-cs-document-kind': kind, 'x-cs-csrf': csrf },
-      body: file,
-    });
-    const body = (await res.json().catch(() => null)) as { message?: string } | null;
-    return res.ok ? `Uploaded ${file.name}.` : (body?.message ?? 'Upload failed.');
-  } catch {
-    return 'Upload failed. Check that the service is running.';
-  }
-}
-
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -379,9 +488,17 @@ function Package({ view }: { view: ApplicationView }) {
         <div>
           <dt>Destination</dt>
           <dd>
-            {p.destination.method === 'manual' ? 'You submit it on the employer’s site' : p.destination.method === 'assisted' ? 'You submit it with Career Strike’s help' : 'Owned test endpoint'}
+            {p.destination.method === 'manual'
+              ? 'You submit it on the employer’s site'
+              : p.destination.method === 'assisted'
+                ? 'You submit it with Career Strike’s help'
+                : 'Owned test endpoint'}
             <br />
-            {p.destination.url ? <ExternalLink href={p.destination.url}>{new URL(p.destination.url).host}</ExternalLink> : <span className="muted">No link</span>}
+            {p.destination.url ? (
+              <ExternalLink href={p.destination.url}>{new URL(p.destination.url).host}</ExternalLink>
+            ) : (
+              <span className="muted">No link</span>
+            )}
           </dd>
         </div>
         <div>
@@ -425,16 +542,16 @@ function Package({ view }: { view: ApplicationView }) {
       )}
       {p.coverLetter && (
         <>
-          <h3>
-            Cover letter {copyable && <CopyButton text={p.coverLetter} label="cover letter" />}
-          </h3>
+          <h3>Cover letter {copyable && <CopyButton text={p.coverLetter} label="cover letter" />}</h3>
           <pre className="letter">{p.coverLetter}</pre>
         </>
       )}
       {p.notAnswered.length > 0 && (
         <>
           <h3>Not answered by Career Strike</h3>
-          <p className="help">Voluntary questions on the employer’s form. Answer them yourself on their site if you wish.</p>
+          <p className="help">
+            Voluntary questions on the employer’s form. Answer them yourself on their site if you wish.
+          </p>
           <ul className="disclosures">
             {p.notAnswered.map((q) => (
               <li key={q}>{q}</li>
@@ -469,7 +586,11 @@ function Actions({
   return (
     <div className="app-actions">
       {view.state === 'DRAFTED' && (
-        <button type="button" disabled={busy || view.missingRequired.length > 0} onClick={() => void run('Marked ready for review.', () => post('ready'))}>
+        <button
+          type="button"
+          disabled={busy || view.missingRequired.length > 0}
+          onClick={() => void run('Marked ready for review.', () => post('ready'))}
+        >
           Mark ready for review
         </button>
       )}
@@ -492,15 +613,21 @@ function Actions({
           >
             Approve this exact application
           </button>
-          <button type="button" className="quiet" disabled={busy} onClick={() => void run('Saved for later.', () => post('save-for-later'))}>
+          <button
+            type="button"
+            className="quiet"
+            disabled={busy}
+            onClick={() => void run('Saved for later.', () => post('save-for-later'))}
+          >
             Save for later
           </button>
         </>
       )}
       {view.duplicateRisk.length > 0 && (
         <div className="banner banner--attention" role="note" data-testid="duplicate-risk">
-          <strong>Possible duplicate.</strong> You have {view.duplicateRisk.length === 1 ? 'another application' : `${view.duplicateRisk.length} other applications`} for
-          this same role:{' '}
+          <strong>Possible duplicate.</strong> You have{' '}
+          {view.duplicateRisk.length === 1 ? 'another application' : `${view.duplicateRisk.length} other applications`}{' '}
+          for this same role:{' '}
           {view.duplicateRisk.map((d, i) => (
             <span key={d.applicationId}>
               {i > 0 && ', '}
@@ -513,10 +640,17 @@ function Actions({
       {view.state === 'APPROVED' && view.payload.destination.method === 'test-ats' && (
         <div className="banner" role="note">
           <p>
-            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> — {view.approval.reason}
+            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> —{' '}
+            {view.approval.reason}
           </p>
-          <p className="help">This goes to the practice endpoint on this computer, not to an employer. It is sent once, with a receipt.</p>
-          <button type="button" disabled={busy || !view.approval.valid} onClick={() => void run('Sending to the practice endpoint…', () => post('submit'))}>
+          <p className="help">
+            This goes to the practice endpoint on this computer, not to an employer. It is sent once, with a receipt.
+          </p>
+          <button
+            type="button"
+            disabled={busy || !view.approval.valid}
+            onClick={() => void run('Sending to the practice endpoint…', () => post('submit'))}
+          >
             Submit to the practice endpoint
           </button>
         </div>
@@ -529,9 +663,14 @@ function Actions({
       {view.state === 'SUBMISSION_UNCONFIRMED' && view.mode === 'automated' && (
         <div className="banner banner--attention" role="note">
           <p>
-            <strong>Career Strike does not know whether it arrived.</strong> It will not resend it. Ask the endpoint whether it has a record of this submission.
+            <strong>Career Strike does not know whether it arrived.</strong> It will not resend it. Ask the endpoint
+            whether it has a record of this submission.
           </p>
-          <button type="button" disabled={busy} onClick={() => void run('Checked with the endpoint.', () => post('reconcile'))}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run('Checked with the endpoint.', () => post('reconcile'))}
+          >
             Check whether it arrived
           </button>
         </div>
@@ -541,7 +680,11 @@ function Actions({
           <p>
             <strong>It was not submitted.</strong> To try again, prepare it again and approve the new version.
           </p>
-          <button type="button" disabled={busy} onClick={() => void run('Back to drafts. Review and approve it again.', () => post('redraft'))}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void run('Back to drafts. Review and approve it again.', () => post('redraft'))}
+          >
             Prepare it again
           </button>
         </div>
@@ -549,16 +692,28 @@ function Actions({
       {view.state === 'APPROVED' && view.payload.destination.method !== 'test-ats' && (
         <div className="banner" role="note">
           <p>
-            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> — {view.approval.reason}
+            <strong>{view.approval.valid ? 'Approval is valid' : 'Approval is not valid'}</strong> —{' '}
+            {view.approval.reason}
           </p>
-          {view.approval.approval && <p className="muted">Approved {formatDateTime(view.approval.approval.issuedAt)}; expires {formatDateTime(view.approval.approval.expiresAt)}.</p>}
-          <p className="help">When you start, the approval is used up. Then submit on the employer’s site, using the copy buttons for each answer.</p>
+          {view.approval.approval && (
+            <p className="muted">
+              Approved {formatDateTime(view.approval.approval.issuedAt)}; expires{' '}
+              {formatDateTime(view.approval.approval.expiresAt)}.
+            </p>
+          )}
+          <p className="help">
+            When you start, the approval is used up. Then submit on the employer’s site, using the copy buttons for each
+            answer.
+          </p>
           <button
             type="button"
             disabled={busy || !view.approval.valid}
             onClick={() => {
-              if (view.payload.destination.url) window.open(view.payload.destination.url, '_blank', 'noopener,noreferrer');
-              void run('Started. Submit on the employer’s site, then tell Career Strike what happened.', () => post('start-submission'));
+              if (view.payload.destination.url)
+                window.open(view.payload.destination.url, '_blank', 'noopener,noreferrer');
+              void run('Started. Submit on the employer’s site, then tell Career Strike what happened.', () =>
+                post('start-submission'),
+              );
             }}
           >
             Start submitting on the employer’s site
@@ -570,11 +725,19 @@ function Actions({
           )}
         </div>
       )}
-      {(view.state === 'NEEDS_MANUAL_ACTION' || (view.state === 'SUBMISSION_UNCONFIRMED' && view.mode !== 'automated')) && (
+      {(view.state === 'NEEDS_MANUAL_ACTION' ||
+        (view.state === 'SUBMISSION_UNCONFIRMED' && view.mode !== 'automated')) && (
         <ConfirmSubmission view={view} busy={busy} post={post} run={run} />
       )}
       {OUTCOMES.some((o) => can(o)) && view.state !== 'NEEDS_MANUAL_ACTION' && (
-        <RecordOutcome key={`${view.state}:${view.events.length}`} view={view} busy={busy} post={post} run={run} can={can} />
+        <RecordOutcome
+          key={`${view.state}:${view.events.length}`}
+          view={view}
+          busy={busy}
+          post={post}
+          run={run}
+          can={can}
+        />
       )}
       {can('CANCELLED') && (
         <button type="button" className="quiet" disabled={busy} onClick={reject}>
@@ -613,23 +776,47 @@ function ConfirmSubmission({ view, busy, post, run }: { view: ApplicationView; b
       className="banner outcome-form"
       onSubmit={(e) => {
         e.preventDefault();
-        void run('Recorded as submitted.', () => post('confirm-submitted', { submittedAt: date, reference: reference.trim() || null, note: note.trim() || null }));
+        void run('Recorded as submitted.', () =>
+          post('confirm-submitted', {
+            submittedAt: date,
+            reference: reference.trim() || null,
+            note: note.trim() || null,
+          }),
+        );
       }}
     >
       <p>
         <strong>Did you submit it?</strong> Career Strike only counts it as submitted when you confirm.
       </p>
       <label htmlFor="submitted-at">Date submitted</label>
-      <input id="submitted-at" type="date" required value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
+      <input
+        id="submitted-at"
+        type="date"
+        required
+        value={date}
+        max={today()}
+        onChange={(e) => setDate(e.target.value)}
+      />
       <label htmlFor="reference">Confirmation number or reference (optional)</label>
       <input id="reference" type="text" value={reference} onChange={(e) => setReference(e.target.value)} />
       <label htmlFor="confirm-note">What did you see? (optional)</label>
-      <input id="confirm-note" type="text" placeholder="e.g. confirmation email received" value={note} onChange={(e) => setNote(e.target.value)} />
+      <input
+        id="confirm-note"
+        type="text"
+        placeholder="e.g. confirmation email received"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
       <button type="submit" disabled={busy}>
         Yes, I submitted it
       </button>
       {view.state === 'NEEDS_MANUAL_ACTION' && (
-        <button type="button" className="quiet" disabled={busy} onClick={() => void run('Marked as not confirmed.', () => post('mark-unconfirmed', { note: null }))}>
+        <button
+          type="button"
+          className="quiet"
+          disabled={busy}
+          onClick={() => void run('Marked as not confirmed.', () => post('mark-unconfirmed', { note: null }))}
+        >
           I’m not sure it went through
         </button>
       )}
@@ -637,7 +824,19 @@ function ConfirmSubmission({ view, busy, post, run }: { view: ApplicationView; b
   );
 }
 
-function RecordOutcome({ view, busy, post, run, can }: { view: ApplicationView; busy: boolean; post: Post; run: Run; can: (s: string) => boolean }) {
+function RecordOutcome({
+  view,
+  busy,
+  post,
+  run,
+  can,
+}: {
+  view: ApplicationView;
+  busy: boolean;
+  post: Post;
+  run: Run;
+  can: (s: string) => boolean;
+}) {
   const options = OUTCOMES.filter((o) => can(o));
   const [chosen, setOutcome] = useState<string>(options[0] ?? '');
   const [date, setDate] = useState(today());
@@ -664,7 +863,14 @@ function RecordOutcome({ view, busy, post, run, can }: { view: ApplicationView; 
         ))}
       </select>
       <label htmlFor="outcome-date">When?</label>
-      <input id="outcome-date" type="date" required value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
+      <input
+        id="outcome-date"
+        type="date"
+        required
+        value={date}
+        max={today()}
+        onChange={(e) => setDate(e.target.value)}
+      />
       <label htmlFor="outcome-note">Details (optional)</label>
       <input id="outcome-note" type="text" value={note} onChange={(e) => setNote(e.target.value)} />
       <button type="submit" disabled={busy || !outcome}>
@@ -672,167 +878,6 @@ function RecordOutcome({ view, busy, post, run, can }: { view: ApplicationView; 
       </button>
       <span className="muted">{view.state === 'OFFER' ? 'Congratulations.' : ''}</span>
     </form>
-  );
-}
-
-function FollowUps({ view, onChange }: { view: ApplicationView; onChange: () => void }) {
-  const inAWeek = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
-  const [due, setDue] = useState(inAWeek);
-  const [note, setNote] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const open = view.followUps.filter((f) => f.status === 'OPEN');
-  const close = async (f: FollowUp, how: 'done' | 'dismiss'): Promise<void> => {
-    await api(`/api/follow-ups/${f.id}/${how}`, { method: 'POST' }).catch(() => setError('Could not update.'));
-    onChange();
-  };
-  return (
-    <section className="follow-ups" aria-labelledby="fu-title">
-      <h3 id="fu-title">Follow-ups</h3>
-      {open.length === 0 ? (
-        <p className="muted">No reminders set.</p>
-      ) : (
-        <ul className="disclosures" data-testid="follow-ups">
-          {open.map((f) => (
-            <li key={f.id}>
-              {formatDate(f.dueAt)} · {f.note}{' '}
-              <button type="button" className="quiet copy" onClick={() => void close(f, 'done')}>
-                Done<span className="visually-hidden"> {f.note}</span>
-              </button>{' '}
-              <button type="button" className="quiet copy" onClick={() => void close(f, 'dismiss')}>
-                Dismiss<span className="visually-hidden"> {f.note}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form
-        className="fu-form"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setError(null);
-          try {
-            await api(`/api/applications/${view.id}/follow-ups`, { method: 'POST', body: { dueAt: due, note: note.trim() } });
-            setNote('');
-            onChange();
-          } catch (err) {
-            setError(err instanceof ApiError ? 'Add a date and a short note.' : 'Could not save.');
-          }
-        }}
-      >
-        <label htmlFor="fu-note">Remind me to</label>
-        <input id="fu-note" type="text" value={note} placeholder="e.g. email the recruiter" onChange={(e) => setNote(e.target.value)} />
-        <label htmlFor="fu-due">Due date</label>
-        <input id="fu-due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-        <button type="submit" className="quiet">
-          Add reminder
-        </button>
-        {error && (
-          <span role="alert" className="save-status--error">
-            {error}
-          </span>
-        )}
-      </form>
-    </section>
-  );
-}
-
-const SUBMITTED = ['SUBMITTED_CONFIRMED', 'RESPONSE_RECEIVED', 'INTERVIEW', 'OFFER'];
-const OUTCOME_TEXT: Record<Interview['outcome'], string> = { pending: 'Upcoming', passed: 'Went well / passed', not_passed: 'Not progressed', cancelled: 'Cancelled' };
-
-function Interviews({ view, onChange }: { view: ApplicationView; onChange: () => void }) {
-  const [list, setList] = useState<Interview[]>([]);
-  const [stage, setStage] = useState('');
-  const [format, setFormat] = useState('video');
-  const [when, setWhen] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const reload = useCallback(async () => {
-    const prep = await api<{ interviews: Interview[] }>(`/api/applications/${view.id}/prep`).catch(() => ({ interviews: [] }));
-    setList(prep.interviews);
-  }, [view.id]);
-  useEffect(() => void reload(), [reload, view.state]);
-  const canSchedule = SUBMITTED.includes(view.state);
-  return (
-    <section className="follow-ups" aria-labelledby="int-title">
-      <h3 id="int-title">Interviews</h3>
-      <p>
-        <Link href={`/applications/${view.id}/prep`}>Prepare for interviews</Link>
-      </p>
-      {list.length > 0 && (
-        <ul className="disclosures" data-testid="interviews">
-          {list.map((i) => (
-            <li key={i.id}>
-              {i.stage} · {formatDateTime(i.scheduledAt)} · {i.format.replace('_', '-')} ·{' '}
-              <button
-                type="button"
-                className="button button--small button--quiet"
-                onClick={() => downloadInterviewIcs({ interview: i, employer: view.job.employer, jobTitle: view.job.title })}
-                title="Download .ics calendar file"
-              >
-                📅 .ics
-              </button>{' '}
-              <label className="visually-hidden" htmlFor={`int-${i.id}`}>
-                Outcome of {i.stage}
-              </label>
-              <select
-                id={`int-${i.id}`}
-                value={i.outcome}
-                onChange={async (e) => {
-                  await api(`/api/interviews/${i.id}`, { method: 'PUT', body: { outcome: e.target.value } }).catch(() => setError('Could not update.'));
-                  void reload();
-                }}
-              >
-                {Object.entries(OUTCOME_TEXT).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </li>
-          ))}
-        </ul>
-      )}
-      {canSchedule ? (
-        <form
-          className="fu-form"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            setError(null);
-            try {
-              await api(`/api/applications/${view.id}/interviews`, { method: 'POST', body: { stage: stage.trim(), format, scheduledAt: new Date(when).toISOString(), notes: null } });
-              setStage('');
-              setWhen('');
-              onChange();
-              void reload();
-            } catch {
-              setError('Add the stage and a date and time.');
-            }
-          }}
-        >
-          <label htmlFor="int-stage">Stage</label>
-          <input id="int-stage" type="text" placeholder="e.g. phone screen" value={stage} onChange={(e) => setStage(e.target.value)} />
-          <label htmlFor="int-format">Format</label>
-          <select id="int-format" value={format} onChange={(e) => setFormat(e.target.value)}>
-            <option value="phone">Phone</option>
-            <option value="video">Video</option>
-            <option value="onsite">On-site</option>
-            <option value="take_home">Take-home assessment</option>
-            <option value="other">Other</option>
-          </select>
-          <label htmlFor="int-when">Date and time</label>
-          <input id="int-when" type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
-          <button type="submit" className="quiet">
-            Add interview
-          </button>
-          {error && (
-            <span role="alert" className="save-status--error">
-              {error}
-            </span>
-          )}
-        </form>
-      ) : (
-        <p className="muted">Interviews can be added once the application has been submitted.</p>
-      )}
-    </section>
   );
 }
 
@@ -849,7 +894,9 @@ function FollowUpStudio({ view }: { view: ApplicationView }) {
   const [copied, setCopied] = useState(false);
 
   const candidateName = useMemo(() => {
-    const f = view.payload.fields.find((field) => ['full_name', 'name', 'candidate_name'].includes(field.key.toLowerCase()));
+    const f = view.payload.fields.find((field) =>
+      ['full_name', 'name', 'candidate_name'].includes(field.key.toLowerCase()),
+    );
     return typeof f?.value === 'string' && f.value.trim() ? f.value.trim() : 'Candidate';
   }, [view.payload.fields]);
 
@@ -937,12 +984,7 @@ function FollowUpStudio({ view }: { view: ApplicationView }) {
         <div className="outreach-preview-subject">
           <strong>Subject:</strong> {draft.subject}
         </div>
-        <pre
-          className="outreach-preview-body"
-          tabIndex={0}
-          role="region"
-          aria-label="Email draft preview"
-        >
+        <pre className="outreach-preview-body" tabIndex={0} role="region" aria-label="Email draft preview">
           {draft.body}
         </pre>
         <div className="outreach-preview-actions">

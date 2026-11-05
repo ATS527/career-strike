@@ -2,8 +2,22 @@ import { decodeHTML } from 'entities';
 import { z } from 'zod';
 import { type FetchImpl, guardedGetJson } from './fetch-guard.js';
 import { htmlToBlocks } from './html.js';
-import { employmentTypeFrom, isoOrNull, marketFacts, publishedSalary, remotePolicyFrom, safeHttpUrl, unresolvedFacts } from './normalize.js';
-import { type ApplicationQuestion, type NormalizedPosting, type SourceAdapter, SourceError, type SourceId } from './types.js';
+import {
+  employmentTypeFrom,
+  isoOrNull,
+  marketFacts,
+  publishedSalary,
+  remotePolicyFrom,
+  safeHttpUrl,
+  unresolvedFacts,
+} from './normalize.js';
+import {
+  type ApplicationQuestion,
+  type NormalizedPosting,
+  type SourceAdapter,
+  SourceError,
+  type SourceId,
+} from './types.js';
 
 // Schemas describe only the fields Career Strike reads; unknown fields are ignored.
 // Shapes were checked against live responses from each public API on 2026-10-30.
@@ -11,7 +25,8 @@ import { type ApplicationQuestion, type NormalizedPosting, type SourceAdapter, S
 const BOARD = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 
 export function assertBoard(board: string): string {
-  if (!BOARD.test(board)) throw new SourceError('not_found', 'Board names contain only letters, digits, dot, dash and underscore');
+  if (!BOARD.test(board))
+    throw new SourceError('not_found', 'Board names contain only letters, digits, dot, dash and underscore');
   return board;
 }
 
@@ -45,7 +60,9 @@ const GreenhouseJobs = z.object({
 const GreenhouseQuestion = z.object({
   label: z.string(),
   required: z.boolean().nullish(),
-  fields: z.array(z.object({ name: z.string(), type: z.string(), values: z.array(z.object({ label: z.string() })).nullish() })),
+  fields: z.array(
+    z.object({ name: z.string(), type: z.string(), values: z.array(z.object({ label: z.string() })).nullish() }),
+  ),
 });
 const GreenhouseJobQuestions = z.object({
   questions: z.array(GreenhouseQuestion).nullish(),
@@ -59,9 +76,13 @@ function complianceLabels(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((c) =>
     c && typeof c === 'object' && Array.isArray((c as { questions?: unknown }).questions)
-      ? ((c as { questions: unknown[] }).questions
-          .map((q) => (q && typeof q === 'object' && typeof (q as { label?: unknown }).label === 'string' ? (q as { label: string }).label : null))
-          .filter((l): l is string => l !== null))
+      ? (c as { questions: unknown[] }).questions
+          .map((q) =>
+            q && typeof q === 'object' && typeof (q as { label?: unknown }).label === 'string'
+              ? (q as { label: string }).label
+              : null,
+          )
+          .filter((l): l is string => l !== null)
       : [],
   );
 }
@@ -71,8 +92,21 @@ function greenhouseQuestion(q: z.infer<typeof GreenhouseQuestion>, voluntary: bo
   const field = visible.find((f) => f.type === 'input_file') ?? visible[0];
   if (!field) return null;
   const kind: ApplicationQuestion['kind'] =
-    field.type === 'input_file' ? 'file' : field.type === 'textarea' ? 'long_text' : field.type.startsWith('multi_value') ? 'choice' : 'text';
-  return { key: field.name, label: q.label, required: q.required === true, kind, options: (field.values ?? []).map((v) => v.label), voluntary };
+    field.type === 'input_file'
+      ? 'file'
+      : field.type === 'textarea'
+        ? 'long_text'
+        : field.type.startsWith('multi_value')
+          ? 'choice'
+          : 'text';
+  return {
+    key: field.name,
+    label: q.label,
+    required: q.required === true,
+    kind,
+    options: (field.values ?? []).map((v) => v.label),
+    voluntary,
+  };
 }
 
 function greenhouse(fetchImpl?: FetchImpl): SourceAdapter {
@@ -87,10 +121,22 @@ function greenhouse(fetchImpl?: FetchImpl): SourceAdapter {
         { fetchImpl, signal, timeoutMs: 8_000, minIntervalMs: 0 },
       );
       const parsed = parse(GreenhouseJobQuestions, data, 'Greenhouse');
-      const main = [...(parsed.questions ?? []), ...(parsed.location_questions ?? [])].map((q) => greenhouseQuestion(q, false));
+      const main = [...(parsed.questions ?? []), ...(parsed.location_questions ?? [])].map((q) =>
+        greenhouseQuestion(q, false),
+      );
       // Demographic and compliance questions are voluntary; Career Strike lists them but never answers.
-      const voluntary = [...(parsed.demographic_questions?.questions ?? []).map((q) => q.label), ...complianceLabels(parsed.compliance)].map(
-        (label): ApplicationQuestion => ({ key: `voluntary:${label}`, label, required: false, kind: 'choice', options: [], voluntary: true }),
+      const voluntary = [
+        ...(parsed.demographic_questions?.questions ?? []).map((q) => q.label),
+        ...complianceLabels(parsed.compliance),
+      ].map(
+        (label): ApplicationQuestion => ({
+          key: `voluntary:${label}`,
+          label,
+          required: false,
+          kind: 'choice',
+          options: [],
+          voluntary: true,
+        }),
       );
       return [...main.filter((q): q is ApplicationQuestion => q !== null), ...voluntary];
     },
@@ -140,7 +186,12 @@ const LeverPostings = z.array(
     id: z.string(),
     text: z.string(),
     categories: z
-      .object({ commitment: nullableString, department: nullableString, location: nullableString, team: nullableString })
+      .object({
+        commitment: nullableString,
+        department: nullableString,
+        location: nullableString,
+        team: nullableString,
+      })
       .nullish(),
     workplaceType: nullableString,
     createdAt: z.number().nullish(),
@@ -150,7 +201,12 @@ const LeverPostings = z.array(
     lists: z.array(z.object({ text: z.string(), content: z.string() })).nullish(),
     additional: nullableString,
     salaryRange: z
-      .object({ currency: nullableString, interval: nullableString, min: z.number().nullish(), max: z.number().nullish() })
+      .object({
+        currency: nullableString,
+        interval: nullableString,
+        min: z.number().nullish(),
+        max: z.number().nullish(),
+      })
       .nullish(),
   }),
 );
@@ -161,16 +217,25 @@ function lever(fetchImpl?: FetchImpl): SourceAdapter {
     label: 'Lever',
     boardUrl: (board) => `https://jobs.lever.co/${encodeURIComponent(board)}`,
     async list(board, signal) {
-      const data = await guardedGetJson(`https://api.lever.co/v0/postings/${encodeURIComponent(assertBoard(board))}?mode=json`, {
-        fetchImpl,
-        signal,
-      });
+      const data = await guardedGetJson(
+        `https://api.lever.co/v0/postings/${encodeURIComponent(assertBoard(board))}?mode=json`,
+        {
+          fetchImpl,
+          signal,
+        },
+      );
       return parse(LeverPostings, data, 'Lever').map((p): NormalizedPosting => {
         const remotePolicy = remotePolicyFrom(p.workplaceType);
         const employmentType = employmentTypeFrom(p.categories?.commitment);
-        const salary = p.salaryRange ? publishedSalary(p.salaryRange.currency, p.salaryRange.min, p.salaryRange.max, p.salaryRange.interval) : null;
+        const salary = p.salaryRange
+          ? publishedSalary(p.salaryRange.currency, p.salaryRange.min, p.salaryRange.max, p.salaryRange.interval)
+          : null;
         const locationText = p.categories?.location?.trim() || null;
-        const html = [p.description ?? '', ...(p.lists ?? []).map((l) => `<h3>${escapeHtml(l.text)}</h3><ul>${l.content}</ul>`), p.additional ?? ''].join('\n');
+        const html = [
+          p.description ?? '',
+          ...(p.lists ?? []).map((l) => `<h3>${escapeHtml(l.text)}</h3><ul>${l.content}</ul>`),
+          p.additional ?? '',
+        ].join('\n');
         return {
           source: 'lever',
           board,
@@ -247,7 +312,11 @@ function ashby(fetchImpl?: FetchImpl): SourceAdapter {
       return parse(AshbyBoard, data, 'Ashby')
         .jobs.filter((j) => j.isListed !== false)
         .map((j): NormalizedPosting => {
-          const remotePolicy = j.workplaceType ? remotePolicyFrom(j.workplaceType) : j.isRemote === true ? 'remote' : 'unknown';
+          const remotePolicy = j.workplaceType
+            ? remotePolicyFrom(j.workplaceType)
+            : j.isRemote === true
+              ? 'remote'
+              : 'unknown';
           const employmentType = employmentTypeFrom(j.employmentType?.replace(/([a-z])([A-Z])/g, '$1 $2'));
           const pay = j.compensation?.summaryComponents?.find((c) => c.compensationType === 'Salary');
           const salary = pay ? publishedSalary(pay.currencyCode, pay.minValue, pay.maxValue, pay.interval) : null;
@@ -315,7 +384,11 @@ function practice(practiceOrigin: () => string | null, fetchImpl: FetchImpl = (u
     boardUrl: (board) => `${practiceOrigin() ?? 'http://127.0.0.1'}/boards/${encodeURIComponent(board)}`,
     async list(board, signal) {
       const origin = practiceOrigin();
-      if (!isPracticeOrigin(origin)) throw new SourceError('not_found', 'The practice endpoint is not running. Start it with career-strike practice.');
+      if (!isPracticeOrigin(origin))
+        throw new SourceError(
+          'not_found',
+          'The practice endpoint is not running. Start it with career-strike practice.',
+        );
       let res: Response;
       try {
         res = await fetchImpl(`${origin}/boards/${encodeURIComponent(assertBoard(board))}`, {
@@ -325,10 +398,14 @@ function practice(practiceOrigin: () => string | null, fetchImpl: FetchImpl = (u
         });
       } catch (err) {
         if (signal?.aborted) throw err;
-        throw new SourceError('outage', `The practice endpoint did not answer: ${err instanceof Error ? err.message : String(err)}`);
+        throw new SourceError(
+          'outage',
+          `The practice endpoint did not answer: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
       if (res.status === 404) throw new SourceError('not_found', 'The practice endpoint has no such board');
-      if (res.status === 429) throw new SourceError('rate_limited', 'The practice endpoint asked Career Strike to slow down');
+      if (res.status === 429)
+        throw new SourceError('rate_limited', 'The practice endpoint asked Career Strike to slow down');
       if (!res.ok) throw new SourceError('outage', `The practice endpoint returned HTTP ${res.status}`);
       return parse(PracticeBoard, await res.json(), 'The practice endpoint').postings.map((p) => ({
         source: 'practice' as const,
@@ -352,7 +429,10 @@ function practice(practiceOrigin: () => string | null, fetchImpl: FetchImpl = (u
   };
 }
 
-export function createAdapters(fetchImpl?: FetchImpl, opts: { practiceOrigin?: () => string | null } = {}): Readonly<Record<SourceId, SourceAdapter>> {
+export function createAdapters(
+  fetchImpl?: FetchImpl,
+  opts: { practiceOrigin?: () => string | null } = {},
+): Readonly<Record<SourceId, SourceAdapter>> {
   return {
     greenhouse: greenhouse(fetchImpl),
     lever: lever(fetchImpl),

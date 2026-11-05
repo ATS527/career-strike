@@ -20,7 +20,9 @@ async function main(): Promise<void> {
   const paths = appPaths();
   const existing = await runningService(paths);
   const info = existing ?? (await startDetached(paths, CLI_ENTRY, DEFAULT_PORT));
-  console.log(existing ? `Using the running service on port ${info.port}.` : `Started the service on port ${info.port}.`);
+  console.log(
+    existing ? `Using the running service on port ${info.port}.` : `Started the service on port ${info.port}.`,
+  );
 
   // Read by vite.config.ts so the proxy targets the service actually running.
   process.env.CS_DEV_SERVICE_ORIGIN = `http://127.0.0.1:${info.port}`;

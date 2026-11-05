@@ -30,11 +30,19 @@ export class CsService {
 
   env(): NodeJS.ProcessEnv {
     // Update checks go to a closed loopback port: browser tests never contact GitHub.
-    return { ...process.env, CAREER_STRIKE_HOME: this.home, CAREER_STRIKE_SECRET_STORE: 'file', CAREER_STRIKE_RELEASES_URL: 'http://127.0.0.1:9/releases' };
+    return {
+      ...process.env,
+      CAREER_STRIKE_HOME: this.home,
+      CAREER_STRIKE_SECRET_STORE: 'file',
+      CAREER_STRIKE_RELEASES_URL: 'http://127.0.0.1:9/releases',
+    };
   }
 
   private async startProcess(port: number): Promise<void> {
-    const proc = spawn(process.execPath, [CLI, 'serve', '--port', String(port)], { env: this.env(), stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawn(process.execPath, [CLI, 'serve', '--port', String(port)], {
+      env: this.env(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
     let output = '';
     const listening = new Promise<void>((resolve, reject) => {
       proc.stdout.on('data', (chunk: Buffer) => {
@@ -48,7 +56,10 @@ export class CsService {
     });
     await listening;
     this.proc = proc;
-    const runtime = JSON.parse(fs.readFileSync(path.join(this.home, 'service.json'), 'utf8')) as { port: number; token: string };
+    const runtime = JSON.parse(fs.readFileSync(path.join(this.home, 'service.json'), 'utf8')) as {
+      port: number;
+      token: string;
+    };
     this.port = runtime.port;
     this.token = runtime.token;
   }
@@ -75,7 +86,10 @@ export class CsService {
   }
 
   async launchUrl(): Promise<string> {
-    const res = await fetch(`${this.origin}/api/session/launch-token`, { method: 'POST', headers: { authorization: `Bearer ${this.token}` } });
+    const res = await fetch(`${this.origin}/api/session/launch-token`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.token}` },
+    });
     expect(res.status).toBe(200);
     const { token } = (await res.json()) as { token: string };
     return `${this.origin}/auth/launch?t=${token}`;
@@ -87,10 +101,21 @@ export class CsService {
   }
 
   /** Write postings into this service's database exactly as a successful board fetch would. */
-  seed(source: 'greenhouse' | 'lever' | 'ashby', board: string, postings: Partial<NormalizedPosting>[], at = new Date()): void {
+  seed(
+    source: 'greenhouse' | 'lever' | 'ashby',
+    board: string,
+    postings: Partial<NormalizedPosting>[],
+    at = new Date(),
+  ): void {
     const db = openDb(path.join(this.home, 'career-strike.db'));
     try {
-      syncBoard(db, source, board, postings.map((p, i) => syntheticPosting(source, board, i, p)), at);
+      syncBoard(
+        db,
+        source,
+        board,
+        postings.map((p, i) => syntheticPosting(source, board, i, p)),
+        at,
+      );
     } finally {
       db.close();
     }
@@ -99,7 +124,10 @@ export class CsService {
   async api(method: string, url: string, body?: unknown): Promise<{ status: number; body: unknown }> {
     const res = await fetch(`${this.origin}${url}`, {
       method,
-      headers: { authorization: `Bearer ${this.token}`, ...(body === undefined ? {} : { 'content-type': 'application/json' }) },
+      headers: {
+        authorization: `Bearer ${this.token}`,
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     return { status: res.status, body: await res.json().catch(() => null) };
@@ -110,7 +138,12 @@ export class CsService {
   }
 }
 
-export function syntheticPosting(source: NormalizedPosting['source'], board: string, i: number, over: Partial<NormalizedPosting> = {}): NormalizedPosting {
+export function syntheticPosting(
+  source: NormalizedPosting['source'],
+  board: string,
+  i: number,
+  over: Partial<NormalizedPosting> = {},
+): NormalizedPosting {
   return {
     source,
     board,
@@ -152,7 +185,8 @@ export const test = base.extend<{ cs: CsService; consoleProblems: string[] }>({
       const problems: string[] = [];
       page.on('console', (msg) => {
         // Failed fetches while the service is deliberately stopped are expected in outage tests.
-        if (msg.type() === 'error' && !/Failed to load resource|ERR_CONNECTION_REFUSED/.test(msg.text())) problems.push(msg.text());
+        if (msg.type() === 'error' && !/Failed to load resource|ERR_CONNECTION_REFUSED/.test(msg.text()))
+          problems.push(msg.text());
       });
       page.on('pageerror', (err) => problems.push(err.message));
       await use(problems);

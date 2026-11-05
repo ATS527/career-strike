@@ -117,7 +117,8 @@ function mergeSkills(data: LinkedInExportData, text: string): void {
 }
 
 function mergeEducation(data: LinkedInExportData, text: string): void {
-  const records = csvRecords(text, ['school name']) ?? csvRecords(text, ['degree name']) ?? csvRecords(text, ['institution']);
+  const records =
+    csvRecords(text, ['school name']) ?? csvRecords(text, ['degree name']) ?? csvRecords(text, ['institution']);
   if (!records) return;
   for (const r of records) {
     const institution = (r['school name'] ?? r['school'] ?? r['institution'] ?? '').trim().slice(0, 150) || null;
@@ -229,7 +230,7 @@ export function parseLinkedInArchive(bytes: Uint8Array | Buffer): LinkedInExport
   };
 
   for (const [filepath, content] of Object.entries(unzipped)) {
-    const filename = filepath.split(/[\/\\]/).pop()?.toLowerCase();
+    const filename = filepath.split(/[/\\]/).pop()?.toLowerCase();
     if (!filename || !filename.endsWith('.csv')) continue;
     const text = strFromU8(content);
     mergeCsvData(result, filename, text);
@@ -393,7 +394,13 @@ export function importLinkedInExport(db: Db, data: LinkedInExportData, actor: st
       imported.projects++;
     }
 
-    const total = imported.skills + imported.roles + imported.education + imported.certifications + imported.languages + imported.projects;
+    const total =
+      imported.skills +
+      imported.roles +
+      imported.education +
+      imported.certifications +
+      imported.languages +
+      imported.projects;
     db.prepare('INSERT INTO audit_events (at, actor, action, subject, detail_json) VALUES (?, ?, ?, ?, ?)').run(
       at,
       actor,
@@ -403,7 +410,13 @@ export function importLinkedInExport(db: Db, data: LinkedInExportData, actor: st
     );
   })();
 
-  const total = imported.skills + imported.roles + imported.education + imported.certifications + imported.languages + imported.projects;
+  const total =
+    imported.skills +
+    imported.roles +
+    imported.education +
+    imported.certifications +
+    imported.languages +
+    imported.projects;
   return {
     imported,
     total,

@@ -1,6 +1,0 @@
-#!/bin/sh
-# Commits carry no co-author or tool-attribution trailers.
-if grep -Eiq '^(co-authored-by:|generated with)' "$1"; then
-  echo "commit-msg: remove Co-Authored-By / attribution lines from the commit message." >&2
-  exit 1
-fi

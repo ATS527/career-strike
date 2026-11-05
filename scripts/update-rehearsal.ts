@@ -21,7 +21,10 @@ import { getSettings, setSetting } from '../src/store/settings.js';
 import { parseVersion } from '../src/updates/version.js';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as { version: string; files: string[] };
+const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')) as {
+  version: string;
+  files: string[];
+};
 const A = pkg.version;
 const B = (() => {
   const v = parseVersion(A)!;
@@ -31,7 +34,8 @@ const B = (() => {
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'cs-rehearsal-'));
 const prefix = path.join(work, 'prefix');
 const home = path.join(work, 'home');
-const bin = process.platform === 'win32' ? path.join(prefix, 'career-strike.cmd') : path.join(prefix, 'bin', 'career-strike');
+const bin =
+  process.platform === 'win32' ? path.join(prefix, 'career-strike.cmd') : path.join(prefix, 'bin', 'career-strike');
 
 function step(title: string): void {
   console.log(`\n== ${title}`);
@@ -43,7 +47,13 @@ function check(ok: boolean, message: string): void {
 }
 
 function sh(cmd: string, args: string[], opts: { cwd?: string; env?: NodeJS.ProcessEnv } = {}): string {
-  return execFileSync(cmd, args, { cwd: opts.cwd, env: opts.env ?? process.env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' });
+  return execFileSync(cmd, args, {
+    cwd: opts.cwd,
+    env: opts.env ?? process.env,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: process.platform === 'win32',
+  });
 }
 
 /** Stage the published files of this tree as version `version` and pack them. */
@@ -58,11 +68,17 @@ function pack(version: string, extraNotes: string | null): string {
   fs.writeFileSync(path.join(stage, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
   if (extraNotes) {
     const changelog = path.join(stage, 'CHANGELOG.md');
-    fs.writeFileSync(changelog, fs.readFileSync(changelog, 'utf8').replace(/\n## /, `\n## [${version}] - rehearsal\n\n${extraNotes}\n\n## `));
+    fs.writeFileSync(
+      changelog,
+      fs.readFileSync(changelog, 'utf8').replace(/\n## /, `\n## [${version}] - rehearsal\n\n${extraNotes}\n\n## `),
+    );
   }
   const out = path.join(work, 'packages');
   fs.mkdirSync(out, { recursive: true });
-  const name = sh('npm', ['pack', '--ignore-scripts', '--silent', '--pack-destination', out], { cwd: stage }).trim().split('\n').pop()!;
+  const name = sh('npm', ['pack', '--ignore-scripts', '--silent', '--pack-destination', out], { cwd: stage })
+    .trim()
+    .split('\n')
+    .pop()!;
   return path.join(out, name);
 }
 
@@ -84,7 +100,10 @@ async function fakeGitHub(file: string): Promise<{ url: string; close: () => voi
             published_at: new Date().toISOString(),
             assets: [
               { name: `career-strike-${B}.tgz`, browser_download_url: `${base}/download/career-strike-${B}.tgz` },
-              { name: `career-strike-${B}.tgz.sha256`, browser_download_url: `${base}/download/career-strike-${B}.tgz.sha256` },
+              {
+                name: `career-strike-${B}.tgz.sha256`,
+                browser_download_url: `${base}/download/career-strike-${B}.tgz.sha256`,
+              },
             ],
           },
         ]),
@@ -133,7 +152,8 @@ async function main(): Promise<void> {
         resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, out: `${stdout}${stderr}`.trim() });
       });
     });
-  const status = async () => JSON.parse((await cs('status', '--json')).out) as { state: string; version?: string; port?: number };
+  const status = async () =>
+    JSON.parse((await cs('status', '--json')).out) as { state: string; version?: string; port?: number };
 
   try {
     step(`Install ${A} and create data`);
@@ -164,7 +184,10 @@ async function main(): Promise<void> {
     const db2 = openDb(appPaths(home).db);
     check(JSON.stringify(getSettings(db2)['search.preferredRoles']) === '["Rehearsal Engineer"]', 'data is intact');
     db2.close();
-    check((await cs('update', '--check')).out.includes('newest version'), 'update --check now says this is the newest version');
+    check(
+      (await cs('update', '--check')).out.includes('newest version'),
+      'update --check now says this is the newest version',
+    );
 
     step(`Undo ${B} → ${A}`);
     const undone = await cs('update', '--undo', '--yes');
@@ -174,7 +197,10 @@ async function main(): Promise<void> {
     const back = await status();
     check(back.state === 'running' && back.version === A && back.port === port, `service runs ${A} on port ${port}`);
     const db3 = openDb(appPaths(home).db);
-    check(JSON.stringify(getSettings(db3)['search.preferredRoles']) === '["Rehearsal Engineer"]', 'data is still intact');
+    check(
+      JSON.stringify(getSettings(db3)['search.preferredRoles']) === '["Rehearsal Engineer"]',
+      'data is still intact',
+    );
     db3.close();
     console.log('\nUpdate rehearsal passed.');
   } finally {

@@ -26,7 +26,9 @@ export function localRequest(port: number, path: string, opts: LocalRequestOptio
         timeout: opts.timeoutMs ?? 5000,
         headers: {
           host: `127.0.0.1:${port}`,
-          ...(data === undefined ? {} : { 'content-type': 'application/json', 'content-length': String(Buffer.byteLength(data)) }),
+          ...(data === undefined
+            ? {}
+            : { 'content-type': 'application/json', 'content-length': String(Buffer.byteLength(data)) }),
           ...opts.headers,
         },
       },

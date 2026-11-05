@@ -62,7 +62,11 @@ export function parseCsv(text: string, limits: CsvLimits = DEFAULT_LIMITS): stri
  * first of the leading rows that names every required column (matched case-insensitively).
  * Returns null when no such header exists.
  */
-export function csvRecords(text: string, required: readonly string[], limits?: CsvLimits): Record<string, string>[] | null {
+export function csvRecords(
+  text: string,
+  required: readonly string[],
+  limits?: CsvLimits,
+): Record<string, string>[] | null {
   const rows = parseCsv(text, limits);
   const want = required.map((r) => r.toLowerCase());
   const at = rows.slice(0, 10).findIndex((r) => {

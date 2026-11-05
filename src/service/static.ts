@@ -35,7 +35,11 @@ export function loadStaticAssets(dir: string): Map<string, StaticAsset> | null {
         const type = CONTENT_TYPES[path.extname(entry.name)];
         if (!type) continue;
         const urlPath = `/${path.relative(dir, full).split(path.sep).join('/')}`;
-        assets.set(urlPath, { body: fs.readFileSync(full), contentType: type, immutable: urlPath.startsWith('/assets/') });
+        assets.set(urlPath, {
+          body: fs.readFileSync(full),
+          contentType: type,
+          immutable: urlPath.startsWith('/assets/'),
+        });
       }
     }
   };

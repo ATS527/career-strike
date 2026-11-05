@@ -23,7 +23,10 @@ export const FactValues = {
       summary: z.string().trim().max(2000).nullable().default(null),
     })
     .strict()
-    .refine((r) => r.endYear === null || r.endYear >= r.startYear, { message: 'End year is before start year', path: ['endYear'] })
+    .refine((r) => r.endYear === null || r.endYear >= r.startYear, {
+      message: 'End year is before start year',
+      path: ['endYear'],
+    })
     .refine((r) => r.startYear <= thisYear(), { message: 'Start year is in the future', path: ['startYear'] }),
   education: z
     .object({
@@ -90,7 +93,8 @@ const toFact = (r: Row): ProfileFact => ({
 
 /** Store a known skill under its canonical name so "k8s" and "Kubernetes" match postings alike. */
 function normaliseValue(kind: FactKind, value: Record<string, unknown>): Record<string, unknown> {
-  if (kind === 'skill' && typeof value.name === 'string') return { ...value, name: canonicalSkill(value.name) ?? value.name };
+  if (kind === 'skill' && typeof value.name === 'string')
+    return { ...value, name: canonicalSkill(value.name) ?? value.name };
   return value;
 }
 
@@ -111,7 +115,12 @@ export function addFact(db: Db, input: z.infer<typeof NewFact>, actor: string): 
       "INSERT INTO profile_facts (id, kind, value_json, source, approved, created_at, updated_at) VALUES (?, ?, ?, 'user', 1, ?, ?)",
     ).run(id, input.kind, JSON.stringify(value), at, at);
     // Audit the kind only: values are sensitive.
-    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.fact.added', `${input.kind}:${id}`);
+    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
+      at,
+      actor,
+      'profile.fact.added',
+      `${input.kind}:${id}`,
+    );
   })();
   return toFact(db.prepare('SELECT * FROM profile_facts WHERE id = ?').get(id) as Row);
 }
@@ -123,12 +132,15 @@ export function updateFact(db: Db, id: string, value: unknown, actor: string): P
   if (!parsed.success) return parsed.error;
   const at = new Date().toISOString();
   db.transaction(() => {
-    db.prepare("UPDATE profile_facts SET value_json = ?, source = 'user', approved = 1, updated_at = ? WHERE id = ?").run(
-      JSON.stringify(normaliseValue(row.kind, parsed.data as Record<string, unknown>)),
+    db.prepare(
+      "UPDATE profile_facts SET value_json = ?, source = 'user', approved = 1, updated_at = ? WHERE id = ?",
+    ).run(JSON.stringify(normaliseValue(row.kind, parsed.data as Record<string, unknown>)), at, id);
+    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
       at,
-      id,
+      actor,
+      'profile.fact.updated',
+      `${row.kind}:${id}`,
     );
-    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.fact.updated', `${row.kind}:${id}`);
   })();
   return toFact(db.prepare('SELECT * FROM profile_facts WHERE id = ?').get(id) as Row);
 }
@@ -138,7 +150,13 @@ export function deleteFact(db: Db, id: string, actor: string): boolean {
   let deleted = false;
   db.transaction(() => {
     deleted = db.prepare('DELETE FROM profile_facts WHERE id = ?').run(id).changes > 0;
-    if (deleted) db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.fact.deleted', id);
+    if (deleted)
+      db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
+        at,
+        actor,
+        'profile.fact.deleted',
+        id,
+      );
   })();
   return deleted;
 }
@@ -165,7 +183,12 @@ export function suggestSkills(db: Db, text: string, actor: string): ProfileFact[
       ).run(id, JSON.stringify({ name, years: null, level: null }), at, at);
       ids.push(id);
     }
-    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.skills.suggested', `${ids.length} suggested`);
+    db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
+      at,
+      actor,
+      'profile.skills.suggested',
+      `${ids.length} suggested`,
+    );
   })();
   return ids.map((id) => toFact(db.prepare('SELECT * FROM profile_facts WHERE id = ?').get(id) as Row));
 }
@@ -175,8 +198,16 @@ export function approveFact(db: Db, id: string, actor: string): ProfileFact | nu
   const at = new Date().toISOString();
   let changed = false;
   db.transaction(() => {
-    changed = db.prepare('UPDATE profile_facts SET approved = 1, updated_at = ? WHERE id = ? AND approved = 0').run(at, id).changes > 0;
-    if (changed) db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.fact.approved', id);
+    changed =
+      db.prepare('UPDATE profile_facts SET approved = 1, updated_at = ? WHERE id = ? AND approved = 0').run(at, id)
+        .changes > 0;
+    if (changed)
+      db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
+        at,
+        actor,
+        'profile.fact.approved',
+        id,
+      );
   })();
   const row = db.prepare('SELECT * FROM profile_facts WHERE id = ?').get(id) as Row | undefined;
   return row ? toFact(row) : null;
@@ -192,7 +223,12 @@ export function approveAllFacts(db: Db, actor: string, kind?: FactKind): number 
     const params = kind ? [at, kind] : [at];
     count = db.prepare(query).run(...params).changes;
     if (count > 0) {
-      db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(at, actor, 'profile.facts.approved_all', `${count} approved`);
+      db.prepare('INSERT INTO audit_events (at, actor, action, subject) VALUES (?, ?, ?, ?)').run(
+        at,
+        actor,
+        'profile.facts.approved_all',
+        `${count} approved`,
+      );
     }
   })();
   return count;
@@ -209,7 +245,12 @@ export function approvedProfile(db: Db, now = new Date()): CandidateProfile {
   const facts = listFacts(db, { approvedOnly: true });
   const skills = facts
     .filter((f) => f.kind === 'skill')
-    .map((f) => ({ name: String(f.value.name), years: (f.value.years as number | null) ?? null, level: (f.value.level as string | null) ?? null, factId: f.id }));
+    .map((f) => ({
+      name: String(f.value.name),
+      years: (f.value.years as number | null) ?? null,
+      level: (f.value.level as string | null) ?? null,
+      factId: f.id,
+    }));
   const roles = facts
     .filter((f) => f.kind === 'role')
     .map((f) => ({

@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { RouterProvider } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, ApiError, onConnectionProblem, setCsrfToken } from './api';
+import { ApiError, api, onConnectionProblem, setCsrfToken } from './api';
 import { type Connection, ConnectionContext, type ConnectionState, RETRY_MS } from './connection';
 import { router } from './routes';
 

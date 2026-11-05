@@ -30,21 +30,33 @@ export async function runDoctorChecks(paths: AppPaths, runningPort?: number): Pr
     checks.push(
       version === null
         ? { name: 'database', ok: false, detail: 'not initialised; run `career-strike init`' }
-        : { name: 'database', ok: version === latestKnownVersion(), detail: `schema v${version} (build supports v${latestKnownVersion()})` },
+        : {
+            name: 'database',
+            ok: version === latestKnownVersion(),
+            detail: `schema v${version} (build supports v${latestKnownVersion()})`,
+          },
     );
   } catch (err) {
     checks.push({ name: 'database', ok: false, detail: err instanceof Error ? err.message : String(err) });
   }
 
   const dashboard = fs.existsSync(path.join(WEB_DIR, 'index.html'));
-  checks.push({ name: 'dashboard-files', ok: dashboard, detail: dashboard ? 'present' : `missing from ${WEB_DIR}; reinstall Career Strike` });
+  checks.push({
+    name: 'dashboard-files',
+    ok: dashboard,
+    detail: dashboard ? 'present' : `missing from ${WEB_DIR}; reinstall Career Strike`,
+  });
 
   if (runningPort !== undefined) {
     checks.push({ name: 'service', ok: true, detail: `running on port ${runningPort}` });
   } else {
     const info = readRuntime(paths.runtimeFile);
     const running = info !== null && (await probeHealth(info));
-    checks.push({ name: 'service', ok: true, detail: running && info ? `running on port ${info.port}` : 'not running' });
+    checks.push({
+      name: 'service',
+      ok: true,
+      detail: running && info ? `running on port ${info.port}` : 'not running',
+    });
   }
 
   return checks;

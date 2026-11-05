@@ -21,10 +21,38 @@ export interface SourceCapabilityRecord {
 }
 
 const RECORDS: Readonly<Record<SourceId, SourceCapabilityRecord>> = {
-  greenhouse: { source: 'greenhouse', capability: 'AUTHORIZED_EMPLOYER_DIRECT', label: 'Verified employer-direct feed', automatedRetrieval: true, applicationRetrieval: true, note: 'Public board API; a user-selected board is verified by a successful fetch.' },
-  lever: { source: 'lever', capability: 'AUTHORIZED_EMPLOYER_DIRECT', label: 'Verified employer-direct feed', automatedRetrieval: true, applicationRetrieval: false, note: 'Public employer posting feed; application questions are completed on the employer site.' },
-  ashby: { source: 'ashby', capability: 'AUTHORIZED_EMPLOYER_DIRECT', label: 'Verified employer-direct feed', automatedRetrieval: true, applicationRetrieval: false, note: 'Public listed-posting feed; unlisted postings are excluded.' },
-  practice: { source: 'practice', capability: 'UNAVAILABLE', label: 'Local practice only', automatedRetrieval: true, applicationRetrieval: true, note: 'Owned loopback test endpoint, never a real employer source.' },
+  greenhouse: {
+    source: 'greenhouse',
+    capability: 'AUTHORIZED_EMPLOYER_DIRECT',
+    label: 'Verified employer-direct feed',
+    automatedRetrieval: true,
+    applicationRetrieval: true,
+    note: 'Public board API; a user-selected board is verified by a successful fetch.',
+  },
+  lever: {
+    source: 'lever',
+    capability: 'AUTHORIZED_EMPLOYER_DIRECT',
+    label: 'Verified employer-direct feed',
+    automatedRetrieval: true,
+    applicationRetrieval: false,
+    note: 'Public employer posting feed; application questions are completed on the employer site.',
+  },
+  ashby: {
+    source: 'ashby',
+    capability: 'AUTHORIZED_EMPLOYER_DIRECT',
+    label: 'Verified employer-direct feed',
+    automatedRetrieval: true,
+    applicationRetrieval: false,
+    note: 'Public listed-posting feed; unlisted postings are excluded.',
+  },
+  practice: {
+    source: 'practice',
+    capability: 'UNAVAILABLE',
+    label: 'Local practice only',
+    automatedRetrieval: true,
+    applicationRetrieval: true,
+    note: 'Owned loopback test endpoint, never a real employer source.',
+  },
 };
 
 export function capabilityFor(source: SourceId): SourceCapabilityRecord {

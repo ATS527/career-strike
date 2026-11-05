@@ -40,7 +40,15 @@ export const PersonalizationBinding = z
     profileFingerprint: z.string().regex(/^[0-9a-f]{64}$/),
     snapshotId: z.string(),
     variants: z
-      .array(z.object({ id: z.string(), kind: z.enum(['resume', 'cover_letter']), contentHash: z.string().regex(/^[0-9a-f]{64}$/) }).strict())
+      .array(
+        z
+          .object({
+            id: z.string(),
+            kind: z.enum(['resume', 'cover_letter']),
+            contentHash: z.string().regex(/^[0-9a-f]{64}$/),
+          })
+          .strict(),
+      )
       .min(1)
       .max(2),
   })
@@ -52,7 +60,12 @@ export const ApplicationPayload = z
     job: z.object({ id: z.string(), canonicalKey: z.string(), employer: z.string(), title: z.string() }).strict(),
     destination: Destination,
     identity: z
-      .object({ fullName: z.string().nullable(), email: z.string().nullable(), phone: z.string().nullable(), links: z.array(z.string()) })
+      .object({
+        fullName: z.string().nullable(),
+        email: z.string().nullable(),
+        phone: z.string().nullable(),
+        links: z.array(z.string()),
+      })
       .strict(),
     fields: z.array(Field).max(100),
     coverLetter: z.string().max(20_000).nullable(),
@@ -94,10 +107,15 @@ export function disclosures(payload: ApplicationPayload): string[] {
   if (payload.identity.email) out.push('Your email address');
   if (payload.identity.phone) out.push('Your phone number');
   if (payload.identity.links.length) out.push(`Profile links (${payload.identity.links.length})`);
-  for (const a of payload.attachments) out.push(`${a.kind === 'resume' ? 'Résumé' : a.kind === 'cover_letter' ? 'Cover letter file' : 'File'}: ${a.filename}`);
+  for (const a of payload.attachments)
+    out.push(
+      `${a.kind === 'resume' ? 'Résumé' : a.kind === 'cover_letter' ? 'Cover letter file' : 'File'}: ${a.filename}`,
+    );
   if (payload.coverLetter) out.push('Cover letter text');
   // The cover letter is listed once above, even though it is also a form field.
-  const answered = payload.fields.filter((f) => (f.source === 'draft' || f.source === 'candidate') && f.value && f.key !== 'cover_letter_text');
+  const answered = payload.fields.filter(
+    (f) => (f.source === 'draft' || f.source === 'candidate') && f.value && f.key !== 'cover_letter_text',
+  );
   if (answered.length) out.push(`Answers to ${answered.length} question${answered.length === 1 ? '' : 's'}`);
   return out;
 }

@@ -22,17 +22,24 @@ export class SubmissionEngine {
   ) {}
 
   practiceOrigin(): string | null {
-    return (this.db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null;
+    return (
+      (this.db.prepare('SELECT origin FROM practice_endpoint WHERE id = 1').pluck().get() as string | undefined) ?? null
+    );
   }
 
   /** Only a loopback http origin can be registered: the endpoint must be one the candidate runs. */
   setPracticeOrigin(origin: string): string {
     const url = new URL(origin);
     if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || !url.port || url.pathname !== '/' || url.search) {
-      throw new ApplicationError('INVALID_CHANGE', 'The practice endpoint must be an http://127.0.0.1:<port> address on this computer.');
+      throw new ApplicationError(
+        'INVALID_CHANGE',
+        'The practice endpoint must be an http://127.0.0.1:<port> address on this computer.',
+      );
     }
     this.db
-      .prepare('INSERT INTO practice_endpoint (id, origin, created_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET origin = excluded.origin')
+      .prepare(
+        'INSERT INTO practice_endpoint (id, origin, created_at) VALUES (1, ?, ?) ON CONFLICT(id) DO UPDATE SET origin = excluded.origin',
+      )
       .run(url.origin, new Date().toISOString());
     return url.origin;
   }
@@ -50,11 +57,15 @@ export class SubmissionEngine {
   /** A clearly labelled practice job whose application goes to the practice endpoint. */
   createPracticeJob(): string {
     const origin = this.practiceOrigin();
-    if (!origin) throw new ApplicationError('INVALID_CHANGE', 'Start the practice endpoint first (career-strike practice).');
+    if (!origin)
+      throw new ApplicationError('INVALID_CHANGE', 'Start the practice endpoint first (career-strike practice).');
     const id = `job_${randomBytes(9).toString('base64url')}`;
     const at = new Date().toISOString();
     const description = [
-      { type: 'paragraph', text: 'This is a practice job. Applications go to a test endpoint running on this computer; nobody receives them.' },
+      {
+        type: 'paragraph',
+        text: 'This is a practice job. Applications go to a test endpoint running on this computer; nobody receives them.',
+      },
       { type: 'heading', text: 'Requirements' },
       { type: 'item', text: 'Willingness to try Career Strike’s submission flow' },
     ];
@@ -66,9 +77,21 @@ export class SubmissionEngine {
            VALUES (?, ?, ?, 'Career Strike practice endpoint (not an employer)', 'Practice application', 'This computer', 'remote', 'unknown', ?, ?, ?, NULL,
             'UNVERIFIED', ?, ?, ?, NULL, 0)`,
         )
-        .run(id, `practice:${id}`, `practice:${id}`, JSON.stringify(description), description.map((d) => d.text).join('\n'), `${origin}/applications`, at, at, JSON.stringify(['Practice job: not a real employer.']));
+        .run(
+          id,
+          `practice:${id}`,
+          `practice:${id}`,
+          JSON.stringify(description),
+          description.map((d) => d.text).join('\n'),
+          `${origin}/applications`,
+          at,
+          at,
+          JSON.stringify(['Practice job: not a real employer.']),
+        );
       this.db
-        .prepare("INSERT INTO job_sources (job_id, source, board, source_job_id, source_url, fetched_at, content_hash) VALUES (?, 'manual', 'practice', ?, NULL, ?, ?)")
+        .prepare(
+          "INSERT INTO job_sources (job_id, source, board, source_job_id, source_url, fetched_at, content_hash) VALUES (?, 'manual', 'practice', ?, NULL, ?, ?)",
+        )
         .run(id, id, at, id);
     })();
     return id;
@@ -80,8 +103,17 @@ export class SubmissionEngine {
     const view = await this.applications.get(applicationId);
     if (!view) throw new ApplicationError('NOT_FOUND', 'Application not found.');
     const endpoint = view.payload.destination.url;
-    if (view.payload.destination.method !== 'test-ats' || !origin || !endpoint || new URL(endpoint).origin !== origin || new URL(endpoint).pathname !== '/applications') {
-      throw new ApplicationError('NOT_AUTOMATABLE', 'Only practice applications can be submitted automatically. Submit real applications on the employer’s site.');
+    if (
+      view.payload.destination.method !== 'test-ats' ||
+      !origin ||
+      !endpoint ||
+      new URL(endpoint).origin !== origin ||
+      new URL(endpoint).pathname !== '/applications'
+    ) {
+      throw new ApplicationError(
+        'NOT_AUTOMATABLE',
+        'Only practice applications can be submitted automatically. Submit real applications on the employer’s site.',
+      );
     }
     // Read and verify every file before anything is committed: a changed file must never be sent.
     const attachments = view.payload.attachments.map((a) => {
@@ -92,7 +124,10 @@ export class SubmissionEngine {
         bytes = null;
       }
       if (!bytes || createHash('sha256').update(bytes).digest('hex') !== a.sha256) {
-        throw new ApplicationError('INVALID_CHANGE', `The file ${a.filename} is missing or changed after you approved it, so nothing was sent.`);
+        throw new ApplicationError(
+          'INVALID_CHANGE',
+          `The file ${a.filename} is missing or changed after you approved it, so nothing was sent.`,
+        );
       }
       return { filename: a.filename, sha256: a.sha256, contentBase64: bytes.toString('base64') };
     });
@@ -106,12 +141,23 @@ export class SubmissionEngine {
       attachments,
     };
     return this.tasks.start(
-      { kind: `submit:${applicationId}`, dedupeKey: `submit:${applicationId}`, trigger: 'approved-submission', client: actor, params: { applicationId } },
+      {
+        kind: `submit:${applicationId}`,
+        dedupeKey: `submit:${applicationId}`,
+        trigger: 'approved-submission',
+        client: actor,
+        params: { applicationId },
+      },
       async (ctx) => {
         ctx.progress({ step: 'sending' });
         // A send that is interrupted may already have arrived: it is recorded as unconfirmed.
         const outcome = await this.deliver(endpoint, begun.idempotencyKey, body, ctx.signal);
-        this.applications.finishAttempt(begun.attemptId, ctx.signal.aborted ? { state: 'UNCONFIRMED', error: 'sending was cancelled; it may or may not have arrived' } : outcome);
+        this.applications.finishAttempt(
+          begun.attemptId,
+          ctx.signal.aborted
+            ? { state: 'UNCONFIRMED', error: 'sending was cancelled; it may or may not have arrived' }
+            : outcome,
+        );
         return { outcome: ctx.signal.aborted ? 'UNCONFIRMED' : outcome.state };
       },
     );
@@ -125,11 +171,16 @@ export class SubmissionEngine {
         headers: { 'content-type': 'application/json', 'idempotency-key': idempotencyKey },
         body: JSON.stringify(body),
         redirect: 'manual',
-        signal: cancel ? AbortSignal.any([cancel, AbortSignal.timeout(DELIVERY_TIMEOUT_MS)]) : AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+        signal: cancel
+          ? AbortSignal.any([cancel, AbortSignal.timeout(DELIVERY_TIMEOUT_MS)])
+          : AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
       });
     } catch (err) {
       // No response: the endpoint may or may not have received it.
-      return { state: 'UNCONFIRMED' as const, error: `no response (${err instanceof Error ? err.message : String(err)})` };
+      return {
+        state: 'UNCONFIRMED' as const,
+        error: `no response (${err instanceof Error ? err.message : String(err)})`,
+      };
     }
     if (res.status >= 400 && res.status < 500) {
       const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
@@ -145,14 +196,23 @@ export class SubmissionEngine {
 
   private async lookup(url: string, idempotencyKey: string) {
     try {
-      const res = await this.fetchImpl(url, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS) });
+      const res = await this.fetchImpl(url, {
+        method: 'GET',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(DELIVERY_TIMEOUT_MS),
+      });
       if (res.status === 404) return { state: 'FAILED' as const, error: 'the endpoint has no record of it' };
-      if (!res.ok) return { state: 'UNCONFIRMED' as const, error: `the receipt could not be checked (HTTP ${res.status})` };
+      if (!res.ok)
+        return { state: 'UNCONFIRMED' as const, error: `the receipt could not be checked (HTTP ${res.status})` };
       const data = (await res.json()) as { receipt?: { idempotencyKey?: string } };
-      if (data.receipt?.idempotencyKey !== idempotencyKey) return { state: 'UNCONFIRMED' as const, error: 'the receipt does not match this submission' };
+      if (data.receipt?.idempotencyKey !== idempotencyKey)
+        return { state: 'UNCONFIRMED' as const, error: 'the receipt does not match this submission' };
       return { state: 'CONFIRMED' as const, receipt: data.receipt };
     } catch (err) {
-      return { state: 'UNCONFIRMED' as const, error: `the receipt could not be checked (${err instanceof Error ? err.message : String(err)})` };
+      return {
+        state: 'UNCONFIRMED' as const,
+        error: `the receipt could not be checked (${err instanceof Error ? err.message : String(err)})`,
+      };
     }
   }
 
@@ -163,12 +223,26 @@ export class SubmissionEngine {
   async reconcile(applicationId: string, actor: string): Promise<'CONFIRMED' | 'FAILED' | 'UNCONFIRMED'> {
     const view = await this.applications.get(applicationId);
     if (!view) throw new ApplicationError('NOT_FOUND', 'Application not found.');
-    if (view.state !== 'SUBMISSION_UNCONFIRMED') throw new ApplicationError('INVALID_CHANGE', 'Only an unconfirmed submission can be reconciled.');
+    if (view.state !== 'SUBMISSION_UNCONFIRMED')
+      throw new ApplicationError('INVALID_CHANGE', 'Only an unconfirmed submission can be reconciled.');
     const attempt = this.applications.latestAttempt(applicationId);
-    if (!attempt || attempt.state !== 'UNCONFIRMED') throw new ApplicationError('INVALID_CHANGE', 'There is no automated attempt to reconcile; confirm it yourself instead.');
-    const outcome = await this.lookup(`${new URL(attempt.endpoint).origin}/applications/by-key/${encodeURIComponent(attempt.approvalId)}`, attempt.approvalId);
+    if (!attempt || attempt.state !== 'UNCONFIRMED')
+      throw new ApplicationError(
+        'INVALID_CHANGE',
+        'There is no automated attempt to reconcile; confirm it yourself instead.',
+      );
+    const outcome = await this.lookup(
+      `${new URL(attempt.endpoint).origin}/applications/by-key/${encodeURIComponent(attempt.approvalId)}`,
+      attempt.approvalId,
+    );
     if (outcome.state === 'UNCONFIRMED') return 'UNCONFIRMED';
-    this.applications.finishAttempt(attempt.id, outcome.state === 'CONFIRMED' ? { state: 'CONFIRMED', receipt: outcome.receipt } : { state: 'FAILED', error: 'the endpoint never received it' }, actor);
+    this.applications.finishAttempt(
+      attempt.id,
+      outcome.state === 'CONFIRMED'
+        ? { state: 'CONFIRMED', receipt: outcome.receipt }
+        : { state: 'FAILED', error: 'the endpoint never received it' },
+      actor,
+    );
     return outcome.state;
   }
 }

@@ -16,12 +16,12 @@ careers site and its public ATS board. They are eligible for live certification,
 live integrations until `verify-market` has successfully retrieved an explicitly Singaporean
 posting.
 
-| Employer | Official careers site | Public board | Target id |
-| --- | --- | --- | --- |
-| Stripe | [Jobs](https://stripe.com/jobs) | [Greenhouse](https://boards.greenhouse.io/stripe) | `stripe-singapore` |
+| Employer   | Official careers site                                 | Public board                                              | Target id              |
+| ---------- | ----------------------------------------------------- | --------------------------------------------------------- | ---------------------- |
+| Stripe     | [Jobs](https://stripe.com/jobs)                       | [Greenhouse](https://boards.greenhouse.io/stripe)         | `stripe-singapore`     |
 | Databricks | [Careers](https://www.databricks.com/company/careers) | [Greenhouse](https://job-boards.greenhouse.io/databricks) | `databricks-singapore` |
-| Coinbase | [Careers](https://www.coinbase.com/careers) | [Greenhouse](https://job-boards.greenhouse.io/coinbase) | `coinbase-singapore` |
-| Twilio | [Jobs](https://www.twilio.com/en-us/company/jobs) | [Greenhouse](https://job-boards.greenhouse.io/twilio) | `twilio-singapore` |
+| Coinbase   | [Careers](https://www.coinbase.com/careers)           | [Greenhouse](https://job-boards.greenhouse.io/coinbase)   | `coinbase-singapore`   |
+| Twilio     | [Jobs](https://www.twilio.com/en-us/company/jobs)     | [Greenhouse](https://job-boards.greenhouse.io/twilio)     | `twilio-singapore`     |
 
 On the review date the public board APIs returned complete listings with Singapore-located
 postings for all four employers (Stripe 47, Databricks 30, Coinbase 7, Twilio 5). Stripe,
@@ -39,12 +39,12 @@ configured and saves nothing.
 
 ## Marketplace policy
 
-| Source | Current capability | Career Strike behaviour |
-| --- | --- | --- |
-| [MyCareersFuture](https://www.mycareersfuture.gov.sg/) | `USER_DRIVEN_DISCOVERY` | Open the official portal; no automated job retrieval is claimed. |
-| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions) | `RESTRICTED` | No scraping or automated extraction; use the official site or a user-supplied listing. |
-| [Indeed](https://docs.indeed.com/legal-terms/developer-agreement) | `UNVERIFIED` | No integration until approved partner access and permitted display/reuse are confirmed. |
-| JobStreet Singapore, Glints | `UNVERIFIED` | No automated retrieval; open the official site or add a verified official listing manually. |
+| Source                                                                | Current capability      | Career Strike behaviour                                                                     |
+| --------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------- |
+| [MyCareersFuture](https://www.mycareersfuture.gov.sg/)                | `USER_DRIVEN_DISCOVERY` | Open the official portal; no automated job retrieval is claimed.                            |
+| [LinkedIn Jobs](https://www.linkedin.com/legal/jobs-terms-conditions) | `RESTRICTED`            | No scraping or automated extraction; use the official site or a user-supplied listing.      |
+| [Indeed](https://docs.indeed.com/legal-terms/developer-agreement)     | `UNVERIFIED`            | No integration until approved partner access and permitted display/reuse are confirmed.     |
+| JobStreet Singapore, Glints                                           | `UNVERIFIED`            | No automated retrieval; open the official site or add a verified official listing manually. |
 
 The `UNVERIFIED` label means Career Strike has no recorded approved access; it does not imply a
 source is prohibited. A source can move only after its official access model, terms, fields,

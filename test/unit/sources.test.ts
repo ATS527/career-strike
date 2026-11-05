@@ -18,7 +18,8 @@ describe('posting HTML sanitisation', () => {
       { type: 'item', text: 'Mentor & review' },
     ]);
     const all = JSON.stringify(blocks);
-    for (const bad of ['script', 'onerror', 'javascript:', 'iframe', 'display:none', '__pwned', '<']) expect(all).not.toContain(bad);
+    for (const bad of ['script', 'onerror', 'javascript:', 'iframe', 'display:none', '__pwned', '<'])
+      expect(all).not.toContain(bad);
   });
 
   it('turns headings and list items into typed blocks and caps runaway input', () => {
@@ -55,14 +56,21 @@ describe('fetch guard (SSRF)', () => {
   });
 
   it('never follows redirects, even to another allowed host', async () => {
-    const fetchImpl = fakeFetch({ 'api.lever.co': () => new Response(null, { status: 302, headers: { location: 'http://169.254.169.254/' } }) });
-    await expect(guardedGetJson('https://api.lever.co/v0/postings/x', { fetchImpl, ...noWait })).rejects.toThrow('Refusing to follow a redirect');
+    const fetchImpl = fakeFetch({
+      'api.lever.co': () => new Response(null, { status: 302, headers: { location: 'http://169.254.169.254/' } }),
+    });
+    await expect(guardedGetJson('https://api.lever.co/v0/postings/x', { fetchImpl, ...noWait })).rejects.toThrow(
+      'Refusing to follow a redirect',
+    );
   });
 
   it('classifies 404, 429, 5xx, non-JSON and oversized responses', async () => {
     const kind = async (res: () => Response): Promise<string> => {
       try {
-        await guardedGetJson('https://api.lever.co/v0/postings/x', { fetchImpl: fakeFetch({ 'api.lever.co': res }), ...noWait });
+        await guardedGetJson('https://api.lever.co/v0/postings/x', {
+          fetchImpl: fakeFetch({ 'api.lever.co': res }),
+          ...noWait,
+        });
         return 'ok';
       } catch (err) {
         return (err as SourceError).kind;
@@ -72,14 +80,18 @@ describe('fetch guard (SSRF)', () => {
     expect(await kind(() => new Response('', { status: 429 }))).toBe('rate_limited');
     expect(await kind(() => new Response('', { status: 503 }))).toBe('outage');
     expect(await kind(() => new Response('<html>', { status: 200 }))).toBe('schema');
-    expect(await kind(() => new Response('[]', { status: 200, headers: { 'content-length': String(50 * 1024 * 1024) } }))).toBe('schema');
+    expect(
+      await kind(() => new Response('[]', { status: 200, headers: { 'content-length': String(50 * 1024 * 1024) } })),
+    ).toBe('schema');
   });
 
   it('reports network failures as outages', async () => {
     const fetchImpl = async (): Promise<Response> => {
       throw new TypeError('fetch failed');
     };
-    await expect(guardedGetJson('https://api.lever.co/v0/postings/x', { fetchImpl, ...noWait })).rejects.toMatchObject({ kind: 'outage' });
+    await expect(guardedGetJson('https://api.lever.co/v0/postings/x', { fetchImpl, ...noWait })).rejects.toMatchObject({
+      kind: 'outage',
+    });
   });
 });
 
@@ -97,7 +109,13 @@ describe('normalisation', () => {
   });
 
   it('stores salary only when currency, interval and an amount are all published', () => {
-    expect(publishedSalary('usd', 100, 200, '1 YEAR')).toEqual({ currency: 'USD', min: 100, max: 200, interval: 'year', source: 'structured' });
+    expect(publishedSalary('usd', 100, 200, '1 YEAR')).toEqual({
+      currency: 'USD',
+      min: 100,
+      max: 200,
+      interval: 'year',
+      source: 'structured',
+    });
     expect(publishedSalary('USD', null, null, '1 YEAR')).toBeNull();
     expect(publishedSalary(null, 100, 200, '1 YEAR')).toBeNull();
     expect(publishedSalary('USD', 100, 200, 'whenever')).toBeNull();
@@ -107,11 +125,21 @@ describe('normalisation', () => {
 describe('adapters', () => {
   it('Greenhouse: decodes escaped HTML, reads workplace metadata, never invents salary or employment type', async () => {
     const fetchImpl = fakeFetch({
-      'boards-api.greenhouse.io': greenhouseJobs([{ id: 7, title: 'Synthetic SRE', workplace: 'Remote', content: XSS_HTML }, { id: 8 }]),
+      'boards-api.greenhouse.io': greenhouseJobs([
+        { id: 7, title: 'Synthetic SRE', workplace: 'Remote', content: XSS_HTML },
+        { id: 8 },
+      ]),
     });
     const [first, second] = await createAdapters(fetchImpl).greenhouse.list('synthetic');
     expect(fetchImpl.calls[0]).toBe('https://boards-api.greenhouse.io/v1/boards/synthetic/jobs?content=true');
-    expect(first).toMatchObject({ sourceJobId: '7', employer: 'Synthetic Labs', title: 'Synthetic SRE', remotePolicy: 'remote', employmentType: 'unknown', salary: null });
+    expect(first).toMatchObject({
+      sourceJobId: '7',
+      employer: 'Synthetic Labs',
+      title: 'Synthetic SRE',
+      remotePolicy: 'remote',
+      employmentType: 'unknown',
+      salary: null,
+    });
     expect(JSON.stringify(first!.description)).not.toMatch(/script|onerror|javascript:|&lt;/);
     expect(first!.unresolved).toContain('Salary is not published in structured form.');
     expect(second!.remotePolicy).toBe('unknown');
@@ -119,10 +147,17 @@ describe('adapters', () => {
 
   it('Lever: maps workplace type and structured salary, drops non-http links', async () => {
     const fetchImpl = fakeFetch({
-      'api.lever.co': leverPostings([{ id: 'a', workplaceType: 'remote', salary: true }, { id: 'b', applyUrl: 'javascript:alert(1)' }]),
+      'api.lever.co': leverPostings([
+        { id: 'a', workplaceType: 'remote', salary: true },
+        { id: 'b', applyUrl: 'javascript:alert(1)' },
+      ]),
     });
     const [a, b] = await createAdapters(fetchImpl).lever.list('synthetic');
-    expect(a).toMatchObject({ remotePolicy: 'remote', employmentType: 'unknown', salary: { currency: 'EUR', min: 60000, max: 80000, interval: 'year' } });
+    expect(a).toMatchObject({
+      remotePolicy: 'remote',
+      employmentType: 'unknown',
+      salary: { currency: 'EUR', min: 60000, max: 80000, interval: 'year' },
+    });
     expect(a!.description.some((blk) => blk.type === 'heading' && blk.text === 'What you will do')).toBe(true);
     expect(b!.applyUrl).toBe('https://jobs.lever.co/synthetic/b');
   });
@@ -137,7 +172,11 @@ describe('adapters', () => {
     });
     const jobs = await createAdapters(fetchImpl).ashby.list('synthetic');
     expect(jobs.map((j) => j.sourceJobId)).toEqual(['x', 'y']);
-    expect(jobs[0]).toMatchObject({ employmentType: 'full_time', remotePolicy: 'hybrid', salary: { currency: 'USD', min: 150000, max: 200000, interval: 'year' } });
+    expect(jobs[0]).toMatchObject({
+      employmentType: 'full_time',
+      remotePolicy: 'hybrid',
+      salary: { currency: 'USD', min: 150000, max: 200000, interval: 'year' },
+    });
     expect(jobs[1]).toMatchObject({ employmentType: 'contract', remotePolicy: 'remote', salary: null });
   });
 
@@ -160,8 +199,11 @@ describe('board URLs', () => {
     expect(boardFromUrl(url)).toEqual(expected);
   });
 
-  it.each(['https://careers.example.com/jobs', 'not a url', 'javascript:alert(1)', 'https://jobs.lever.co/'])('rejects %s', async (url) => {
-    const { boardFromUrl } = await import('../../src/sources/board-url.js');
-    expect(boardFromUrl(url)).toBeNull();
-  });
+  it.each(['https://careers.example.com/jobs', 'not a url', 'javascript:alert(1)', 'https://jobs.lever.co/'])(
+    'rejects %s',
+    async (url) => {
+      const { boardFromUrl } = await import('../../src/sources/board-url.js');
+      expect(boardFromUrl(url)).toBeNull();
+    },
+  );
 });
