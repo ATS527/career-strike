@@ -2,7 +2,7 @@
  * Supported-market metadata. A configured market is not a promise that Career Strike can
  * automatically retrieve jobs there; source capability and successful verification decide that.
  */
-export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA'] as const;
+export const COUNTRY_CODES = ['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA', 'HR'] as const;
 export type CountryCode = (typeof COUNTRY_CODES)[number];
 
 export type MarketStatus = 'CONFIGURED' | 'LIMITED_SUPPORT' | 'DISCOVERY_AVAILABLE' | 'PRODUCTION_SUPPORTED' | 'BLOCKED';
@@ -59,6 +59,11 @@ export const COUNTRY_REGISTRY: Readonly<Record<CountryCode, CountryConfig>> = {
     code: 'CA', name: 'Canada', currencies: ['CAD'], locales: ['en', 'fr'],
     defaultCities: ['Toronto', 'Vancouver', 'Montreal', 'Ottawa', 'Calgary'],
     cityAliases: { Montréal: 'Montreal' }, status: 'CONFIGURED',
+  },
+  HR: {
+    code: 'HR', name: 'Croatia', currencies: ['EUR'], locales: ['hr', 'en'],
+    defaultCities: ['Zagreb', 'Split', 'Rijeka', 'Osijek'],
+    cityAliases: {}, status: 'CONFIGURED',
   },
 };
 

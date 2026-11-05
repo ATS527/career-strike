@@ -255,14 +255,23 @@ export function Markets() {
   const [loading, setLoading] = useState(true);
   const [savingCode, setSavingCode] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [discoveryByCode, setDiscoveryByCode] = useState<Record<string, boolean>>({});
 
   const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await api<{ settings: Record<string, unknown> }>('/api/settings');
-      const preferred = res.settings['search.preferredCountries'];
+      const [settingsRes, readinessRes] = await Promise.all([
+        api<{ settings: Record<string, unknown> }>('/api/settings'),
+        api<{ markets: { code: string; discoveryAvailable: boolean }[] }>('/api/readiness').catch(() => null),
+      ]);
+      const preferred = settingsRes.settings['search.preferredCountries'];
       if (Array.isArray(preferred)) {
         setSelectedCountries(preferred.map((c) => String(c).toUpperCase()));
+      }
+      if (readinessRes?.markets) {
+        const map: Record<string, boolean> = {};
+        for (const m of readinessRes.markets) map[m.code.toUpperCase()] = m.discoveryAvailable;
+        setDiscoveryByCode(map);
       }
       setError(false);
     } catch {
@@ -646,6 +655,18 @@ export function Markets() {
             <ExternalLink href={activeMarket.officialUrl} className="external-link" style={{ fontSize: '0.8rem' }}>
               Official statutory guidance ↗
             </ExternalLink>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.76rem', color: 'var(--ink-faint)' }}>
+              Official sources last reviewed: 2026-11-01. Research only; not a visa or work-eligibility decision.
+            </p>
+          </div>
+
+          <div style={{ padding: '0.65rem 0.85rem', background: 'var(--paper-subtle)', border: '1px solid var(--rule)', borderRadius: 'var(--radius)', fontSize: '0.82rem' }}>
+            <strong style={{ display: 'block', color: 'var(--ink)', marginBottom: '0.2rem' }}>Discovery status</strong>
+            <span style={{ color: 'var(--ink-soft)' }}>
+              {discoveryByCode[activeMarket.code]
+                ? 'Discovery available in this installation (verified local source).'
+                : 'Configured research market only; no verified local discovery yet.'}
+            </span>
           </div>
 
           <div style={{ marginTop: 'auto', paddingTop: '0.75rem', borderTop: '1px solid var(--rule)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

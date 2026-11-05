@@ -7,7 +7,7 @@ import { Command, InvalidArgumentError } from 'commander';
 import { appPaths, ensureHome, findGitRoot } from '../core/paths.js';
 import { MIN_NODE_MAJOR, VERSION } from '../core/version.js';
 import { inspectDb, latestKnownVersion, openDb, schemaVersion } from '../store/db.js';
-import { backup, deleteAllData, exportData, restore, rollback } from '../store/lifecycle.js';
+import { backup, deleteAllData, exportData, OWNED, restore, rollback } from '../store/lifecycle.js';
 import { defaultSecretStore } from '../vault/secrets.js';
 import { HOSTS, type Host, hostVersion, isRegistered, register, settlesTo, unregister } from '../mcp/hosts.js';
 import { runMcpStdio, tokenFile } from '../mcp/server.js';
@@ -385,6 +385,26 @@ async function ask(question: string): Promise<boolean> {
   }
 }
 
+async function askYesDefault(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = (await rl.question(question)).trim().toLowerCase();
+    if (answer === '') return true;
+    return /^y(es)?$/i.test(answer);
+  } finally {
+    rl.close();
+  }
+}
+
+async function askText(question: string): Promise<string> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    return await rl.question(question);
+  } finally {
+    rl.close();
+  }
+}
+
 program
   .command('update')
   .description('Update Career Strike to the newest release; your data is backed up first and the update can be undone')
@@ -458,10 +478,14 @@ function globalPrefix(): string | null {
   return path.basename(parent) === 'lib' ? path.dirname(parent) : parent;
 }
 
+const DELETE_PHRASE = 'delete my career data';
+
 program
   .command('uninstall')
-  .description('Remove Career Strike from AI assistants and remove the program; your data is kept unless you delete it separately')
-  .action(async () => {
+  .description('Remove Career Strike from AI assistants and remove the program; your data is kept unless you explicitly choose to delete it')
+  .option('--delete-data', 'also delete locally stored Career Strike candidate data (requires --confirm)')
+  .option('--confirm <phrase>', `type exactly: "${DELETE_PHRASE}" (only with --delete-data)`)
+  .action(async (opts: { deleteData?: boolean; confirm?: string }) => {
     const paths = appPaths();
     console.log(`Service: ${await stopService(paths)}`);
     await Promise.all(
@@ -475,6 +499,7 @@ program
       }),
     );
     fs.rmSync(path.join(paths.home, 'mcp'), { recursive: true, force: true });
+
     const prefix = globalPrefix();
     if (prefix) {
       const { execFileSync } = await import('node:child_process');
@@ -483,10 +508,62 @@ program
     } else {
       console.log('Career Strike was not installed with `npm install --global`; remove it the way you installed it.');
     }
-    console.log(`Your data is still in ${paths.home}. To delete it permanently: career-strike delete-data --confirm "${DELETE_PHRASE}" (before uninstalling), or delete that folder.`);
+
+    // Candidate data is preserved unless the user explicitly consents. A generic uninstall
+    // confirmation never counts as consent to delete personal data.
+    let deleteData = false;
+    if (opts.deleteData === true) {
+      if (opts.confirm !== DELETE_PHRASE) {
+        console.error(`Refusing to delete candidate data without confirmation. Run: career-strike uninstall --delete-data --confirm "${DELETE_PHRASE}"`);
+        process.exitCode = 1;
+      } else {
+        deleteData = true;
+      }
+    } else if (process.stdin.isTTY && process.stdout.isTTY) {
+      console.log('Do you also want to delete your locally stored Career Strike data?');
+      console.log('Your resumes, career profile, saved jobs and application history may be permanently deleted.');
+      const answer = await ask('Delete local data? [y/N] ');
+      if (answer) {
+        const present = OWNED.filter((name) => fs.existsSync(path.join(paths.home, name)));
+        console.log('Career Strike would delete these items from its own data directory:');
+        for (const name of present) console.log(`  - ${path.join(paths.home, name)} (${name})`);
+        if (present.length === 0) console.log('  (no Career Strike data files are present)');
+        console.log('Deletion may be irreversible. Other files in that directory are left untouched.');
+        const backupFirst = await askYesDefault('Create a backup in a folder first? [Y/n] ');
+        if (backupFirst) {
+          const folder = (await askText('Backup folder (new or empty, outside any git repository): ')).trim();
+          if (folder) {
+            try {
+              const r = backup(paths, folder);
+              console.log(`Backed up ${r.files} files (schema v${r.schemaVersion}) to ${r.dir}`);
+            } catch (err) {
+              console.error(err instanceof Error ? err.message : String(err));
+              console.log('Continuing without a backup.');
+            }
+          }
+        }
+        const finalAnswer = await ask('This may be irreversible. Delete local data now? [y/N] ');
+        if (finalAnswer) {
+          const phrase = (await askText(`Type "${DELETE_PHRASE}" to confirm: `)).trim();
+          deleteData = phrase === DELETE_PHRASE;
+          if (!deleteData) console.log('Confirmation did not match. Your data was not deleted.');
+        }
+      }
+    } else {
+      // Non-interactive: preserve user data by default.
+      console.log('Non-interactive uninstall: keeping your Career Strike data (default).');
+    }
+
+    if (deleteData) {
+      await requireStopped('delete your data');
+      const r = await deleteAllData(paths, defaultSecretStore(paths.home));
+      console.log(`Deleted: ${r.removed.join(', ') || 'nothing was stored'}; secrets: ${r.secretsRemoved.join(', ')}.`);
+      if (r.leftInPlace.length) console.log(`Not created by Career Strike, so left in place in ${paths.home}: ${r.leftInPlace.join(', ')}`);
+    } else {
+      console.log(`Your data is still in ${paths.home}. To delete it permanently: career-strike delete-data --confirm "${DELETE_PHRASE}" (before uninstalling), or delete that folder.`);
+    }
   });
 
-const DELETE_PHRASE = 'delete my career data';
 program
   .command('delete-data')
   .description('Permanently delete all Career Strike data on this computer (export first if you want a copy)')

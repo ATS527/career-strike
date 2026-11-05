@@ -119,10 +119,22 @@ function getInitials(name: string | null | undefined): string {
 function validLinkedin(s: string): boolean {
   try {
     const u = new URL(s);
+    const host = u.hostname.toLowerCase();
+    const hostOk = /^(?:www\.|[a-z]{2,3}\.)?linkedin\.com$/.test(host);
+    const m = /^\/in\/([^/]+)\/?$/i.exec(u.pathname);
+    let slug: string | null = null;
+    if (m) {
+      try {
+        slug = decodeURIComponent(m[1]!).toLowerCase();
+      } catch {
+        slug = null;
+      }
+    }
     return (
       u.protocol === 'https:' &&
-      ['linkedin.com', 'www.linkedin.com'].includes(u.hostname) &&
-      /^\/in\/[^/?#]+\/?$/.test(u.pathname)
+      hostOk &&
+      slug !== null &&
+      /^[\p{L}\p{N}_-]{3,100}$/u.test(slug)
     );
   } catch {
     return false;
@@ -345,9 +357,9 @@ export function Profile() {
         </div>
       </div>
 
-      {saveStatus && (
+      {(isDirty || saveStatus) && (
         <p role="status" aria-live="polite" data-testid="profile-save-status" className="save-status" style={{ marginBottom: '1rem' }}>
-          {saveStatus}
+          {isDirty && (!saveStatus || saveStatus === 'All profile changes saved.') ? 'Unsaved changes.' : saveStatus}
         </p>
       )}
 

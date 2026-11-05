@@ -20,7 +20,7 @@ import { tempDir } from '../helpers.js';
 
 describe('configured markets', () => {
   it('configures the agreed rollout markets without claiming discovery availability', () => {
-    expect(Object.keys(COUNTRY_REGISTRY)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA']);
+    expect(Object.keys(COUNTRY_REGISTRY)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA', 'HR']);
     expect(Object.values(COUNTRY_REGISTRY).every((country) => country.status === 'CONFIGURED')).toBe(true);
     expect(COUNTRY_REGISTRY.IN.defaultCities).toContain('Bengaluru');
     expect(COUNTRY_REGISTRY.VN.currencies).toEqual(['VND']);
@@ -178,7 +178,7 @@ describe('configured markets', () => {
   it('reports market readiness from local board health, never from configuration alone', () => {
     const db = openDb(path.join(tempDir('cs-market-readiness-'), 'cs.db'));
     const before = marketReadiness(db);
-    expect(before.map((m) => m.code)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA']);
+    expect(before.map((m) => m.code)).toEqual(['DE', 'IN', 'SG', 'MY', 'ID', 'PH', 'TH', 'VN', 'AE', 'JP', 'GB', 'AU', 'CA', 'HR']);
     const india = before.find((m) => m.code === 'IN')!;
     expect(india).toMatchObject({ name: 'India', configuredStatus: 'CONFIGURED', discoveryAvailable: false });
     expect(india.targets.map((t) => t.id)).toEqual(['saviynt-india', 'krafton-india', 'sarvam-india', 'harvey-india']);

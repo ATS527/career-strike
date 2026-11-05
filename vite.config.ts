@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 
 // Development only (`npm run dev`): Vite serves the UI and proxies the API to the local service.
@@ -33,7 +34,7 @@ function devOriginGuard(): Plugin {
 export default defineConfig({
   root: 'src/web',
   base: '/',
-  plugins: [react(), devOriginGuard()],
+  plugins: [tailwindcss(), react(), devOriginGuard()],
   server: {
     host: '127.0.0.1',
     port: DEV_PORT,

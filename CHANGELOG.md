@@ -3,6 +3,31 @@
 Every release of Career Strike is listed here, newest first. The section for a version is shown in
 the dashboard after you update, and is published as that version's release notes on GitHub.
 
+## [0.3.0] - 2026-11-05
+
+### Added
+
+- Tailwind CSS v4 is now part of the dashboard build, with Career Strike design tokens for brand
+  colors, typography, spacing, radii and surfaces.
+- React Hook Form now manages dashboard forms such as Add Job, with React Hook Form plus Zod-ready
+  resolver support available for further form migrations.
+- `career-strike uninstall` now asks whether to delete locally stored candidate data. The default
+  is No; data is preserved unless you explicitly confirm deletion. Non-interactive uninstalls
+  keep data by default and require `--delete-data --confirm "delete my career data"` for removal.
+- Uninstall now offers an optional backup before deleting candidate data and shows the exact
+  Career Strike-managed files and folders it would remove.
+
+### Changed
+
+- The dashboard keeps its existing Career Strike visual identity while Tailwind CSS is introduced
+  for layout and component styling.
+- Candidate data safety documentation now describes uninstall data retention and explicit deletion
+  consent.
+
+### Fixed
+
+- Uninstall no longer implies consent to delete personal data from a generic confirmation.
+
 ## [0.2.0] - 2026-11-01
 
 The first published release. From now on, `career-strike update` keeps you current.

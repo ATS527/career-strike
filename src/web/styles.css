@@ -1,3 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cs-accent: #c43822;
+  --color-cs-accent-hover: #ab2e1a;
+  --color-cs-accent-strong: #8f2312;
+  --color-cs-accent-wash: #fdf1ef;
+  --color-cs-teal: #0e766e;
+  --color-cs-teal-wash: #eaf6f5;
+  --color-cs-attention: #9a4b08;
+  --color-cs-attention-wash: #fbf3e8;
+  --color-cs-danger: #b92b27;
+  --color-cs-danger-wash: #fdeeee;
+  --color-cs-paper: #f5f7f8;
+  --color-cs-canvas: #ffffff;
+  --color-cs-ink: #111820;
+  --color-cs-ink-soft: #47545b;
+  --color-cs-ink-faint: #52636b;
+  --color-cs-rule: #dce3e5;
+  --color-cs-rule-strong: #b8c4c7;
+  --font-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --radius-cs: 8px;
+  --radius-cs-lg: 12px;
+}
+
 /* Career Strike — Signal & Momentum Design System
    A high-clarity career operating workspace: precision typography, deep onyx, signal coral, and kinetic evidence trails. */
 

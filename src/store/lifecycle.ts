@@ -19,7 +19,7 @@ const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).dig
 export const SECRET_NAMES = ['approval-key'] as const;
 
 /** Everything in the data directory that Career Strike creates. Anything else is left alone. */
-const OWNED = ['career-strike.db', 'career-strike.db-wal', 'career-strike.db-shm', 'vault', 'logs', 'backups', 'mcp', 'secrets', 'service.json'];
+export const OWNED = ['career-strike.db', 'career-strike.db-wal', 'career-strike.db-shm', 'vault', 'logs', 'backups', 'mcp', 'secrets', 'service.json'];
 
 function prepareOutDir(outDir: string): string {
   const dir = path.resolve(outDir);

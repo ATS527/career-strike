@@ -243,7 +243,19 @@ a newer version is never downgraded. To restore the pre-upgrade copy, stop the s
 
 This stops the service, removes the `career-strike` entry from every installed assistant that has
 one (other entries are untouched), and removes the program if it was installed with
-`npm install --global`. Your data is kept: run `delete-data` first if you want it gone.
+`npm install --global`. It then asks whether to delete your locally stored Career Strike data:
+
+    Do you also want to delete your locally stored Career Strike data?
+    Your resumes, career profile, saved jobs and application history may be permanently deleted.
+    Delete local data? [y/N]
+
+The default is No: your data is kept. Press Enter to keep it. If you choose Yes, Career Strike
+shows the exact Career Strike-managed files and folders it would delete, offers a backup first,
+and requires a final explicit confirmation before deleting anything.
+
+Non-interactive uninstalls keep your data by default. To delete it without a prompt, run
+`career-strike uninstall --delete-data --confirm "delete my career data"`. A generic
+`--yes` for uninstalling the program is never treated as consent to delete personal data.
 
 ## Troubleshooting
 
