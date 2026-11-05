@@ -22,13 +22,13 @@ import {
   suggestSkills,
   updateFact,
 } from '../../career/profile.js';
-import { extractDocumentText } from '../../vault/text-extraction.js';
 import { boardFromUrl } from '../../sources/board-url.js';
 import { SourceError } from '../../sources/types.js';
 import type { Db } from '../../store/db.js';
 import { getSettings } from '../../store/settings.js';
 import type { TaskSupervisor } from '../../supervisor/tasks.js';
 import type { DocumentVault } from '../../vault/documents.js';
+import { extractDocumentText } from '../../vault/text-extraction.js';
 
 const AddBoard = z.union([
   z.object({ source: z.enum(['greenhouse', 'lever', 'ashby']), board: z.string().trim().min(1).max(100) }).strict(),

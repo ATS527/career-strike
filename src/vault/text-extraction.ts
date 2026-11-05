@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
-import { strFromU8, unzipSync } from 'fflate';
 import { decodeHTML } from 'entities';
+import { strFromU8, unzipSync } from 'fflate';
 
 /** Best-effort text extraction from a stored document. Returns null when no readable text can be recovered. */
 export function extractDocumentText(mime: string, bytes: Buffer): string | null {
@@ -15,9 +15,9 @@ function extractPdfText(bytes: Buffer): string | null {
   const raw = bytes.toString('latin1');
   const chunks: string[] = [];
   const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
-  let match: RegExpExecArray | null;
+  let match = streamRegex.exec(raw);
   let foundStream = false;
-  while ((match = streamRegex.exec(raw)) !== null) {
+  while (match !== null) {
     foundStream = true;
     let content = Buffer.from(match[1] ?? '', 'latin1');
     try {
@@ -26,6 +26,7 @@ function extractPdfText(bytes: Buffer): string | null {
       // Not a FlateDecode stream (or already decoded); keep the raw bytes.
     }
     chunks.push(extractPdfOperators(content.toString('latin1')));
+    match = streamRegex.exec(raw);
   }
   if (!foundStream) chunks.push(extractPdfOperators(raw));
   const text = chunks.join('\n').trim();
@@ -36,8 +37,8 @@ function extractPdfOperators(content: string): string {
   const out: string[] = [];
   // Text-showing operators: (string) Tj and [(string) ...] TJ
   const operatorRegex = /\((?:\\.|[^()\\])*\)\s*Tj|\[(?:[^\]]*)\]\s*TJ/gi;
-  let match: RegExpExecArray | null;
-  while ((match = operatorRegex.exec(content)) !== null) {
+  let match = operatorRegex.exec(content);
+  while (match !== null) {
     const token = match[0];
     if (/TJ$/i.test(token)) {
       const strings = token.match(/\((?:\\.|[^()\\])*\)/g) ?? [];
@@ -47,6 +48,7 @@ function extractPdfOperators(content: string): string {
       if (stringMatch) out.push(decodePdfString(`(${stringMatch[1]})`));
     }
     out.push(' ');
+    match = operatorRegex.exec(content);
   }
   return out.join('');
 }
@@ -67,12 +69,36 @@ function decodePdfString(token: string): string {
       i += 1;
       continue;
     }
-    if (next === 'n') { result += '\n'; i += 2; continue; }
-    if (next === 'r') { result += '\r'; i += 2; continue; }
-    if (next === 't') { result += '\t'; i += 2; continue; }
-    if (next === 'b') { result += '\b'; i += 2; continue; }
-    if (next === 'f') { result += '\f'; i += 2; continue; }
-    if (next === '(' || next === ')' || next === '\\') { result += next; i += 2; continue; }
+    if (next === 'n') {
+      result += '\n';
+      i += 2;
+      continue;
+    }
+    if (next === 'r') {
+      result += '\r';
+      i += 2;
+      continue;
+    }
+    if (next === 't') {
+      result += '\t';
+      i += 2;
+      continue;
+    }
+    if (next === 'b') {
+      result += '\b';
+      i += 2;
+      continue;
+    }
+    if (next === 'f') {
+      result += '\f';
+      i += 2;
+      continue;
+    }
+    if (next === '(' || next === ')' || next === '\\') {
+      result += next;
+      i += 2;
+      continue;
+    }
     if (/[0-7]/.test(next)) {
       let octal = next;
       let j = i + 2;
